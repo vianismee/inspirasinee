@@ -1,0 +1,105 @@
+import { useInviceID } from "@/hooks/useInvoiceID";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { Separator } from "../ui/separator";
+import { ScrollArea } from "../ui/scroll-area";
+import { Button } from "../ui/button";
+
+export function TrackingApp() {
+  const { invoiceId } = useInviceID();
+  return (
+    // Pastikan parent tidak memiliki overflow-x: hidden jika ada masalah
+    <main className="w-full bg-gray-200">
+      {/* SECTION PERTAMA (Latar Belakang yang akan ditimpa) */}
+      <section className="h-screen sticky top-0 z-0">
+        <div className="relative translate-y-[30px] z-10 w-full flex justify-center">
+          <h1 className="font-sans font-bold text-2xl">INSPIRASINEE</h1>
+        </div>
+        {/* Background Grid & Gradient */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, rgba(229,231,235,0.8) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(229,231,235,0.8) 1px, transparent 1px),
+              radial-gradient(circle 500px at 20% 80%, rgba(139,92,246,0.3), transparent),
+              radial-gradient(circle 500px at 80% 20%, rgba(59,130,246,0.3), transparent)
+            `,
+            backgroundSize: "48px 48px, 48px 48px, 100% 100%, 100% 100%",
+          }}
+        />
+      </section>
+      <section className="min-h-screen relative z-10 bg-zinc-200 rounded-t-3xl gap-7 -mt-[calc(100vh-250px)] flex flex-col items-center overflow-hidden">
+        <div className="w-full flex flex-col items-center py-7 px-5 gap-5 bg-white">
+          <div className="rounded-full h-2 w-10 bg-zinc-500/30" />
+          <div className="w-full flex flex-col items-center">
+            <h1 className="text-center text-xl font-bold">
+              Technician Cleaning Process
+            </h1>
+            <p className="text-center">
+              Hmmm- Your shoe status is Cleaning Process
+            </p>
+          </div>
+        </div>
+        <div className="w-full px-5 flex flex-col gap-5">
+          <Card className="w-full border shadow-2xs">
+            <CardHeader>
+              <CardTitle className="inline-flex items-center justify-between">
+                Order Details<span>{`ORD-${invoiceId}`}</span>
+              </CardTitle>
+            </CardHeader>
+            <Separator className="border-1 border-zinc-600/10" />
+            <CardContent>
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-1">
+                  <h1 className="font-bold">NB</h1>
+                  <div className="flex justify-between text-black font-ligt">
+                    <p>Whitening Cleaning</p>
+                    <p>Rp. 40.000</p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <h1 className="font-bold">Skechers</h1>
+                  <div className="flex justify-between text-black font-ligt">
+                    <p>Whitening Cleaning</p>
+                    <p>Rp. 40.000</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            <Separator className="border-1 border-dashed border-zinc-600/10" />
+            <CardFooter className="flex flex-col gap-5">
+              <div className="w-full inline-flex items-center justify-between">
+                <h1 className="font-bold">Sub Total</h1>
+                <h1 className="font-bold">Rp. 80.000</h1>
+              </div>
+              <div className="flex justify-between w-full">
+                <h1 className="w-[180px]">Member Loyalty (Bundling 3)</h1>
+                <p>(Rp. 15.000)</p>
+              </div>
+            </CardFooter>
+          </Card>
+          <Card className="">
+            <CardHeader className="">
+              <CardTitle className="flex items-center justify-between">
+                <h1 className="inline-flex items-center gap-2 font-bold text-xl">
+                  TOTAL
+                </h1>
+                <h1 className="text-xl font-bold">Rp. 65.000</h1>
+              </CardTitle>
+            </CardHeader>
+          </Card>
+          <Button size={"lg"} className="py-[30px] font-bold text-xl">
+            Contact Us
+          </Button>
+        </div>
+      </section>
+    </main>
+  );
+}
