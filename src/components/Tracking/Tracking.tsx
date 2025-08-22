@@ -2,26 +2,28 @@ import { useInviceID } from "@/hooks/useInvoiceID";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "../ui/card";
 import { Separator } from "../ui/separator";
-import { ScrollArea } from "../ui/scroll-area";
 import { Button } from "../ui/button";
+import TimelineProgress from "../comp-535";
 
 export function TrackingApp() {
   const { invoiceId } = useInviceID();
   return (
-    // Pastikan parent tidak memiliki overflow-x: hidden jika ada masalah
-    <main className="w-full bg-gray-200">
-      {/* SECTION PERTAMA (Latar Belakang yang akan ditimpa) */}
+    <main className="w-full bg-white">
       <section className="h-screen sticky top-0 z-0">
-        <div className="relative translate-y-[30px] z-10 w-full flex justify-center">
+        <div className="relative translate-y-[30px] z-10 w-full flex flex-col gap-10 items-center justify-center">
           <h1 className="font-sans font-bold text-2xl">INSPIRASINEE</h1>
+          <Card className="w-[300px]">
+            <CardContent className="flex flex-col items-center">
+              <h1 className="font-bold text-2xl">Hallo Vian</h1>
+              <h1>Tracking your Order</h1>
+            </CardContent>
+          </Card>
         </div>
-        {/* Background Grid & Gradient */}
         <div
           className="absolute inset-0"
           style={{
@@ -35,7 +37,7 @@ export function TrackingApp() {
           }}
         />
       </section>
-      <section className="min-h-screen relative z-10 bg-zinc-200 rounded-t-3xl gap-7 -mt-[calc(100vh-250px)] flex flex-col items-center overflow-hidden">
+      <section className="min-h-screen relative z-10 bg-zinc-200 rounded-t-3xl gap-7 -mt-[calc(100vh-250px)] flex flex-col items-center overflow-hidden pb-10">
         <div className="w-full flex flex-col items-center py-7 px-5 gap-5 bg-white">
           <div className="rounded-full h-2 w-10 bg-zinc-500/30" />
           <div className="w-full flex flex-col items-center">
@@ -48,6 +50,11 @@ export function TrackingApp() {
           </div>
         </div>
         <div className="w-full px-5 flex flex-col gap-5">
+          <Card>
+            <CardContent>
+              <TimelineProgress />
+            </CardContent>
+          </Card>
           <Card className="w-full border shadow-2xs">
             <CardHeader>
               <CardTitle className="inline-flex items-center justify-between">
