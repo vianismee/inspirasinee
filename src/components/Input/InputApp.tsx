@@ -18,6 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
+import { useCustomerStore } from "@/stores/customerStore";
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
   customer: z.string().min(5, { message: "Nama Customer Wajib di Isi" }),
@@ -27,6 +29,8 @@ const formSchema = z.object({
 });
 
 export function InputApp() {
+  const router = useRouter();
+  const setCustomer = useCustomerStore((state) => state.setCustomer);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -40,11 +44,13 @@ export function InputApp() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       console.log(values);
+      setCustomer(values);
       toast(
         <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
           <code className="text-white">{JSON.stringify(values, null, 2)}</code>
         </pre>
       );
+      router.push("/admin/input/service");
     } catch (error) {
       console.error("Form submission error", error);
       toast.error("Failed to submit the form. Please try again.");
