@@ -112,7 +112,7 @@ export function InputApp() {
               <FormControl className="w-full">
                 <PhoneInput
                   className="border-zinc-400"
-                  placeholder="856423123"
+                  placeholder="085-XXXX-XXXX"
                   {...field}
                   defaultCountry="ID"
                 />
@@ -143,7 +143,9 @@ export function InputApp() {
             </FormItem>
           )}
         />
-        <Button type="submit">Submit</Button>
+        <Button className="w-full" type="submit">
+          Submit
+        </Button>
       </form>
     </Form>
   );
