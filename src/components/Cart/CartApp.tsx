@@ -7,13 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { InfoCustomer } from "./InfoCustomer";
 import { Services } from "./Services";
+import { useInvoiceID } from "@/hooks/useInvoiceID";
+import { useCartStore } from "@/stores/cartStore";
+import { formatedCurrency } from "@/lib/utils";
 
-interface CartAppProps {
-  invoiceId: string;
-}
-
-export function CartApp({ invoiceId }: CartAppProps) {
+export function CartApp() {
+  const invoiceId = useInvoiceID();
   const activeCustomer = useCustomerStore((state) => state.activeCustomer);
+  const { totalPrice } = useCartStore();
 
   const router = useRouter();
   useEffect(() => {
@@ -22,8 +23,9 @@ export function CartApp({ invoiceId }: CartAppProps) {
     }
   }, [activeCustomer, router]);
   return (
+    // PERUBAHAN 1: Hapus `relative` karena tidak lagi dibutuhkan
     <section className="w-full h-screen flex flex-col">
-      <div className="w-full h-[20%] flex flex-col gap-4 px-6 py-5">
+      <div className="w-full flex-1 overflow-y-auto flex flex-col gap-4 px-6 py-5">
         <h1 className="font-bold text-2xl text-blue-700">INSPIRASINEE</h1>
         <Card>
           <CardContent>
@@ -47,6 +49,10 @@ export function CartApp({ invoiceId }: CartAppProps) {
           </CardContent>
         </Card>
         <Services />
+      </div>
+      <div className="w-full flex-shrink-0 font-bold text-2xl flex justify-between items-center px-7 py-4 bg-white border-t">
+        <h1>TOTAL</h1>
+        <h1>{formatedCurrency(totalPrice)}</h1>
       </div>
     </section>
   );

@@ -1,4 +1,3 @@
-import { useInviceID } from "@/hooks/useInvoiceID";
 import {
   Card,
   CardContent,
@@ -9,9 +8,10 @@ import {
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
 import TimelineProgress from "../comp-535";
+import { useInvoiceID } from "../../hooks/useInvoiceID";
 
 export function TrackingApp() {
-  const { invoiceId } = useInviceID();
+  const invoiceId = useInvoiceID();
   return (
     <main className="w-full bg-white">
       <section className="h-screen sticky top-0 z-0">
