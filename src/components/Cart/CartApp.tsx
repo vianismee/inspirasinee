@@ -11,19 +11,22 @@ import { useInvoiceID } from "@/hooks/useInvoiceID";
 import { Discount } from "./Discount";
 import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
-import { Button } from "../ui/button";
+import { Payment } from "./Payment";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
   const activeCustomer = useCustomerStore((state) => state.activeCustomer);
-  const { totalPrice } = useCartStore();
-
+  const { totalPrice, newInvoice } = useCartStore();
   const router = useRouter();
   useEffect(() => {
     if (!activeCustomer) {
       router.replace("/admin/input/");
     }
   }, [activeCustomer, router]);
+
+  useEffect(() => {
+    newInvoice(invoiceId);
+  }, [invoiceId]);
   return (
     // PERUBAHAN 1: Hapus `relative` karena tidak lagi dibutuhkan
     <section className="w-full h-screen flex flex-col bg-zinc-200">
@@ -58,7 +61,7 @@ export function CartApp() {
       <div className="flex flex-shrink-0 justify-between items-center px-5 py-5 bg-white">
         <h1 className="font-medium text-xl">TOTAL</h1>
         <h1 className="font-bold text-xl">{formatedCurrency(totalPrice)}</h1>
-        <Button>Payment</Button>
+        <Payment />
       </div>
     </section>
   );

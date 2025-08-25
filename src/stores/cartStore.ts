@@ -34,10 +34,12 @@ interface CartItem {
 }
 
 interface CartState {
+  invoice: string;
   cart: CartItem[];
   subTotal: number;
   activeDiscount: Discount | null;
   totalPrice: number;
+  newInvoice: (id: string) => void;
   addItem: () => void;
   updateItem: (
     id: number,
@@ -60,10 +62,17 @@ const calculateTotal = (cart: CartItem[]) => {
 };
 
 export const useCartStore = create<CartState>((set) => ({
+  invoice: "",
   cart: [{ ...empatyService, id: Date.now() }],
   subTotal: 0,
   activeDiscount: null,
   totalPrice: 0,
+
+  newInvoice: (id) => {
+    set(() => {
+      return { invoice: id };
+    });
+  },
 
   addItem: () =>
     set((state) => {
