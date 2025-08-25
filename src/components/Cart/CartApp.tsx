@@ -10,6 +10,7 @@ import { Services } from "./Services";
 import { useInvoiceID } from "@/hooks/useInvoiceID";
 import { useCartStore } from "@/stores/cartStore";
 import { formatedCurrency } from "@/lib/utils";
+import { AnimatedNumber } from "../ui/animated-number";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
@@ -52,7 +53,7 @@ export function CartApp() {
       </div>
       <div className="w-full flex-shrink-0 font-bold text-2xl flex justify-between items-center px-7 py-4 bg-white border-t">
         <h1>TOTAL</h1>
-        <h1>{formatedCurrency(totalPrice)}</h1>
+        <AnimatedNumber value={formatedCurrency(totalPrice)} />
       </div>
     </section>
   );
