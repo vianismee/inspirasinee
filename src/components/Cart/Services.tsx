@@ -1,5 +1,11 @@
 // Services.tsx
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -13,6 +19,7 @@ import {
 import { useCartStore } from "@/stores/cartStore";
 import { formatedCurrency } from "@/lib/utils";
 import { Trash } from "lucide-react";
+import { Separator } from "../ui/separator";
 
 // Daftar SERVICE tetap dibutuhkan di komponen untuk mengisi pilihan di Select
 const SERVICE = [
@@ -25,12 +32,12 @@ const SERVICE = [
 
 export function Services() {
   // Ambil state dan action baru dari store
-  const { cart, addItem, removeItem, updateItem } = useCartStore();
+  const { cart, addItem, removeItem, updateItem, subTotal } = useCartStore();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Daftar Service</CardTitle>
+        <CardTitle>Order Detail</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {cart.map((item) => (
@@ -38,11 +45,10 @@ export function Services() {
             key={item.id}
             className="p-4 border rounded-md grid grid-cols-1 md:grid-cols-3 gap-4 relative"
           >
-            <div className="space-y-2 md:col-span-1 placeholder:text-muted">
+            <div className="space-y-2 md:col-span-1 placeholder:text-2xl">
               <Label htmlFor={`shoeName-${item.id}`}>Nama Sepatu</Label>
               <Input
                 id={`shoeName-${item.id}`}
-                placeholder="Adidas Samba"
                 value={item.shoeName}
                 onChange={(e) =>
                   updateItem(item.id, "shoeName", e.target.value)
@@ -95,10 +101,17 @@ export function Services() {
         ))}
 
         {/* Tombol untuk menambah baris item baru */}
-        <Button variant="outline" onClick={addItem} className="w-full">
-          + Tambah Item Lain
+        <Button variant="default" onClick={addItem} className="w-full">
+          + Tambah Item
         </Button>
       </CardContent>
+      <Separator />
+      <CardFooter>
+        <div className="w-full flex justify-between">
+          <h1 className="font-medium text-lg">Subtotal</h1>
+          <h1 className="font-bold text-lg">{formatedCurrency(subTotal)}</h1>
+        </div>
+      </CardFooter>
     </Card>
   );
 }

@@ -8,9 +8,10 @@ import { Separator } from "../ui/separator";
 import { InfoCustomer } from "./InfoCustomer";
 import { Services } from "./Services";
 import { useInvoiceID } from "@/hooks/useInvoiceID";
-import { useCartStore } from "@/stores/cartStore";
+import { Discount } from "./Discount";
 import { formatedCurrency } from "@/lib/utils";
-import { AnimatedNumber } from "../ui/animated-number";
+import { useCartStore } from "@/stores/cartStore";
+import { Button } from "../ui/button";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
@@ -25,9 +26,11 @@ export function CartApp() {
   }, [activeCustomer, router]);
   return (
     // PERUBAHAN 1: Hapus `relative` karena tidak lagi dibutuhkan
-    <section className="w-full h-screen flex flex-col">
-      <div className="w-full flex-1 overflow-y-auto flex flex-col gap-4 px-6 py-5">
+    <section className="w-full h-screen flex flex-col bg-zinc-200">
+      <div className="flex flex-shrink-0 px-5 py-3 bg-white">
         <h1 className="font-bold text-2xl text-blue-700">INSPIRASINEE</h1>
+      </div>
+      <div className="w-full flex-1 overflow-y-auto flex flex-col gap-4 px-6 py-5">
         <Card>
           <CardContent>
             <div className="font-bold text-xl">INVOICE ID {invoiceId}</div>
@@ -50,10 +53,12 @@ export function CartApp() {
           </CardContent>
         </Card>
         <Services />
+        <Discount />
       </div>
-      <div className="w-full flex-shrink-0 font-bold text-2xl flex justify-between items-center px-7 py-4 bg-white border-t">
-        <h1>TOTAL</h1>
-        <AnimatedNumber value={formatedCurrency(totalPrice)} />
+      <div className="flex flex-shrink-0 justify-between items-center px-5 py-5 bg-white">
+        <h1 className="font-medium text-xl">TOTAL</h1>
+        <h1 className="font-bold text-xl">{formatedCurrency(totalPrice)}</h1>
+        <Button>Payment</Button>
       </div>
     </section>
   );

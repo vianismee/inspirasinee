@@ -8,6 +8,24 @@ const SERVICE = [
   { name: "Woman Shoe Treatment (3 Day)", amount: 30000 },
 ];
 
+interface Discount {
+  label: string;
+  amount: number;
+  code: string;
+}
+const DISCOUNT_OPTIONS: Discount[] = [
+  {
+    label: "Diskon Kemerdekaan",
+    amount: 17000,
+    code: "MERDEKA17",
+  },
+  {
+    label: "Member Only Diskon",
+    amount: 8000,
+    code: "MEMBERAGS",
+  },
+];
+
 interface CartItem {
   id: number;
   shoeName: string;
@@ -17,6 +35,9 @@ interface CartItem {
 
 interface CartState {
   cart: CartItem[];
+  subTotal: number;
+  activeDiscount: Discount | null;
+  totalPrice: number;
   addItem: () => void;
   updateItem: (
     id: number,
@@ -24,7 +45,8 @@ interface CartState {
     value: string | number
   ) => void;
   removeItem: (id: number) => void;
-  totalPrice: number;
+  applyDiscount: (code: string) => void;
+  removeDiscount: () => void;
 }
 
 const empatyService: Omit<CartItem, "id"> = {
@@ -39,6 +61,8 @@ const calculateTotal = (cart: CartItem[]) => {
 
 export const useCartStore = create<CartState>((set) => ({
   cart: [{ ...empatyService, id: Date.now() }],
+  subTotal: 0,
+  activeDiscount: null,
   totalPrice: 0,
 
   addItem: () =>
@@ -46,7 +70,7 @@ export const useCartStore = create<CartState>((set) => ({
       const newCart = [...state.cart, { ...empatyService, id: Date.now() }];
       return {
         cart: newCart,
-        totalPrice: calculateTotal(newCart), // Hitung ulang total
+        subTotal: calculateTotal(newCart), // Hitung ulang total
       };
     }),
 
@@ -56,7 +80,7 @@ export const useCartStore = create<CartState>((set) => ({
       const newCart = state.cart.filter((item) => item.id !== id);
       return {
         cart: newCart,
-        totalPrice: calculateTotal(newCart), // Hitung ulang total
+        subTotal: calculateTotal(newCart), // Hitung ulang total
       };
     }),
 
@@ -73,9 +97,31 @@ export const useCartStore = create<CartState>((set) => ({
         }
         return item;
       });
+      const newSubtotal = calculateTotal(newCart);
+      const discountAmmount = state.activeDiscount?.amount || 0;
       return {
         cart: newCart,
-        totalPrice: calculateTotal(newCart), // Hitung ulang total
+        subTotal: newSubtotal,
+        totalPrice: newSubtotal - discountAmmount,
       };
     }),
+
+  applyDiscount: (code) => {
+    const foundDiscount = DISCOUNT_OPTIONS.find(
+      (d) => d.code.toUpperCase() === code.toUpperCase()
+    );
+
+    if (foundDiscount) {
+      set((state) => ({
+        activeDiscount: foundDiscount,
+        totalPrice: state.subTotal - foundDiscount.amount,
+      }));
+      return true;
+    }
+
+    return false;
+  },
+
+  removeDiscount: () =>
+    set((state) => ({ activeDiscount: null, totalPrice: state.subTotal })),
 }));
