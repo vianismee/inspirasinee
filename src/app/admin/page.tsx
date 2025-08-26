@@ -4,7 +4,7 @@ import Link from "next/link";
 export default function AdminPage() {
   return (
     <main className="flex p-12">
-      <Link href={"/admin/input"}>
+      <Link href={"/admin/order"}>
         <Button>Add Transaction</Button>
       </Link>
     </main>

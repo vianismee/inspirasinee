@@ -1,9 +1,9 @@
-import { InputApp } from "@/components/Input/InputApp";
+import { OrderApp } from "@/components/Order/OrderApp";
 
 export default function InputPage() {
   return (
     <main className="w-full px-11">
-      <InputApp />
+      <OrderApp />
     </main>
   );
 }

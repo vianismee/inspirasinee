@@ -21,34 +21,36 @@ import { useRouter } from "next/navigation";
 import { useCustomerID } from "@/hooks/useNanoID";
 
 const formSchema = z.object({
-  customer: z.string().min(2, { message: "Nama Customer Wajib di Isi" }),
+  username: z.string().min(2, { message: "Nama Customer Wajib di Isi" }),
   email: z.string().optional(),
   whatsapp: z.string().min(2, { message: "Nomor WhatsApp Wajib di isi" }),
   alamat: z.string().optional(),
 });
 
-export function InputApp() {
+export function OrderApp() {
   const router = useRouter();
-  const setCustomer = useCustomerStore((state) => state.setCustomer);
+  const findOrCreateCustomer = useCustomerStore(
+    (state) => state.findOrCreateCustomer
+  );
   const custoemerId = useCustomerID();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      customer: "",
+      username: "",
       email: "",
       whatsapp: "",
       alamat: "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const customerDta = {
+      const customerData = {
         customer_id: custoemerId,
         ...values,
       };
-      setCustomer(customerDta);
+      await findOrCreateCustomer(customerData);
       router.push("/admin/input/service");
     } catch (error) {
       console.error("Form submission error", error);
@@ -64,7 +66,7 @@ export function InputApp() {
       >
         <FormField
           control={form.control}
-          name="customer"
+          name="username"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Nama Customer</FormLabel>

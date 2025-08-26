@@ -44,7 +44,11 @@ export function CartApp() {
           </CardHeader>
           <Separator />
           <CardContent className="text-sm">
-            <InfoCustomer label="Customer" value={activeCustomer?.customer} />
+            <InfoCustomer
+              label="ID Customer"
+              value={activeCustomer?.customer_id}
+            />
+            <InfoCustomer label="Customer" value={activeCustomer?.username} />
             <InfoCustomer label="WhatsApp" value={activeCustomer?.whatsapp} />
             {activeCustomer?.alamat && (
               <InfoCustomer
