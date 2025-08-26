@@ -1,3 +1,4 @@
+"use client";
 import {
   Card,
   CardContent,
@@ -13,7 +14,7 @@ import { useInvoiceID } from "../../hooks/useNanoID";
 export function TrackingApp() {
   const invoiceId = useInvoiceID();
   return (
-    <main className="w-full bg-white">
+    <main className="w-full bg-white max-w-2xl">
       <section className="h-screen sticky top-0 z-0">
         <div className="relative translate-y-[30px] z-10 w-full flex flex-col gap-10 items-center justify-center">
           <h1 className="font-sans font-bold text-2xl">INSPIRASINEE</h1>
