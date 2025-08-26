@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 interface CustomerData {
+  customer_id: string;
   customer: string;
   email?: string;
   whatsapp: string;

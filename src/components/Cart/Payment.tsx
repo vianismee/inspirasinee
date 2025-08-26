@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 export function Payment() {
   const { activeCustomer } = useCustomerStore();
   const { cart, activeDiscount, invoice } = useCartStore();
-  let step = 1;
+  const step = 1;
 
   const handleApply = () => {
     console.log(activeCustomer);

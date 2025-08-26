@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { InfoCustomer } from "./InfoCustomer";
 import { Services } from "./Services";
-import { useInvoiceID } from "@/hooks/useInvoiceID";
+import { useInvoiceID } from "@/hooks/useNanoID";
 import { Discount } from "./Discount";
 import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
@@ -26,9 +26,8 @@ export function CartApp() {
 
   useEffect(() => {
     newInvoice(invoiceId);
-  }, [invoiceId]);
+  }, [invoiceId, newInvoice]);
   return (
-    // PERUBAHAN 1: Hapus `relative` karena tidak lagi dibutuhkan
     <section className="w-full h-screen flex flex-col bg-zinc-200">
       <div className="flex flex-shrink-0 px-5 py-3 bg-white">
         <h1 className="font-bold text-2xl text-blue-700">INSPIRASINEE</h1>

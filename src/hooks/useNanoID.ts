@@ -18,3 +18,17 @@ export function useInvoiceID() {
 
   return invoiceId;
 }
+
+export function useCustomerID() {
+  const [customerID] = useState(() => {
+    const alphabet = process.env.NEXT_PUBLIC_NANO_ID;
+    if (!alphabet) {
+      console.error("NANO_ID alphabet is not defined in .env.local");
+      return "ERROR_ID";
+    }
+    const generate = customAlphabet(alphabet, 6);
+    return generate();
+  });
+
+  return customerID;
+}

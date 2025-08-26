@@ -18,9 +18,10 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useRouter } from "next/navigation";
+import { useCustomerID } from "@/hooks/useNanoID";
 
 const formSchema = z.object({
-  customer: z.string().min(5, { message: "Nama Customer Wajib di Isi" }),
+  customer: z.string().min(2, { message: "Nama Customer Wajib di Isi" }),
   email: z.string().optional(),
   whatsapp: z.string().min(2, { message: "Nomor WhatsApp Wajib di isi" }),
   alamat: z.string().optional(),
@@ -29,6 +30,8 @@ const formSchema = z.object({
 export function InputApp() {
   const router = useRouter();
   const setCustomer = useCustomerStore((state) => state.setCustomer);
+  const custoemerId = useCustomerID();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -41,7 +44,11 @@ export function InputApp() {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      setCustomer(values);
+      const customerDta = {
+        customer_id: custoemerId,
+        ...values,
+      };
+      setCustomer(customerDta);
       router.push("/admin/input/service");
     } catch (error) {
       console.error("Form submission error", error);
