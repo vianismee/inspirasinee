@@ -1,3 +1,5 @@
+// src/components/Cart/CartApp.tsx
+
 "use client";
 
 import { useCustomerStore } from "@/stores/customerStore";
@@ -13,6 +15,7 @@ import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { Payment } from "./Payment";
 import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
+import { Logo } from "../Logo";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
@@ -24,6 +27,7 @@ export function CartApp() {
   useEffect(() => {
     fetchCatalog();
   }, [fetchCatalog]);
+
   useEffect(() => {
     if (!activeCustomer) {
       router.replace("/admin/order/");
@@ -33,9 +37,11 @@ export function CartApp() {
   useEffect(() => {
     newInvoice(invoiceId);
   }, [invoiceId, newInvoice]);
+
   return (
-    <section className="w-full h-min flex flex-col bg-zinc-200">
-      <div className="w-full flex-1 overflow-y-auto flex flex-col gap-4 px-6 py-5">
+    // 1. Pastikan parent section memenuhi tinggi layar
+    <section className="w-full flex flex-col bg-zinc-200">
+      <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-6">
         <Card>
           <CardContent>
             <div className="font-bold text-xl">INVOICE ID {invoiceId}</div>
@@ -64,7 +70,8 @@ export function CartApp() {
         <Services />
         <Discount />
       </div>
-      <div className="flex flex-shrink-0 justify-between items-center px-5 py-5 bg-white">
+
+      <div className="sticky bottom-0 mt-auto flex-shrink-0 flex justify-between items-center px-5 py-3 bg-white border-t">
         <h1 className="font-medium text-xl">TOTAL</h1>
         <h1 className="font-bold text-xl">{formatedCurrency(totalPrice)}</h1>
         <Payment />

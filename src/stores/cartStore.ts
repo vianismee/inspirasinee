@@ -28,6 +28,8 @@ interface CartState {
   subTotal: number;
   activeDiscount: Discount | null;
   totalPrice: number;
+  payment: string;
+  newPayment: (payment: string) => void;
   newInvoice: (id: string) => void;
   addItem: () => void;
   updateItem: (
@@ -56,12 +58,15 @@ export const useCartStore = create<CartState>((set, get) => ({
   subTotal: 0,
   activeDiscount: null,
   totalPrice: 0,
+  payment: "Cash",
 
   newInvoice: (id) => {
     set(() => {
       return { invoice: id };
     });
   },
+
+  newPayment: (payment) => set({ payment: payment }),
 
   addItem: () =>
     set((state) => {
