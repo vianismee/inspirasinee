@@ -14,6 +14,9 @@ import { Wallet2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Label } from "../ui/label";
 import { formatedCurrency } from "@/lib/utils";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export function Payment() {
   const PAYMENT = [
@@ -26,9 +29,21 @@ export function Payment() {
       value: "QRIS",
     },
   ];
-  const { totalPrice, newPayment, payment } = useCartStore();
-  console.log(payment);
-  const handleApply = () => {};
+  const [isLoading, setIsLoading] = useState(false);
+  const { totalPrice, newPayment, handleSubmit, resetCart } = useCartStore();
+  const { clearCustomer } = useCustomerStore();
+  const router = useRouter();
+
+  const handleProcessPayment = async () => {
+    setIsLoading(true);
+    const success = await handleSubmit();
+    setIsLoading(false);
+    if (success) {
+      toast.success("Transaksi Berhasil!");
+      router.push("/admin");
+      resetCart();
+    }
+  };
 
   return (
     <Dialog>
@@ -76,8 +91,10 @@ export function Payment() {
           </RadioGroup>
         </div>
         <DialogFooter>
+          <Button onClick={handleProcessPayment} disabled={isLoading}>
+            Proses
+          </Button>
           <Button variant="outline">Batal</Button>
-          <Button>Proses</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

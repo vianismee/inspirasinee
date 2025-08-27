@@ -41,7 +41,7 @@ export function CartApp() {
   return (
     // 1. Pastikan parent section memenuhi tinggi layar
     <section className="w-full flex flex-col bg-zinc-200">
-      <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-6">
+      <div className="flex-1 overflow-y-auto flex flex-col py-5 gap-4 px-6">
         <Card>
           <CardContent>
             <div className="font-bold text-xl">INVOICE ID {invoiceId}</div>
