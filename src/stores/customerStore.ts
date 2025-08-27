@@ -1,15 +1,8 @@
 import { createClient } from "@/utils/supabase/client";
 import { create } from "zustand";
 
-interface Customer {
-  id: number;
-  customer_id: string;
-  username: string;
-  email?: string;
-  whatsapp: string;
-  alamat?: string;
-}
 interface CustomerData {
+  isNew: boolean;
   customer_id: string;
   username: string;
   email?: string;
@@ -19,20 +12,17 @@ interface CustomerData {
 
 interface CustomerState {
   activeCustomer: CustomerData | null;
-  setCustomer: (customer: CustomerData) => void;
-  findOrCreateCustomer: (
-    customerData: CustomerData
-  ) => Promise<Customer | null>;
+  prepareCustomer: (
+    customerData: Omit<CustomerData, "isNew">
+  ) => Promise<boolean>;
   clearCustomer: () => void;
 }
 
 export const useCustomerStore = create<CustomerState>((set) => ({
   activeCustomer: null,
 
-  setCustomer: (customer) => set({ activeCustomer: customer }),
-
-  findOrCreateCustomer: async (customerData) => {
-    const { customer_id, whatsapp, username, email, alamat } = customerData;
+  prepareCustomer: async (customerData) => {
+    const { whatsapp } = customerData;
     const supabase = createClient();
 
     const { data: existingCustomer, error: findError } = await supabase
@@ -42,29 +32,15 @@ export const useCustomerStore = create<CustomerState>((set) => ({
       .maybeSingle();
     if (findError) {
       console.log("Gagagal mencari Customer", findError);
-      return null;
+      return false;
     }
-    const finalyData = {
-      customer_id: customer_id,
-      username: username,
-      email: email,
-      whatsapp: whatsapp,
-    };
     if (existingCustomer) {
-      set({ activeCustomer: existingCustomer });
-      return existingCustomer;
+      set({ activeCustomer: { ...existingCustomer, isNew: false } });
+      return true;
     }
-    const { data: newCustomer, error: createError } = await supabase
-      .from("customers")
-      .insert(finalyData)
-      .select("*")
-      .single();
-    if (createError) {
-      console.log("Gagal menambah Customer", createError);
-      return null;
-    }
-    set({ activeCustomer: newCustomer });
-    return newCustomer;
+
+    set({ activeCustomer: { ...customerData, isNew: true } });
+    return true;
   },
 
   clearCustomer: () => set({ activeCustomer: null }),

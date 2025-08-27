@@ -12,15 +12,21 @@ import { Discount } from "./Discount";
 import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { Payment } from "./Payment";
+import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
   const activeCustomer = useCustomerStore((state) => state.activeCustomer);
   const { totalPrice, newInvoice } = useCartStore();
   const router = useRouter();
+  const fetchCatalog = useServiceCatalogStore((state) => state.fetchCatalog);
+
+  useEffect(() => {
+    fetchCatalog();
+  }, [fetchCatalog]);
   useEffect(() => {
     if (!activeCustomer) {
-      router.replace("/admin/input/");
+      router.replace("/admin/order/");
     }
   }, [activeCustomer, router]);
 
@@ -28,10 +34,7 @@ export function CartApp() {
     newInvoice(invoiceId);
   }, [invoiceId, newInvoice]);
   return (
-    <section className="w-full h-screen flex flex-col bg-zinc-200">
-      <div className="flex flex-shrink-0 px-5 py-3 bg-white">
-        <h1 className="font-bold text-2xl text-blue-700">INSPIRASINEE</h1>
-      </div>
+    <section className="w-full h-min flex flex-col bg-zinc-200">
       <div className="w-full flex-1 overflow-y-auto flex flex-col gap-4 px-6 py-5">
         <Card>
           <CardContent>

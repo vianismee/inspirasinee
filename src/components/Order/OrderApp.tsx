@@ -29,9 +29,7 @@ const formSchema = z.object({
 
 export function OrderApp() {
   const router = useRouter();
-  const findOrCreateCustomer = useCustomerStore(
-    (state) => state.findOrCreateCustomer
-  );
+  const prepareCustomer = useCustomerStore((state) => state.prepareCustomer);
   const custoemerId = useCustomerID();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -50,8 +48,8 @@ export function OrderApp() {
         customer_id: custoemerId,
         ...values,
       };
-      await findOrCreateCustomer(customerData);
-      router.push("/admin/input/service");
+      await prepareCustomer(customerData);
+      router.push("/admin/order/service");
     } catch (error) {
       console.error("Form submission error", error);
       toast.error("Failed to submit the form. Please try again.");

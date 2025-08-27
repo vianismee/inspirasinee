@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useServiceCatalogStore } from "./serviceCatalogStore";
 
 const SERVICE = [
   { name: "Express Cleaning (1 Day)", amount: 50000 },
@@ -13,18 +14,6 @@ interface Discount {
   amount: number;
   code: string;
 }
-const DISCOUNT_OPTIONS: Discount[] = [
-  {
-    label: "Diskon Kemerdekaan",
-    amount: 17000,
-    code: "MERDEKA17",
-  },
-  {
-    label: "Member Only Diskon",
-    amount: 8000,
-    code: "MEMBERAGS",
-  },
-];
 
 interface CartItem {
   id: number;
@@ -47,7 +36,7 @@ interface CartState {
     value: string | number
   ) => void;
   removeItem: (id: number) => void;
-  applyDiscount: (code: string) => void;
+  applyDiscount: (code: string) => boolean;
   removeDiscount: () => void;
 }
 
@@ -61,7 +50,7 @@ const calculateTotal = (cart: CartItem[]) => {
   return cart.reduce((total, item) => total + item.amount, 0);
 };
 
-export const useCartStore = create<CartState>((set) => ({
+export const useCartStore = create<CartState>((set, get) => ({
   invoice: "",
   cart: [{ ...empatyService, id: Date.now() }],
   subTotal: 0,
@@ -79,7 +68,7 @@ export const useCartStore = create<CartState>((set) => ({
       const newCart = [...state.cart, { ...empatyService, id: Date.now() }];
       return {
         cart: newCart,
-        subTotal: calculateTotal(newCart), // Hitung ulang total
+        subTotal: calculateTotal(newCart),
       };
     }),
 
@@ -89,7 +78,7 @@ export const useCartStore = create<CartState>((set) => ({
       const newCart = state.cart.filter((item) => item.id !== id);
       return {
         cart: newCart,
-        subTotal: calculateTotal(newCart), // Hitung ulang total
+        subTotal: calculateTotal(newCart),
       };
     }),
 
@@ -116,18 +105,20 @@ export const useCartStore = create<CartState>((set) => ({
     }),
 
   applyDiscount: (code) => {
-    const foundDiscount = DISCOUNT_OPTIONS.find(
+    const { discountOption } = useServiceCatalogStore.getState();
+    const { subTotal } = get();
+
+    const foundDiscount = discountOption.find(
       (d) => d.code.toUpperCase() === code.toUpperCase()
     );
 
     if (foundDiscount) {
-      set((state) => ({
+      set({
         activeDiscount: foundDiscount,
-        totalPrice: state.subTotal - foundDiscount.amount,
-      }));
+        totalPrice: subTotal - foundDiscount.amount,
+      });
       return true;
     }
-
     return false;
   },
 
