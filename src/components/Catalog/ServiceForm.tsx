@@ -33,7 +33,6 @@ export default function ServiceForm() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
     uploadService({ service: values });
   }
 

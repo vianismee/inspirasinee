@@ -20,6 +20,7 @@ import { useCartStore } from "@/stores/cartStore";
 import { formatedCurrency } from "@/lib/utils";
 import { RotateCcw, Trash } from "lucide-react";
 import { Separator } from "../ui/separator";
+import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
 
 // Daftar SERVICE tetap dibutuhkan di komponen untuk mengisi pilihan di Select
 const SERVICE = [
@@ -34,6 +35,7 @@ export function Services() {
   // Ambil state dan action baru dari store
   const { cart, addItem, removeItem, updateItem, subTotal, resetCart } =
     useCartStore();
+  const { serviceCatalog } = useServiceCatalogStore();
 
   return (
     <Card>
@@ -73,7 +75,7 @@ export function Services() {
                   <SelectValue placeholder="Pilih layanan..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {SERVICE.map((service) => (
+                  {serviceCatalog.map((service) => (
                     <SelectItem key={service.name} value={service.name}>
                       {service.name}
                     </SelectItem>

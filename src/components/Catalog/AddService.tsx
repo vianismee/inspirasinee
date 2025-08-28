@@ -12,7 +12,7 @@ import ServiceForm from "./ServiceForm";
 export function AddService() {
   return (
     <Dialog>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button>
           <PlusCircle className="h-4 w-4 mr-2" />
           Add Service

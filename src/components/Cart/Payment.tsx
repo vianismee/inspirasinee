@@ -1,7 +1,9 @@
 import { useCartStore } from "@/stores/cartStore";
+import { useCustomerStore } from "@/stores/customerStore";
 import { Button } from "../ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -28,7 +30,18 @@ export function Payment() {
     },
   ];
   const [isLoading, setIsLoading] = useState(false);
-  const { totalPrice, newPayment, handleSubmit, resetCart } = useCartStore();
+  const {
+    totalPrice,
+    newPayment,
+    handleSubmit,
+    resetCart,
+    cart,
+    payment,
+    invoice,
+    subTotal,
+    activeDiscount,
+  } = useCartStore();
+  const { activeCustomer } = useCustomerStore();
   const router = useRouter();
 
   const handleProcessPayment = async () => {
@@ -36,6 +49,32 @@ export function Payment() {
     const success = await handleSubmit();
     setIsLoading(false);
     if (success) {
+      let receiptText = `Hallo kak *${activeCustomer?.username}*\n\n`;
+      receiptText += `Berikut Invoice Order\n\n`;
+      receiptText += `Invoice No. *${invoice}*\n`;
+      receiptText += `Tanggal:  **\n`;
+      receiptText += `-----------------------------------\n\n`;
+      receiptText += `*Detail Service:*\n`;
+      cart.forEach((text) => {
+        receiptText += `*${text.shoeName}\n*`;
+        receiptText += `${text.serviceName.toUpperCase} - ${formatedCurrency(
+          text.amount
+        )}\n`;
+      });
+
+      receiptText += `\n-----------------------------------\n`;
+      receiptText += `Subtotal: ${formatedCurrency(subTotal)} \n`;
+      receiptText += `Discount: -${formatedCurrency(
+        activeDiscount?.amount || 0
+      )} \n`;
+      receiptText += `*Total Pembayaran: ${formatedCurrency(totalPrice)}*\n`;
+      receiptText += `*Metode Pembayaran: ${payment}*\n\n`;
+      receiptText += `Terimakasih atas Kepercayaannya`;
+
+      const encode = encodeURIComponent(receiptText);
+      const whatsappURL = `https://wa.me/${activeCustomer?.whatsapp}?text=${encode}`;
+      console.log(whatsappURL);
+
       toast.success("Transaksi Berhasil!");
       router.push("/admin");
       resetCart();

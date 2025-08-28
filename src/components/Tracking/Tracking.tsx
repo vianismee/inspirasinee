@@ -18,7 +18,7 @@ export function TrackingApp() {
   const { fetchOrder, subscribeToOrders, singleOrders } = useOrderStore();
 
   useEffect(() => {
-    fetchOrder("T9K5J7");
+    fetchOrder("QE6K1P");
     const unscubscribe = subscribeToOrders();
     return () => {
       unscubscribe();
@@ -32,12 +32,6 @@ export function TrackingApp() {
       <section className="h-screen sticky top-0 z-0">
         <div className="relative translate-y-[30px] z-10 w-full flex flex-col gap-10 items-center justify-center">
           <Logo size={15} />
-          <Card className="w-[300px]">
-            <CardContent className="flex flex-col items-center">
-              <h1 className="font-bold text-2xl">Hallo Vian</h1>
-              <h1>Tracking your Order</h1>
-            </CardContent>
-          </Card>
         </div>
         <div
           className="absolute inset-0"
@@ -83,8 +77,8 @@ export function TrackingApp() {
                   <div className="flex flex-col gap-1" key={order.shoe_name}>
                     <h1 className="font-bold">{order.shoe_name}</h1>
                     <div className="flex justify-between text-black font-ligt">
-                      <p>Whitening Cleaning</p>
-                      <p>{order.amount}</p>
+                      <p>{order.service}</p>
+                      <p>{formatedCurrency(parseFloat(order.amount))}</p>
                     </div>
                   </div>
                 ))}

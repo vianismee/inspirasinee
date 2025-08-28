@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/client";
 import { create } from "zustand";
 
 interface OrderItem {
+  service: string;
   shoe_name: string;
   amount: string;
 }
@@ -39,7 +40,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         const { data: singleData, error: errorData } = await supabase
           .from("orders")
           .select(
-            "customer_id, invoice_id, step, subtotal, discount_id, total_price, payment, created_at, order_item ( shoe_name, amount)"
+            "customer_id, invoice_id, step, subtotal, discount_id, total_price, payment, created_at, order_item ( service, shoe_name, amount)"
           )
           .eq("invoice_id", invoice)
           .single();
@@ -54,7 +55,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       const { data: orderData, error: errorData } = await supabase
         .from("orders")
         .select(
-          "customer_id, invoice_id, step, subtotal, discount_id, total_price, payment, created_at, order_item ( shoe_name, amount)"
+          "customer_id, invoice_id, step, subtotal, discount_id, total_price, payment, created_at, order_item ( service, shoe_name, amount)"
         );
       if (errorData) {
         console.log(errorData);

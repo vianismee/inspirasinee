@@ -95,11 +95,14 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   updateItem: (id, field, value) =>
     set((state) => {
+      const { serviceCatalog } = useServiceCatalogStore.getState();
       const newCart = state.cart.map((item) => {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
           if (field === "serviceName") {
-            const selectedService = SERVICE.find((s) => s.name === value);
+            const selectedService = serviceCatalog.find(
+              (s) => s.name === value
+            );
             updatedItem.amount = selectedService ? selectedService.amount : 0;
           }
           return updatedItem;
@@ -189,7 +192,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       const itemsToInsert = cart.map((item) => ({
         invoice_id: invoice,
         shoe_name: item.shoeName,
-        // service_id: // Anda perlu menambahkan ini jika relasi diperlukan
+        service: item.serviceName,
         amount: item.amount,
       }));
 
