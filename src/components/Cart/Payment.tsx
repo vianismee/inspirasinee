@@ -78,8 +78,10 @@ export function Payment() {
   };
 
   const handleClrearData = () => {
-    clearCustomer();
-    resetCart();
+    setTimeout(() => {
+      clearCustomer();
+      resetCart();
+    }, 1000);
   };
 
   return (
