@@ -73,7 +73,7 @@ export function Payment() {
 
       const encode = encodeURIComponent(receiptText);
       const whatsappURL = `https://wa.me/${activeCustomer?.whatsapp}?text=${encode}`;
-      console.log(whatsappURL);
+      window.open(whatsappURL, "_blank");
 
       toast.success("Transaksi Berhasil!");
       router.push("/admin");
