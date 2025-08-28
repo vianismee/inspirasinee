@@ -95,6 +95,7 @@ const CountrySelect = ({
       modal
       onOpenChange={(open: boolean) => {
         setIsOpen(open);
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         open && setSearchValue("");
       }}
     >

@@ -1,9 +1,7 @@
 import { useCartStore } from "@/stores/cartStore";
-import { useCustomerStore } from "@/stores/customerStore";
 import { Button } from "../ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -31,7 +29,6 @@ export function Payment() {
   ];
   const [isLoading, setIsLoading] = useState(false);
   const { totalPrice, newPayment, handleSubmit, resetCart } = useCartStore();
-  const { clearCustomer } = useCustomerStore();
   const router = useRouter();
 
   const handleProcessPayment = async () => {
