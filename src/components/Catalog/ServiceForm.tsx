@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
+// LANGKAH 1: Ubah skema untuk hanya menerima 'number'
 const formSchema = z.object({
-  name: z.string().min(1).min(5),
-  amount: z.coerce.number().min(0),
+  name: z.string().min(5, { message: "Nama harus minimal 5 karakter." }),
+  amount: z.number().min(0, { message: "Harga tidak boleh negatif." }),
 });
 
 export default function ServiceForm() {
@@ -27,22 +28,16 @@ export default function ServiceForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      amount: 0,
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      console.log(values);
-      toast(
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-        </pre>
-      );
-    } catch (error) {
-      console.error("Form submission error", error);
-      toast.error("Failed to submit the form. Please try again.");
-    }
+    console.log(values);
+    toast(
+      <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
+        <code className="text-white">{JSON.stringify(values, null, 2)}</code>
+      </pre>
+    );
   }
 
   return (
@@ -58,9 +53,8 @@ export default function ServiceForm() {
             <FormItem>
               <FormLabel>Nama Service</FormLabel>
               <FormControl>
-                <Input placeholder="Deep Cleans" type="" {...field} />
+                <Input placeholder="Deep Cleans" type="text" {...field} />
               </FormControl>
-
               <FormMessage />
             </FormItem>
           )}
@@ -73,7 +67,16 @@ export default function ServiceForm() {
             <FormItem>
               <FormLabel>Harga (Rp. )</FormLabel>
               <FormControl>
-                <Input placeholder="10000" type="number" {...field} />
+                <Input
+                  placeholder="10000"
+                  type="number"
+                  {...field}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    field.onChange(value === "" ? undefined : +value);
+                  }}
+                  value={field.value ?? ""}
+                />
               </FormControl>
               <FormDescription>Harga dalam Rupiah</FormDescription>
               <FormMessage />
