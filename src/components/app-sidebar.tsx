@@ -36,8 +36,8 @@ const data = {
       icon: IconDashboard,
     },
     {
-      title: "Orders",
-      url: "/admin/order/",
+      title: "Catalog",
+      url: "/admin/catalog",
       icon: IconListDetails,
     },
     {

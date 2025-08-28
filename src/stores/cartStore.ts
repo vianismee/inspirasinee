@@ -45,6 +45,7 @@ interface CartState {
   removeDiscount: () => void;
   handleSubmit: () => Promise<boolean>;
   resetCart: () => void;
+  resetItems: () => void;
 }
 
 const empatyService: Omit<CartItem, "id"> = {
@@ -216,4 +217,6 @@ export const useCartStore = create<CartState>((set, get) => ({
       totalPrice: 0,
       payment: "Cash",
     }),
+
+  resetItems: () => set({ cart: [{ ...empatyService, id: Date.now() }] }),
 }));

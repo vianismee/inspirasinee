@@ -18,7 +18,7 @@ import {
 } from "../ui/select";
 import { useCartStore } from "@/stores/cartStore";
 import { formatedCurrency } from "@/lib/utils";
-import { Trash } from "lucide-react";
+import { RotateCcw, Trash } from "lucide-react";
 import { Separator } from "../ui/separator";
 
 // Daftar SERVICE tetap dibutuhkan di komponen untuk mengisi pilihan di Select
@@ -32,7 +32,8 @@ const SERVICE = [
 
 export function Services() {
   // Ambil state dan action baru dari store
-  const { cart, addItem, removeItem, updateItem, subTotal } = useCartStore();
+  const { cart, addItem, removeItem, updateItem, subTotal, resetCart } =
+    useCartStore();
 
   return (
     <Card>
@@ -103,6 +104,13 @@ export function Services() {
         {/* Tombol untuk menambah baris item baru */}
         <Button variant="default" onClick={addItem} className="w-full">
           + Tambah Item
+        </Button>
+        <Button
+          className="w-full"
+          variant={"outline"}
+          onClick={() => resetCart()}
+        >
+          <RotateCcw /> Reset Item
         </Button>
       </CardContent>
       <Separator />

@@ -15,11 +15,13 @@ import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { Payment } from "./Payment";
 import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
+import { Button } from "../ui/button";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
   const activeCustomer = useCustomerStore((state) => state.activeCustomer);
-  const { totalPrice, newInvoice } = useCartStore();
+  const { clearCustomer } = useCustomerStore();
+  const { totalPrice, newInvoice, resetCart } = useCartStore();
   const router = useRouter();
   const fetchCatalog = useServiceCatalogStore((state) => state.fetchCatalog);
 
@@ -36,6 +38,11 @@ export function CartApp() {
   useEffect(() => {
     newInvoice(invoiceId);
   }, [invoiceId, newInvoice]);
+
+  const handleBatal = () => {
+    resetCart();
+    clearCustomer();
+  };
 
   return (
     // 1. Pastikan parent section memenuhi tinggi layar
@@ -69,10 +76,13 @@ export function CartApp() {
         <Services />
         <Discount />
       </div>
-
       <div className="sticky bottom-0 mt-auto flex-shrink-0 flex justify-between items-center px-5 py-3 bg-white border-t">
+        <Button variant={"outline"} onClick={handleBatal}>
+          Batal
+        </Button>
         <h1 className="font-medium text-xl">TOTAL</h1>
         <h1 className="font-bold text-xl">{formatedCurrency(totalPrice)}</h1>
+
         <Payment />
       </div>
     </section>
