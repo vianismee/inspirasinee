@@ -41,9 +41,13 @@ const items = [
   },
 ];
 
-export default function TimelineProgress() {
+interface TimelineProgressProps {
+  progress: number | 0;
+}
+
+export default function TimelineProgress({ progress }: TimelineProgressProps) {
   return (
-    <Timeline defaultValue={2}>
+    <Timeline value={progress}>
       {items.map((item) => (
         <TimelineItem
           key={item.id}

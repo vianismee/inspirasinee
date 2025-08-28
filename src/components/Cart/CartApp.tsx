@@ -15,7 +15,6 @@ import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { Payment } from "./Payment";
 import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
-import { Logo } from "../Logo";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
