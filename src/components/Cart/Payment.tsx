@@ -43,33 +43,34 @@ export function Payment() {
     subTotal,
     activeDiscount,
   } = useCartStore();
-  const { activeCustomer } = useCustomerStore();
+  const { activeCustomer, clearCustomer } = useCustomerStore();
   const router = useRouter();
 
   let receiptText = `Hallo kak *${activeCustomer?.username}*\n\n`;
   receiptText += `Berikut Invoice Order\n\n`;
   receiptText += `Invoice No. *${invoice}*\n`;
-  receiptText += `Tanggal:  **\n`;
+  receiptText += `Tanggal: ${new Date().toLocaleDateString("id-ID")}\n`;
   receiptText += `-----------------------------------\n\n`;
   receiptText += `*Detail Service:*\n`;
   cart.forEach((text) => {
     receiptText += `*${text.shoeName}\n*`;
-    receiptText += `${text.serviceName.toUpperCase} - ${formatedCurrency(
+    receiptText += `${text.serviceName.toUpperCase()} - ${formatedCurrency(
       text.amount
     )}\n`;
   });
 
   receiptText += `\n-----------------------------------\n`;
   receiptText += `Subtotal: ${formatedCurrency(subTotal)} \n`;
-  receiptText += `Discount: -${formatedCurrency(
-    activeDiscount?.amount || 0
-  )} \n`;
+  if (activeDiscount) {
+    receiptText += `Diskon: -${formatedCurrency(activeDiscount.amount)}\n`;
+  }
   receiptText += `*Total Pembayaran: ${formatedCurrency(totalPrice)}*\n`;
-  receiptText += `*Metode Pembayaran: ${payment}*\n\n`;
+  receiptText += `Metode Pembayaran: ${payment}\n\n`;
   receiptText += `Terimakasih atas Kepercayaannya`;
 
   const encode = encodeURIComponent(receiptText);
   const whatsappURL = `https://wa.me/${activeCustomer?.whatsapp}?text=${encode}`;
+  console.log(whatsappURL);
 
   const handleProcessPayment = async () => {
     setIsLoading(true);
@@ -80,6 +81,11 @@ export function Payment() {
       toast.success("Transaksi Berhasil! Silahkan kirim invoice ke Customer");
       setIsSuccess(true);
     }
+  };
+
+  const handleClrearData = () => {
+    resetCart();
+    clearCustomer();
   };
 
   return (
@@ -128,8 +134,9 @@ export function Payment() {
           </RadioGroup>
         </div>
         <DialogFooter>
-          <a href={whatsappURL}>
+          <a href={whatsappURL} className="w-full">
             <Button
+              onClick={handleClrearData}
               disabled={!isSuccess}
               className="bg-green-500 disabled:bg-green-300"
             >
