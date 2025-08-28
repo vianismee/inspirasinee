@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { uploadService } from "@/api/useUploadService";
 
 // LANGKAH 1: Ubah skema untuk hanya menerima 'number'
 const formSchema = z.object({
@@ -33,11 +34,7 @@ export default function ServiceForm() {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     console.log(values);
-    toast(
-      <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-        <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-      </pre>
-    );
+    uploadService({ service: values });
   }
 
   return (
