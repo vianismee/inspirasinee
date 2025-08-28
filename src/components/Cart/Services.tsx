@@ -22,15 +22,6 @@ import { RotateCcw, Trash } from "lucide-react";
 import { Separator } from "../ui/separator";
 import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
 
-// Daftar SERVICE tetap dibutuhkan di komponen untuk mengisi pilihan di Select
-const SERVICE = [
-  { name: "Express Cleaning (1 Day)", amount: 50000 },
-  { name: "Deep Cleaning (3 Day)", amount: 35000 },
-  { name: "Whitening Cleaning (4 Day)", amount: 45000 },
-  { name: "Kids Shoe Treatment (3 Day)", amount: 30000 },
-  { name: "Woman Shoe Treatment (3 Day)", amount: 30000 },
-];
-
 export function Services() {
   // Ambil state dan action baru dari store
   const { cart, addItem, removeItem, updateItem, subTotal, resetCart } =

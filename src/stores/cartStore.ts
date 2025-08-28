@@ -4,14 +4,6 @@ import { createClient } from "@/utils/supabase/client";
 import { useCustomerStore } from "./customerStore";
 import { toast } from "sonner";
 
-const SERVICE = [
-  { name: "Express Cleaning (1 Day)", amount: 50000 },
-  { name: "Deep Cleaning (3 Day)", amount: 35000 },
-  { name: "Whitening Cleaning (4 Day)", amount: 45000 },
-  { name: "Kids Shoe Treatment (3 Day)", amount: 30000 },
-  { name: "Woman Shoe Treatment (3 Day)", amount: 30000 },
-];
-
 interface Discount {
   label: string;
   amount: number;

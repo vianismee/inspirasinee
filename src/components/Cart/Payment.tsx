@@ -3,7 +3,6 @@ import { useCustomerStore } from "@/stores/customerStore";
 import { Button } from "../ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -16,8 +15,6 @@ import { Label } from "../ui/label";
 import { formatedCurrency } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 export function Payment() {
   const PAYMENT = [
@@ -44,7 +41,6 @@ export function Payment() {
     activeDiscount,
   } = useCartStore();
   const { activeCustomer, clearCustomer } = useCustomerStore();
-  const router = useRouter();
 
   let receiptText = `Hallo kak *${activeCustomer?.username}*\n\n`;
   receiptText += `Berikut Invoice Order\n\n`;
@@ -53,10 +49,8 @@ export function Payment() {
   receiptText += `-----------------------------------\n\n`;
   receiptText += `*Detail Service:*\n`;
   cart.forEach((text) => {
-    receiptText += `*${text.shoeName}\n*`;
-    receiptText += `${text.serviceName.toUpperCase()} - ${formatedCurrency(
-      text.amount
-    )}\n`;
+    receiptText += `*${text.shoeName}*\n*`;
+    receiptText += `${text.serviceName} - ${formatedCurrency(text.amount)}\n`;
   });
 
   receiptText += `\n-----------------------------------\n`;
@@ -84,8 +78,8 @@ export function Payment() {
   };
 
   const handleClrearData = () => {
-    resetCart();
     clearCustomer();
+    resetCart();
   };
 
   return (
