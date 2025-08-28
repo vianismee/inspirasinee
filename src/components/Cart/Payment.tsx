@@ -69,7 +69,7 @@ export function Payment() {
   receiptText += `Terimakasih atas Kepercayaannya`;
 
   const encode = encodeURIComponent(receiptText);
-  const whatsappURL = `https://wa.me/${activeCustomer?.whatsapp}&text=${encode}`;
+  const whatsappURL = `https://wa.me/${activeCustomer?.whatsapp}?text=${encode}`;
 
   const handleProcessPayment = async () => {
     setIsLoading(true);
