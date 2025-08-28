@@ -72,11 +72,10 @@ export function Payment() {
       receiptText += `Terimakasih atas Kepercayaannya`;
 
       const encode = encodeURIComponent(receiptText);
-      const whatsappURL = `https://wa.me/${activeCustomer?.whatsapp}?text=${encode}`;
+      const whatsappURL = `whatsapp://send?phone=${activeCustomer?.whatsapp}&text=${encode}`;
       window.open(whatsappURL, "_blank");
 
       toast.success("Transaksi Berhasil!");
-      router.push("/admin");
       resetCart();
     }
   };
