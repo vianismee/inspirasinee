@@ -12,7 +12,7 @@ export function useInvoiceID() {
       console.error("NANO_ID alphabet is not defined in .env.local");
       return "ERROR_ID"; // Atau alphabet default
     }
-    const generate = customAlphabet(alphabet, 6);
+    const generate = customAlphabet(alphabet, 7);
     return generate();
   });
 
@@ -26,7 +26,7 @@ export function useCustomerID() {
       console.error("NANO_ID alphabet is not defined in .env.local");
       return "ERROR_ID";
     }
-    const generate = customAlphabet(alphabet, 6);
+    const generate = customAlphabet(alphabet, 5);
     return generate();
   });
 

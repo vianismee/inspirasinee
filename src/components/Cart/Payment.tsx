@@ -47,10 +47,10 @@ export function Payment() {
   receiptText += `Invoice No. *${invoice}*\n`;
   receiptText += `Tanggal: ${new Date().toLocaleDateString("id-ID")}\n`;
   receiptText += `-----------------------------------\n\n`;
-  receiptText += `*Detail Service:*\n`;
+  receiptText += `*Detail Service:*\n\n`;
   cart.forEach((text) => {
-    receiptText += `*${text.shoeName}*\n*`;
-    receiptText += `${text.serviceName} - ${formatedCurrency(text.amount)}\n`;
+    receiptText += `*${text.shoeName}*\n`;
+    receiptText += `${text.serviceName} - ${formatedCurrency(text.amount)}\n\n`;
   });
 
   receiptText += `\n-----------------------------------\n`;
@@ -134,7 +134,7 @@ export function Payment() {
             <Button
               onClick={handleClrearData}
               disabled={!isSuccess}
-              className="bg-green-500 disabled:bg-green-300"
+              className="bg-green-500 disabled:bg-green-300 w-full"
             >
               Kirim Invoice
             </Button>

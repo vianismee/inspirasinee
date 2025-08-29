@@ -13,12 +13,17 @@ import { useOrderStore } from "@/stores/orderStore";
 import { useEffect } from "react";
 import { formatedCurrency } from "@/lib/utils";
 import { Logo } from "../Logo";
+import { Wallet2 } from "lucide-react";
 
-export function TrackingApp() {
+interface TrackingAppProps {
+  params: string;
+}
+
+export function TrackingApp({ params }: TrackingAppProps) {
   const { fetchOrder, subscribeToOrders, singleOrders } = useOrderStore();
 
   useEffect(() => {
-    fetchOrder("QE6K1P");
+    fetchOrder(params);
     const unscubscribe = subscribeToOrders();
     return () => {
       unscubscribe();
@@ -99,6 +104,17 @@ export function TrackingApp() {
                 </div>
               )}
             </CardFooter>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="inline-flex gap-2 items-center font-bold">
+                  <Wallet2 />
+                  Metode Pembayaran
+                </div>
+                <h1>{singleOrders?.payment}</h1>
+              </CardTitle>
+            </CardHeader>
           </Card>
           <Card className="">
             <CardHeader className="">
