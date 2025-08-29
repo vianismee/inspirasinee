@@ -28,7 +28,7 @@ export function TrackingApp({ params }: TrackingAppProps) {
     return () => {
       unscubscribe();
     };
-  }, [fetchOrder, subscribeToOrders]);
+  }, [fetchOrder, subscribeToOrders, params]);
 
   console.log(singleOrders);
 
