@@ -24,6 +24,7 @@ interface OrdersState {
   singleOrders: Orders | null;
   isLoading: boolean;
   fetchOrder: (invoice?: string) => Promise<boolean>;
+  updateOrderStep: (invoice_id: string, newStep: number) => Promise<void>; // Tambahkan ini
   subscribeToOrders: () => () => void;
 }
 
@@ -67,7 +68,34 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       console.log(error);
       return false;
     } finally {
-      set({ isLoading: true });
+      // --- PERBAIKAN ---
+      // Seharusnya 'false' agar loading indicator berhenti setelah selesai.
+      set({ isLoading: false });
+    }
+  },
+
+  // --- TAMBAHKAN FUNGSI INI ---
+  updateOrderStep: async (invoice_id, newStep) => {
+    const supabase = createClient();
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ step: newStep }) // Data yang ingin diubah
+        .eq("invoice_id", invoice_id); // Kondisi baris yang akan diubah
+
+      if (error) {
+        console.error("Gagal memperbarui status pesanan:", error.message);
+        throw error; // Lemparkan error agar bisa ditangani di UI jika perlu
+      }
+
+      // Tidak perlu `set()` state di sini.
+      // `subscribeToOrders` akan mendeteksi perubahan di database
+      // dan memanggil `fetchOrder()` secara otomatis untuk menyegarkan data.
+      console.log(
+        `Status untuk invoice ${invoice_id} berhasil diubah menjadi ${newStep}`
+      );
+    } catch (error) {
+      console.error("Terjadi kesalahan saat mencoba mengubah status:", error);
     }
   },
 
@@ -83,11 +111,13 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
           table: "orders",
         },
         () => {
+          // Ketika ada perubahan di tabel 'orders', panggil fetchOrder lagi
           get().fetchOrder();
         }
       )
       .subscribe();
 
+    // Fungsi cleanup untuk berhenti mendengarkan perubahan
     return () => {
       supabase.removeChannel(channel);
     };

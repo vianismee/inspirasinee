@@ -1,17 +1,11 @@
 "use client";
 
 import type { Column, ColumnDef } from "@tanstack/react-table";
-import {
-  CheckCircle,
-  CheckCircle2,
-  DollarSign,
-  MoreHorizontal,
-  Text,
-  XCircle,
-} from "lucide-react";
-import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
+import { MoreHorizontal, Text } from "lucide-react";
+import { parseAsString, useQueryState } from "nuqs";
 import * as React from "react";
 
+// Impor komponen UI yang diperlukan dari shadcn/ui
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,12 +13,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useDataTable } from "@/hooks/use-data-table";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { useDataTable } from "@/hooks/use-data-table";
 import { useOrderStore } from "@/stores/orderStore";
 
 interface Orders {
@@ -44,22 +40,31 @@ export default function TableJob() {
     parseAsString.withDefault("")
   );
 
-  const { fetchOrder, orders } = useOrderStore();
+  const { fetchOrder, orders, subscribeToOrders } = useOrderStore();
 
+  // Efek untuk memuat data awal dan berlangganan perubahan real-time
   React.useEffect(() => {
-    fetchOrder();
-  }, [fetchOrder]);
+    fetchOrder(); // Memuat data saat komponen pertama kali dimuat
 
+    const unsubscribe = subscribeToOrders(); // Memulai langganan real-time
+
+    // Fungsi cleanup untuk berhenti berlangganan saat komponen dibongkar
+    return () => {
+      unsubscribe();
+    };
+  }, [fetchOrder, subscribeToOrders]);
+
+  // Memo untuk memfilter data berdasarkan input pencarian
   const filteredData = React.useMemo(() => {
     return orders.filter((project) => {
       const matchesTitle =
         invoice_id === "" ||
         project.invoice_id.toLowerCase().includes(invoice_id.toLowerCase());
-
       return matchesTitle;
     });
   }, [invoice_id, orders]);
 
+  // Memo untuk mendefinisikan kolom-kolom tabel
   const columns = React.useMemo<ColumnDef<Orders>[]>(
     () => [
       {
@@ -103,6 +108,66 @@ export default function TableJob() {
         enableColumnFilter: true,
       },
       {
+        id: "step",
+        accessorKey: "step",
+        header: "Status",
+        cell: function Cell({ row }) {
+          const statusOptions = [
+            { value: 1, label: "Ongoing", variant: "outline" as const },
+            { value: 2, label: "Pending", variant: "secondary" as const },
+            { value: 3, label: "Cleaning", variant: "default" as const },
+            {
+              value: 4,
+              label: "Finish",
+              className:
+                "border-transparent bg-green-500 text-primary-foreground shadow",
+            },
+          ];
+
+          const currentStep = row.getValue<number>("step");
+          const currentStatus = statusOptions.find(
+            (status) => status.value === currentStep
+          );
+          const { updateOrderStep } = useOrderStore.getState();
+          const invoiceId = row.original.invoice_id;
+
+          if (!currentStatus) {
+            return <span>-</span>;
+          }
+
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-auto p-1 focus-visible:ring-0"
+                >
+                  <Badge
+                    variant={currentStatus.variant}
+                    className={currentStatus.className}
+                  >
+                    {currentStatus.label}
+                  </Badge>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Ubah Status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {statusOptions.map((status) => (
+                  <DropdownMenuItem
+                    key={status.value}
+                    onSelect={() => updateOrderStep(invoiceId, status.value)}
+                    disabled={currentStep === status.value}
+                  >
+                    {status.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+      {
         id: "actions",
         cell: function Cell() {
           return (
@@ -115,7 +180,7 @@ export default function TableJob() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>Edit</DropdownMenuItem>
-                <DropdownMenuItem variant="destructive">
+                <DropdownMenuItem className="text-red-600 focus:text-red-600">
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -131,9 +196,9 @@ export default function TableJob() {
   const { table } = useDataTable({
     data: filteredData,
     columns,
-    pageCount: 1,
+    pageCount: 1, // Anda mungkin perlu menyesuaikan ini dengan paginasi server-side
     initialState: {
-      sorting: [{ id: "invoice_id", desc: true }],
+      sorting: [{ id: "created_at", desc: true }], // Mungkin lebih baik sort by created_at
       columnPinning: { right: ["actions"] },
     },
     getRowId: (row) => row.invoice_id,

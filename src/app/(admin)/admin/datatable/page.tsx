@@ -4,7 +4,7 @@ import TableJob from "@/components/Dashboard/TableJob";
 
 export default function DataTableDemo() {
   return (
-    <div>
+    <div className="px-4">
       <TableJob />
     </div>
   );
