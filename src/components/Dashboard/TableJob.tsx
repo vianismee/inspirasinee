@@ -22,11 +22,14 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { useDataTable } from "@/hooks/use-data-table";
 import { useOrderStore } from "@/stores/orderStore";
+import { IItems } from "@/types";
+import formatTimeAgo from "@/lib/formatDateAgo";
 
 interface Orders {
   customer_id: string;
   invoice_id: string;
   step: number;
+  order_item: IItems[];
   subtotal: number;
   discount_id?: string;
   total_price: number;
@@ -42,13 +45,10 @@ export default function TableJob() {
 
   const { fetchOrder, orders, subscribeToOrders } = useOrderStore();
 
-  // Efek untuk memuat data awal dan berlangganan perubahan real-time
   React.useEffect(() => {
-    fetchOrder(); // Memuat data saat komponen pertama kali dimuat
+    fetchOrder();
 
-    const unsubscribe = subscribeToOrders(); // Memulai langganan real-time
-
-    // Fungsi cleanup untuk berhenti berlangganan saat komponen dibongkar
+    const unsubscribe = subscribeToOrders();
     return () => {
       unsubscribe();
     };
@@ -166,6 +166,16 @@ export default function TableJob() {
             </DropdownMenu>
           );
         },
+      },
+      {
+        id: "created_at",
+        accessorKey: "created_at",
+        header: ({ column }: { column: Column<Orders, unknown> }) => (
+          <DataTableColumnHeader column={column} title="Date Order" />
+        ),
+        cell: ({ row }) => (
+          <div>{formatTimeAgo(row.getValue("created_at"))}</div>
+        ),
       },
       {
         id: "actions",

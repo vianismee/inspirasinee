@@ -24,7 +24,7 @@ export function TrackingApp({ params }: TrackingAppProps) {
 
   useEffect(() => {
     fetchOrder(params);
-    const unscubscribe = subscribeToOrders();
+    const unscubscribe = subscribeToOrders(params);
     return () => {
       unscubscribe();
     };

@@ -25,7 +25,7 @@ interface OrdersState {
   isLoading: boolean;
   fetchOrder: (invoice?: string) => Promise<boolean>;
   updateOrderStep: (invoice_id: string, newStep: number) => Promise<void>; // Tambahkan ini
-  subscribeToOrders: () => () => void;
+  subscribeToOrders: (invoice_id?: string) => () => void;
 }
 
 export const useOrderStore = create<OrdersState>((set, get) => ({
@@ -99,23 +99,46 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     }
   },
 
-  subscribeToOrders: () => {
+  subscribeToOrders: (invoice_id) => {
     const supabase = createClient();
-    const channel = supabase
-      .channel("order-channel")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-        },
-        () => {
-          // Ketika ada perubahan di tabel 'orders', panggil fetchOrder lagi
-          get().fetchOrder();
-        }
-      )
-      .subscribe();
+    let channel;
+
+    // Jika invoice_id diberikan, buat langganan spesifik
+    if (invoice_id) {
+      channel = supabase
+        .channel(`order-channel-${invoice_id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "orders",
+            filter: `invoice_id=eq.${invoice_id}`,
+          },
+          () => {
+            // Panggil fetchOrder dengan invoice_id yang benar
+            get().fetchOrder(invoice_id);
+          }
+        )
+        .subscribe();
+    } else {
+      // Jika tidak ada invoice_id, buat langganan umum untuk semua pesanan
+      channel = supabase
+        .channel("orders-channel-all")
+        .on(
+          "postgres_changes",
+          {
+            event: "*", // Dengarkan semua event (INSERT, UPDATE, DELETE)
+            schema: "public",
+            table: "orders",
+          },
+          () => {
+            // Panggil fetchOrder tanpa parameter untuk memuat ulang semua data
+            get().fetchOrder();
+          }
+        )
+        .subscribe();
+    }
 
     // Fungsi cleanup untuk berhenti mendengarkan perubahan
     return () => {
