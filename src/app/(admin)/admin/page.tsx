@@ -1,3 +1,4 @@
+"use client";
 import TableJob from "@/components/Dashboard/TableJob";
 import { Headers } from "@/components/MainComponent/Header";
 
