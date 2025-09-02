@@ -60,6 +60,9 @@ export function Payment() {
   }
   receiptText += `*Total Pembayaran: ${formatedCurrency(totalPrice)}*\n`;
   receiptText += `Metode Pembayaran: ${payment}\n\n`;
+  receiptText += `\n-----------------------------------\n\n`;
+  receiptText += `Tracking Order kamu di: \n`;
+  receiptText += `https://inspirasinee.vercel.app/tracking/${invoice}\n`;
   receiptText += `Terimakasih atas Kepercayaannya`;
 
   const encode = encodeURIComponent(receiptText);

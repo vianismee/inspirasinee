@@ -2,7 +2,7 @@
 
 import type { Column, ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal, Text } from "lucide-react";
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
 import * as React from "react";
 
 // Impor komponen UI yang diperlukan dari shadcn/ui
@@ -28,7 +28,7 @@ import formatTimeAgo from "@/lib/formatDateAgo";
 interface Orders {
   customer_id: string;
   invoice_id: string;
-  step: number;
+  status: string;
   order_item: IItems[];
   subtotal: number;
   discount_id?: string;
@@ -43,7 +43,13 @@ export default function TableJob() {
     parseAsString.withDefault("")
   );
 
-  const { fetchOrder, orders, subscribeToOrders } = useOrderStore();
+  const [status] = useQueryState(
+    "status",
+    parseAsArrayOf(parseAsString).withDefault([])
+  );
+
+  const { fetchOrder, orders, subscribeToOrders, deleteInvoice } =
+    useOrderStore();
 
   React.useEffect(() => {
     fetchOrder();
@@ -56,13 +62,17 @@ export default function TableJob() {
 
   // Memo untuk memfilter data berdasarkan input pencarian
   const filteredData = React.useMemo(() => {
+    console.log("status url", status);
     return orders.filter((project) => {
       const matchesTitle =
         invoice_id === "" ||
         project.invoice_id.toLowerCase().includes(invoice_id.toLowerCase());
-      return matchesTitle;
+
+      const matchesStatus =
+        status.length === 0 || status.includes(project.status);
+      return matchesTitle && matchesStatus;
     });
-  }, [invoice_id, orders]);
+  }, [invoice_id, orders, status]);
 
   // Memo untuk mendefinisikan kolom-kolom tabel
   const columns = React.useMemo<ColumnDef<Orders>[]>(
@@ -108,28 +118,40 @@ export default function TableJob() {
         enableColumnFilter: true,
       },
       {
-        id: "step",
-        accessorKey: "step",
+        id: "status",
+        accessorKey: "status",
         header: "Status",
         cell: function Cell({ row }) {
           const statusOptions = [
-            { value: 1, label: "Ongoing", variant: "outline" as const },
-            { value: 2, label: "Pending", variant: "secondary" as const },
-            { value: 3, label: "Cleaning", variant: "default" as const },
+            { value: "ongoing", label: "Ongoing", variant: "outline" as const },
             {
-              value: 4,
+              value: "pending",
+              label: "Pending",
+              variant: "secondary" as const,
+            },
+            {
+              value: "cleaning",
+              label: "Cleaning",
+              variant: "default" as const,
+            },
+            {
+              value: "finish",
               label: "Finish",
               className:
                 "border-transparent bg-green-500 text-primary-foreground shadow",
             },
           ];
 
-          const currentStep = row.getValue<number>("step");
+          const currentStatusValue = row.getValue<string>("status");
+
+          // Perbandingan sekarang akan berfungsi dengan benar
           const currentStatus = statusOptions.find(
-            (status) => status.value === currentStep
+            (status) => status.value === currentStatusValue
           );
+
           const { updateOrderStep } = useOrderStore.getState();
-          const invoiceId = row.original.invoice_id;
+          // Pastikan row.original memiliki properti invoice_id
+          const invoiceId = (row.original as { invoice_id: string }).invoice_id;
 
           if (!currentStatus) {
             return <span>-</span>;
@@ -157,7 +179,8 @@ export default function TableJob() {
                   <DropdownMenuItem
                     key={status.value}
                     onSelect={() => updateOrderStep(invoiceId, status.value)}
-                    disabled={currentStep === status.value}
+                    // 👇 PERUBAHAN 2: Gunakan variabel yang sudah diperbaiki
+                    disabled={currentStatusValue === status.value}
                   >
                     {status.label}
                   </DropdownMenuItem>
@@ -166,6 +189,18 @@ export default function TableJob() {
             </DropdownMenu>
           );
         },
+
+        meta: {
+          label: "Status",
+          variant: "multiSelect",
+          options: [
+            { label: "Ongoing", value: "ongoing" },
+            { label: "Pending", value: "pending" },
+            { label: "Cleaning", value: "cleaning" },
+            { label: "Finish", value: "finish" },
+          ],
+        },
+        enableColumnFilter: true,
       },
       {
         id: "created_at",
@@ -179,7 +214,8 @@ export default function TableJob() {
       },
       {
         id: "actions",
-        cell: function Cell() {
+        cell: function Cell({ row }) {
+          const invoiceId = row.original.invoice_id;
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -191,7 +227,9 @@ export default function TableJob() {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>Edit</DropdownMenuItem>
                 <DropdownMenuItem className="text-red-600 focus:text-red-600">
-                  Delete
+                  <button onClick={() => deleteInvoice(invoiceId)}>
+                    Delete
+                  </button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -206,7 +244,7 @@ export default function TableJob() {
   const { table } = useDataTable({
     data: filteredData,
     columns,
-    pageCount: 1, // Anda mungkin perlu menyesuaikan ini dengan paginasi server-side
+    pageCount: 1,
     initialState: {
       sorting: [{ id: "created_at", desc: true }], // Mungkin lebih baik sort by created_at
       columnPinning: { right: ["actions"] },

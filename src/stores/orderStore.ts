@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 import { create } from "zustand";
 
 interface OrderItem {
@@ -10,7 +11,7 @@ interface OrderItem {
 interface Orders {
   customer_id: string;
   invoice_id: string;
-  step: number;
+  status: string;
   order_item: OrderItem[];
   subtotal: number;
   discount_id?: string;
@@ -24,7 +25,8 @@ interface OrdersState {
   singleOrders: Orders | null;
   isLoading: boolean;
   fetchOrder: (invoice?: string) => Promise<boolean>;
-  updateOrderStep: (invoice_id: string, newStep: number) => Promise<void>; // Tambahkan ini
+  updateOrderStep: (invoice_id: string, newStep: string) => Promise<void>;
+  deleteInvoice: (invoice_id: string) => Promise<void>;
   subscribeToOrders: (invoice_id?: string) => () => void;
 }
 
@@ -41,7 +43,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         const { data: singleData, error: errorData } = await supabase
           .from("orders")
           .select(
-            "customer_id, invoice_id, step, subtotal, discount_id, total_price, payment, created_at, order_item ( service, shoe_name, amount)"
+            "customer_id, invoice_id, status, subtotal, discount_id, total_price, payment, created_at, order_item ( service, shoe_name, amount)"
           )
           .eq("invoice_id", invoice)
           .single();
@@ -56,7 +58,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       const { data: orderData, error: errorData } = await supabase
         .from("orders")
         .select(
-          "customer_id, invoice_id, step, subtotal, discount_id, total_price, payment, created_at, order_item ( service, shoe_name, amount)"
+          "customer_id, invoice_id, status, subtotal, discount_id, total_price, payment, created_at, order_item ( service, shoe_name, amount)"
         );
       if (errorData) {
         console.log(errorData);
@@ -80,7 +82,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     try {
       const { error } = await supabase
         .from("orders")
-        .update({ step: newStep }) // Data yang ingin diubah
+        .update({ status: newStep }) // Data yang ingin diubah
         .eq("invoice_id", invoice_id); // Kondisi baris yang akan diubah
 
       if (error) {
@@ -102,8 +104,6 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
   subscribeToOrders: (invoice_id) => {
     const supabase = createClient();
     let channel;
-
-    // Jika invoice_id diberikan, buat langganan spesifik
     if (invoice_id) {
       channel = supabase
         .channel(`order-channel-${invoice_id}`)
@@ -122,7 +122,6 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         )
         .subscribe();
     } else {
-      // Jika tidak ada invoice_id, buat langganan umum untuk semua pesanan
       channel = supabase
         .channel("orders-channel-all")
         .on(
@@ -144,5 +143,19 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     return () => {
       supabase.removeChannel(channel);
     };
+  },
+
+  deleteInvoice: async (invoice_id) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("orders")
+      .delete()
+      .eq("invoice_id", invoice_id);
+    if (error) {
+      console.log(error);
+      toast.error("Gagal Menghapus data");
+      return;
+    }
+    toast.success(`Berhasil mnghapus Invoice ${invoice_id}`);
   },
 }));

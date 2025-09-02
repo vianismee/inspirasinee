@@ -11,9 +11,7 @@ import { Logo } from "../Logo";
 export function TrackingSearch() {
   const [isInvoice, setIsInvoice] = useState<string>("");
   return (
-    // 1. Tambahkan flexbox untuk menengahkan konten
     <div className="min-h-screen w-full bg-white relative flex items-center justify-center">
-      {/* Background Overlay: Grid + Gradien */}
       <div
         className="absolute inset-0 z-0"
         style={{

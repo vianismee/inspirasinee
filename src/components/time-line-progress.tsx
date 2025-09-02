@@ -42,12 +42,19 @@ const items = [
 ];
 
 interface TimelineProgressProps {
-  progress: number | 0;
+  progress: string;
 }
 
 export default function TimelineProgress({ progress }: TimelineProgressProps) {
+  const statusMap: { [key: string]: number } = {
+    ongoing: 1,
+    pending: 2,
+    cleaning: 3,
+    finish: 4,
+  };
+  const orderStep = statusMap[progress] | 0;
   return (
-    <Timeline value={progress}>
+    <Timeline value={orderStep}>
       {items.map((item) => (
         <TimelineItem
           key={item.id}
@@ -63,10 +70,7 @@ export default function TimelineProgress({ progress }: TimelineProgressProps) {
               <item.icon size={14} />
             </TimelineIndicator>
           </TimelineHeader>
-          <TimelineContent>
-            {item.description}
-            <TimelineDate className="mt-2 mb-0">{item.date}</TimelineDate>
-          </TimelineContent>
+          <TimelineContent>{item.description}</TimelineContent>
         </TimelineItem>
       ))}
     </Timeline>

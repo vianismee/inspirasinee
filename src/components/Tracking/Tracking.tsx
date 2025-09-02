@@ -14,6 +14,7 @@ import { useEffect } from "react";
 import { formatedCurrency } from "@/lib/utils";
 import { Logo } from "../Logo";
 import { Wallet2 } from "lucide-react";
+import { TrackingError } from "./TrackingError";
 
 interface TrackingAppProps {
   params: string;
@@ -30,7 +31,9 @@ export function TrackingApp({ params }: TrackingAppProps) {
     };
   }, [fetchOrder, subscribeToOrders, params]);
 
-  console.log(singleOrders);
+  if (!singleOrders) {
+    return <TrackingError params={params} />;
+  }
 
   return (
     <main className="w-full bg-white max-w-2xl">
@@ -66,7 +69,7 @@ export function TrackingApp({ params }: TrackingAppProps) {
         <div className="w-full px-5 flex flex-col gap-5">
           <Card>
             <CardContent>
-              <TimelineProgress progress={singleOrders?.step || 0} />
+              <TimelineProgress progress={singleOrders?.status || ""} />
             </CardContent>
           </Card>
           <Card className="w-full border shadow-2xs">

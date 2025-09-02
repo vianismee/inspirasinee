@@ -170,11 +170,12 @@ export const useCartStore = create<CartState>((set, get) => ({
       // 1. Insert ke tabel 'orders'
       const { error: orderError } = await supabase.from("orders").insert({
         invoice_id: invoice,
+        status: "ongoing",
         customer_id: customerIdToUse,
         subtotal: subTotal,
         discount_id: activeDiscount?.code || null,
         total_price: totalPrice,
-        payment: payment, // Gunakan state payment
+        payment: payment,
       });
 
       if (orderError)
