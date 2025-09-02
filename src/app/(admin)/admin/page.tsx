@@ -1,6 +1,5 @@
 import TableJob from "@/components/Dashboard/TableJob";
 import { Headers } from "@/components/MainComponent/Header";
-import { SectionCards } from "@/components/section-cards";
 
 export default function Page() {
   return (
