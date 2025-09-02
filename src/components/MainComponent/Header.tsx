@@ -1,5 +1,3 @@
-import { LucideIcon } from "lucide-react";
-
 interface HeadersProsp {
   title: string;
   desc: string;

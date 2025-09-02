@@ -3,7 +3,6 @@ import { ScrollText, Star, ClockFading, BrushCleaning } from "lucide-react";
 import {
   Timeline,
   TimelineContent,
-  TimelineDate,
   TimelineHeader,
   TimelineIndicator,
   TimelineItem,
