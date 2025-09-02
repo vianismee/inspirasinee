@@ -21,7 +21,8 @@ interface TrackingAppProps {
 }
 
 export function TrackingApp({ params }: TrackingAppProps) {
-  const { fetchOrder, subscribeToOrders, singleOrders } = useOrderStore();
+  const { fetchOrder, subscribeToOrders, singleOrders, isLoading } =
+    useOrderStore();
 
   useEffect(() => {
     fetchOrder(params);
@@ -30,6 +31,9 @@ export function TrackingApp({ params }: TrackingAppProps) {
       unscubscribe();
     };
   }, [fetchOrder, subscribeToOrders, params]);
+  if (isLoading) {
+    return <div>Loading ...</div>;
+  }
 
   if (!singleOrders) {
     return <TrackingError params={params} />;
