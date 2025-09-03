@@ -16,14 +16,18 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { uploadService } from "@/api/useUploadService";
+import { useState } from "react";
 
-// LANGKAH 1: Ubah skema untuk hanya menerima 'number'
+interface ServiceFormProps {
+  onFormSuccess: () => void;
+}
 const formSchema = z.object({
   name: z.string().min(5, { message: "Nama harus minimal 5 karakter." }),
   amount: z.number().min(0, { message: "Harga tidak boleh negatif." }),
 });
 
-export default function ServiceForm() {
+export default function ServiceForm({ onFormSuccess }: ServiceFormProps) {
+  const [isLoading, setIsLoading] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -31,8 +35,18 @@ export default function ServiceForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    uploadService({ service: values });
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
+    try {
+      // Tunggu proses upload selesai
+      await uploadService({ service: values });
+      onFormSuccess();
+    } catch (error) {
+      console.error("Gagal mengupload service:", error);
+      // Tampilkan notifikasi error jika perlu
+    } finally {
+      setIsLoading(false); // Hentikan loading
+    }
   }
 
   return (

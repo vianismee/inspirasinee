@@ -62,7 +62,6 @@ export default function TableJob() {
 
   // Memo untuk memfilter data berdasarkan input pencarian
   const filteredData = React.useMemo(() => {
-    console.log("status url", status);
     return orders.filter((project) => {
       const matchesTitle =
         invoice_id === "" ||
@@ -246,7 +245,7 @@ export default function TableJob() {
     columns,
     pageCount: 1,
     initialState: {
-      sorting: [{ id: "created_at", desc: true }], // Mungkin lebih baik sort by created_at
+      sorting: [{ id: "created_at", desc: true }],
       columnPinning: { right: ["actions"] },
     },
     getRowId: (row) => row.invoice_id,

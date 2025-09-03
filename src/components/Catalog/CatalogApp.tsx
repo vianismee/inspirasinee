@@ -1,4 +1,5 @@
 import { AddService } from "./AddService";
+import { CatalogTable } from "./CatalogTable";
 
 export function CatalogApp() {
   return (
@@ -14,6 +15,7 @@ export function CatalogApp() {
         </div>
         <AddService />
       </header>
+      <CatalogTable />
     </div>
   );
 }

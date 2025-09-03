@@ -8,10 +8,17 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import ServiceForm from "./ServiceForm";
+import React, { useState } from "react";
 
 export function AddService() {
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
+
+  const handleDialogOpen = () => {
+    setIsDialogOpen(false);
+  };
+
   return (
-    <Dialog>
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="h-4 w-4 mr-2" />
@@ -23,7 +30,7 @@ export function AddService() {
           <DialogTitle>Add Service</DialogTitle>
         </DialogHeader>
         <div className="w-full">
-          <ServiceForm />
+          <ServiceForm onFormSuccess={handleDialogOpen} />
         </div>
       </DialogContent>
     </Dialog>
