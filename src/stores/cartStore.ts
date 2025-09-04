@@ -1,14 +1,10 @@
+// stores/cartStore.ts
+
 import { create } from "zustand";
-import { useServiceCatalogStore } from "./serviceCatalogStore";
+import { useServiceCatalogStore, Discount } from "./serviceCatalogStore"; // Impor interface Discount
 import { createClient } from "@/utils/supabase/client";
 import { useCustomerStore } from "./customerStore";
 import { toast } from "sonner";
-
-interface Discount {
-  label: string;
-  amount: number;
-  code: string;
-}
 
 interface CartItem {
   id: number;
@@ -17,15 +13,33 @@ interface CartItem {
   amount: number;
 }
 
+// Fungsi helper terpusat untuk semua kalkulasi harga
+const recalculateTotals = (cart: CartItem[], activeDiscounts: Discount[]) => {
+  const subTotal = cart.reduce((total, item) => total + item.amount, 0);
+
+  const totalDiscountValue = activeDiscounts.reduce((total, discount) => {
+    if (discount.percent) {
+      return total + subTotal * discount.percent;
+    }
+    if (discount.amount) {
+      return total + discount.amount;
+    }
+    return total;
+  }, 0);
+
+  const totalPrice = Math.max(0, subTotal - totalDiscountValue);
+  return { subTotal, totalPrice };
+};
+
 interface CartState {
   invoice: string;
   cart: CartItem[];
   subTotal: number;
-  activeDiscount: Discount | null;
+  activeDiscounts: Discount[];
   totalPrice: number;
   payment: string;
-  newPayment: (payment: string) => void;
-  newInvoice: (id: string) => void;
+  setPayment: (payment: string) => void;
+  setInvoice: (id: string) => void;
   addItem: () => void;
   updateItem: (
     id: number,
@@ -33,56 +47,42 @@ interface CartState {
     value: string | number
   ) => void;
   removeItem: (id: number) => void;
-  applyDiscount: (code: string) => boolean;
-  removeDiscount: () => void;
+  addDiscount: (discount: Discount) => void;
+  removeDiscount: (discountName: string) => void;
   handleSubmit: () => Promise<boolean>;
   resetCart: () => void;
-  resetItems: () => void;
 }
 
-const empatyService: Omit<CartItem, "id"> = {
+const emptyService: Omit<CartItem, "id"> = {
   shoeName: "",
   serviceName: "",
   amount: 0,
 };
 
-const calculateTotal = (cart: CartItem[]) => {
-  return cart.reduce((total, item) => total + item.amount, 0);
-};
-
 export const useCartStore = create<CartState>((set, get) => ({
   invoice: "",
-  cart: [{ ...empatyService, id: Date.now() }],
+  cart: [{ ...emptyService, id: Date.now() }],
   subTotal: 0,
-  activeDiscount: null,
+  activeDiscounts: [],
   totalPrice: 0,
   payment: "Cash",
 
-  newInvoice: (id) => {
-    set(() => {
-      return { invoice: id };
-    });
-  },
-
-  newPayment: (payment) => set({ payment: payment }),
+  setInvoice: (id) => set({ invoice: id }),
+  setPayment: (payment) => set({ payment }),
 
   addItem: () =>
     set((state) => {
-      const newCart = [...state.cart, { ...empatyService, id: Date.now() }];
-      return {
-        cart: newCart,
-        subTotal: calculateTotal(newCart),
-      };
+      const newCart = [...state.cart, { ...emptyService, id: Date.now() }];
+      const totals = recalculateTotals(newCart, state.activeDiscounts);
+      return { cart: newCart, ...totals };
     }),
 
   removeItem: (id) =>
     set((state) => {
       if (state.cart.length <= 1) return state;
       const newCart = state.cart.filter((item) => item.id !== id);
-      return {
-        cart: newCart,
-        subTotal: calculateTotal(newCart),
-      };
+      const totals = recalculateTotals(newCart, state.activeDiscounts);
+      return { cart: newCart, ...totals };
     }),
 
   updateItem: (id, field, value) =>
@@ -92,127 +92,98 @@ export const useCartStore = create<CartState>((set, get) => ({
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value };
           if (field === "serviceName") {
-            const selectedService = serviceCatalog.find(
-              (s) => s.name === value
-            );
-            updatedItem.amount = selectedService ? selectedService.amount : 0;
+            const service = serviceCatalog.find((s) => s.name === value);
+            updatedItem.amount = service?.amount || 0;
           }
           return updatedItem;
         }
         return item;
       });
-      const newSubtotal = calculateTotal(newCart);
-      const discountAmmount = state.activeDiscount?.amount || 0;
-      return {
-        cart: newCart,
-        subTotal: newSubtotal,
-        totalPrice: newSubtotal - discountAmmount,
-      };
+      const totals = recalculateTotals(newCart, state.activeDiscounts);
+      return { cart: newCart, ...totals };
     }),
 
-  applyDiscount: (code) => {
-    const { discountOption } = useServiceCatalogStore.getState();
-    const { subTotal } = get();
+  addDiscount: (discount) =>
+    set((state) => {
+      if (state.activeDiscounts.some((d) => d.label === discount.label)) {
+        toast.warning(`Diskon "${discount.label}" sudah diterapkan.`);
+        return state;
+      }
+      const newActiveDiscounts = [...state.activeDiscounts, discount];
+      const { totalPrice } = recalculateTotals(state.cart, newActiveDiscounts);
+      toast.success(`Diskon "${discount.label}" berhasil diterapkan.`);
+      return { activeDiscounts: newActiveDiscounts, totalPrice };
+    }),
 
-    const foundDiscount = discountOption.find(
-      (d) => d.code.toUpperCase() === code.toUpperCase()
-    );
-
-    if (foundDiscount) {
-      set({
-        activeDiscount: foundDiscount,
-        totalPrice: subTotal - foundDiscount.amount,
-      });
-      return true;
-    }
-    return false;
-  },
-
-  removeDiscount: () =>
-    set((state) => ({ activeDiscount: null, totalPrice: state.subTotal })),
+  removeDiscount: (discountName) =>
+    set((state) => {
+      const newActiveDiscounts = state.activeDiscounts.filter(
+        (d) => d.label !== discountName
+      );
+      const { totalPrice } = recalculateTotals(state.cart, newActiveDiscounts);
+      toast.info(`Diskon "${discountName}" telah dihapus.`);
+      return { activeDiscounts: newActiveDiscounts, totalPrice };
+    }),
 
   handleSubmit: async () => {
-    const { cart, subTotal, activeDiscount, totalPrice, invoice, payment } =
+    const { cart, subTotal, activeDiscounts, totalPrice, invoice, payment } =
       get();
     const { activeCustomer } = useCustomerStore.getState();
 
     if (!activeCustomer) {
-      toast.error("Data customer tidak ditemukan.");
+      toast.error("Data pelanggan belum dipilih.");
       return false;
     }
     if (cart.some((item) => !item.shoeName || !item.serviceName)) {
-      toast.error("Harap isi semua detail item (nama sepatu dan layanan).");
+      toast.error(
+        "Harap lengkapi semua detail item (nama sepatu dan layanan)."
+      );
       return false;
     }
 
     const supabase = createClient();
-    let customerIdToUse = activeCustomer.customer_id;
-
     try {
-      // Jika customer baru, INSERT datanya terlebih dahulu
-      if (activeCustomer.isNew) {
-        const { data, error } = await supabase
-          .from("customers")
-          .insert({
-            customer_id: activeCustomer.customer_id,
-            username: activeCustomer.username,
-            whatsapp: activeCustomer.whatsapp,
-            email: activeCustomer.email,
-            alamat: activeCustomer.alamat,
-          })
-          .select("customer_id")
-          .single();
+      const discountsToSave =
+        activeDiscounts.length > 0 ? JSON.stringify(activeDiscounts) : null;
 
-        if (error) throw new Error(`Gagal insert customer: ${error.message}`);
-        customerIdToUse = data.customer_id;
-      }
-
-      // 1. Insert ke tabel 'orders'
       const { error: orderError } = await supabase.from("orders").insert({
         invoice_id: invoice,
         status: "ongoing",
-        customer_id: customerIdToUse,
+        customer_id: activeCustomer.customer_id,
         subtotal: subTotal,
-        discount_id: activeDiscount?.code || null,
+        discounts: discountsToSave, // Kolom untuk menyimpan array diskon
         total_price: totalPrice,
         payment: payment,
       });
-
       if (orderError)
-        throw new Error(`Gagal menyimpan order: ${orderError.message}`);
+        throw new Error(`Gagal menyimpan pesanan: ${orderError.message}`);
 
-      // 2. Insert ke tabel 'order_item'
       const itemsToInsert = cart.map((item) => ({
         invoice_id: invoice,
         shoe_name: item.shoeName,
         service: item.serviceName,
         amount: item.amount,
       }));
-
       const { error: itemsError } = await supabase
         .from("order_item")
         .insert(itemsToInsert);
-
       if (itemsError)
-        throw new Error(`Gagal menyimpan item: ${itemsError.message}`);
+        throw new Error(`Gagal menyimpan item pesanan: ${itemsError.message}`);
 
-      return true; // Sinyal sukses
+      return true;
     } catch (error) {
-      console.error("Proses submit gagal:", error);
       toast.error((error as Error).message);
-      return false; // Sinyal gagal
+      return false;
     }
   },
 
   resetCart: () =>
     set({
       invoice: "",
-      cart: [{ ...empatyService, id: Date.now() }],
+      cart: [{ ...emptyService, id: Date.now() }],
       subTotal: 0,
-      activeDiscount: null,
+      activeDiscounts: [],
       totalPrice: 0,
       payment: "Cash",
     }),
-
-  resetItems: () => set({ cart: [{ ...empatyService, id: Date.now() }] }),
 }));

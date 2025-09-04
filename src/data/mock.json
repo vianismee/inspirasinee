@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Diskon Merdeka 17%",
+    "amount": null,
+    "persent": 0.17
+  },
+  {
+    "name": "Diskon up to Rp 8000",
+    "amount": 8000,
+    "persent": null
+  }
+]

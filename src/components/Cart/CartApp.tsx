@@ -21,7 +21,7 @@ export function CartApp() {
   const invoiceId = useInvoiceID();
   const activeCustomer = useCustomerStore((state) => state.activeCustomer);
   const { clearCustomer } = useCustomerStore();
-  const { totalPrice, newInvoice, resetCart } = useCartStore();
+  const { totalPrice, setInvoice, resetCart } = useCartStore();
   const router = useRouter();
   const fetchCatalog = useServiceCatalogStore((state) => state.fetchCatalog);
 
@@ -36,8 +36,8 @@ export function CartApp() {
   }, [activeCustomer, router]);
 
   useEffect(() => {
-    newInvoice(invoiceId);
-  }, [invoiceId, newInvoice]);
+    setInvoice(invoiceId);
+  }, [invoiceId, setInvoice]);
 
   const handleBatal = () => {
     resetCart();

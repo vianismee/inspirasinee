@@ -2,68 +2,101 @@
 
 "use client";
 
-import { useCartStore } from "@/stores/cartStore"; // Sesuaikan dengan path store Anda
-import { useState } from "react";
+import { useCartStore } from "@/stores/cartStore";
+import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
+import { formatedCurrency } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { Button } from "../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Input } from "../ui/input";
-import { formatedCurrency } from "@/lib/utils"; // Sesuaikan path
+// <<< BARU: Impor komponen yang dibutuhkan untuk Select
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function Discount() {
-  // 1. Ambil state dan action dari Zustand
-  const { activeDiscount, applyDiscount, removeDiscount } = useCartStore();
-  const [inputCode, setInputCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const { activeDiscounts, addDiscount, removeDiscount } = useCartStore();
+  const { discountOptions } = useServiceCatalogStore();
 
-  const handleApplyCode = () => {
-    applyDiscount(inputCode);
+  // <<< BARU: Logika untuk menangani pemilihan dari dropdown
+  const handleSelectDiscount = (selectedValue: string) => {
+    // Cari objek diskon lengkap berdasarkan nama yang dipilih
+    const selectedDiscount = discountOptions.find(
+      (option) => option.label === selectedValue
+    );
+    if (selectedDiscount) {
+      addDiscount(selectedDiscount);
+    }
   };
 
-  // 4. Tampilan jika SUDAH ADA diskon yang aktif
-  if (activeDiscount) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Discount</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-between items-center p-3 bg-green-50 border border-green-200 rounded-md">
-            <div>
-              <p className="font-semibold text-green-800">
-                {activeDiscount.label}
-              </p>
-              <p className="text-sm text-green-600">
-                Potongan {formatedCurrency(activeDiscount.amount)}
-              </p>
-            </div>
-            <Button variant="ghost" size="icon" onClick={removeDiscount}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // <<< BARU: Filter pilihan diskon agar tidak menampilkan yang sudah aktif
+  const availableOptions = discountOptions.filter(
+    (option) => !activeDiscounts.some((d) => d.label === option.label)
+  );
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Discount</CardTitle>
+        <CardTitle>Diskon</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-2">
-          <Input
-            className="border-zinc-400"
-            placeholder="Kode Diskon"
-            value={inputCode}
-            onChange={(e) => {
-              setInputCode(e.target.value);
-              setError(null); // Hapus error saat pengguna mulai mengetik lagi
-            }}
-          />
-          <Button onClick={handleApplyCode}>Terapkan</Button>
+      <CardContent className="space-y-4">
+        {/* <<< DIUBAH: Menggunakan komponen Select, bukan lagi Button */}
+        <div>
+          <h4 className="mb-2 text-sm font-medium">Pilih Diskon</h4>
+          <Select
+            onValueChange={handleSelectDiscount}
+            // Nonaktifkan jika tidak ada lagi diskon yang bisa dipilih
+            disabled={availableOptions.length === 0}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Pilih diskon yang tersedia..." />
+            </SelectTrigger>
+            <SelectContent>
+              {availableOptions.map((option) => (
+                <SelectItem key={option.id} value={option.label}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+
+        {/* Bagian ini tetap sama: Menampilkan diskon yang aktif */}
+        {activeDiscounts.length > 0 && (
+          <div>
+            <h4 className="mb-2 text-sm font-medium">Diskon Aktif</h4>
+            <div className="space-y-2">
+              {activeDiscounts.map((discount) => (
+                <div
+                  key={discount.id}
+                  className="flex items-center justify-between rounded-md border border-green-200 bg-green-50 p-3"
+                >
+                  <div>
+                    <p className="font-semibold text-green-800">
+                      {discount.label}
+                    </p>
+                    <p className="text-sm text-green-600">
+                      {discount.percent
+                        ? `Potongan ${discount.percent * 100}%`
+                        : `Potongan ${formatedCurrency(discount.amount || 0)}`}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => removeDiscount(discount.label)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
