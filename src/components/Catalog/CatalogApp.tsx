@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { AddService } from "./AddService";
 import { CatalogTable } from "./CatalogTable";
+import TableSkeleton from "../Dashboard/TableSekeleton";
 
 export function CatalogApp() {
   return (
@@ -15,7 +17,9 @@ export function CatalogApp() {
         </div>
         <AddService />
       </header>
-      <CatalogTable />
+      <Suspense fallback={<TableSkeleton />}>
+        <CatalogTable />
+      </Suspense>
     </div>
   );
 }
