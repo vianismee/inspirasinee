@@ -1,7 +1,5 @@
-// stores/cartStore.ts
-
 import { create } from "zustand";
-import { useServiceCatalogStore, Discount } from "./serviceCatalogStore"; // Impor interface Discount
+import { useServiceCatalogStore, Discount } from "./serviceCatalogStore";
 import { createClient } from "@/utils/supabase/client";
 import { useCustomerStore } from "./customerStore";
 import { toast } from "sonner";
@@ -13,7 +11,6 @@ interface CartItem {
   amount: number;
 }
 
-// Fungsi helper terpusat untuk semua kalkulasi harga
 const recalculateTotals = (cart: CartItem[], activeDiscounts: Discount[]) => {
   const subTotal = cart.reduce((total, item) => total + item.amount, 0);
 
@@ -143,20 +140,36 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     const supabase = createClient();
     try {
-      const discountsToSave =
-        activeDiscounts.length > 0 ? JSON.stringify(activeDiscounts) : null;
-
       const { error: orderError } = await supabase.from("orders").insert({
         invoice_id: invoice,
         status: "ongoing",
         customer_id: activeCustomer.customer_id,
         subtotal: subTotal,
-        discounts: discountsToSave, // Kolom untuk menyimpan array diskon
         total_price: totalPrice,
         payment: payment,
       });
       if (orderError)
         throw new Error(`Gagal menyimpan pesanan: ${orderError.message}`);
+
+      if (activeDiscounts.length > 0) {
+        const discountsToInsert = activeDiscounts.map((discount) => {
+          const appliedAmount = discount.percent
+            ? subTotal * discount.percent
+            : discount.amount || 0;
+
+          return {
+            order_invoice_id: invoice,
+            discount_code: discount.label,
+            discounted_amount: appliedAmount,
+          };
+        });
+
+        const { error: discountError } = await supabase
+          .from("order_discounts")
+          .insert(discountsToInsert);
+        if (discountError)
+          throw new Error(`Gagal menyimpan diskon: ${discountError.message}`);
+      }
 
       const itemsToInsert = cart.map((item) => ({
         invoice_id: invoice,
@@ -173,6 +186,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       return true;
     } catch (error) {
       toast.error((error as Error).message);
+      console.log((error as Error).message);
       return false;
     }
   },
