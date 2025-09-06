@@ -164,7 +164,7 @@ export function Payment() {
                   Kirim Invoice
                 </Button>
               </a>
-              <DialogClose asChild>
+              <DialogClose>
                 <Button
                   onClick={handleClearData}
                   variant="outline"

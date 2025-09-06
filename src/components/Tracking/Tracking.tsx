@@ -82,7 +82,7 @@ export function TrackingApp({ params }: TrackingAppProps) {
                 Order Details<span>{singleOrders?.invoice_id}</span>
               </CardTitle>
             </CardHeader>
-            <Separator className="border-1 border-zinc-600/10" />
+            <Separator />
             <CardContent>
               <div className="flex flex-col gap-5">
                 {singleOrders?.order_item.map((order) => (
@@ -96,7 +96,7 @@ export function TrackingApp({ params }: TrackingAppProps) {
                 ))}
               </div>
             </CardContent>
-            <Separator className="border-1 border-dashed border-zinc-600/10" />
+            <Separator />
             <CardFooter className="flex flex-col gap-5">
               <div className="w-full inline-flex items-center justify-between">
                 <h1 className="font-bold">Sub Total</h1>
@@ -104,12 +104,13 @@ export function TrackingApp({ params }: TrackingAppProps) {
                   {formatedCurrency(singleOrders?.subtotal || 0)}
                 </h1>
               </div>
-              {singleOrders?.discount_id && (
-                <div className="flex justify-between w-full">
-                  <h1 className="w-[180px]">Member Loyalty (Bundling 3)</h1>
-                  <p>({})</p>
-                </div>
-              )}
+              {singleOrders?.order_discounts &&
+                singleOrders.order_discounts.map((discount, index) => (
+                  <div className="flex justify-between w-full" key={index}>
+                    <h1 className="w-[180px]">{discount.discount_code}</h1>
+                    <p>{`(${formatedCurrency(discount.discounted_amount)})`}</p>
+                  </div>
+                ))}
             </CardFooter>
           </Card>
           <Card>

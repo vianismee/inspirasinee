@@ -1,9 +1,22 @@
+import Link from "next/link";
+import { Button } from "../ui/button";
+import { type LucideIcon } from "lucide-react";
+
 interface HeadersProsp {
   title: string;
   desc: string;
+  buttonTitle?: string;
+  href?: string;
+  icon?: LucideIcon;
 }
 
-export function Headers({ title, desc }: HeadersProsp) {
+export function Headers({
+  title,
+  desc,
+  href,
+  buttonTitle,
+  icon: IconComponent,
+}: HeadersProsp) {
   return (
     <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
       <div>
@@ -14,6 +27,14 @@ export function Headers({ title, desc }: HeadersProsp) {
           {desc}
         </p>
       </div>
+      {buttonTitle && (
+        <Link href={`${href}`}>
+          <Button>
+            {IconComponent && <IconComponent />}
+            {buttonTitle}
+          </Button>
+        </Link>
+      )}
     </header>
   );
 }

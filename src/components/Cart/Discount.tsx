@@ -43,12 +43,10 @@ export function Discount() {
         <CardTitle>Diskon</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* <<< DIUBAH: Menggunakan komponen Select, bukan lagi Button */}
         <div>
           <h4 className="mb-2 text-sm font-medium">Pilih Diskon</h4>
           <Select
             onValueChange={handleSelectDiscount}
-            // Nonaktifkan jika tidak ada lagi diskon yang bisa dipilih
             disabled={availableOptions.length === 0}
           >
             <SelectTrigger>
@@ -63,8 +61,6 @@ export function Discount() {
             </SelectContent>
           </Select>
         </div>
-
-        {/* Bagian ini tetap sama: Menampilkan diskon yang aktif */}
         {activeDiscounts.length > 0 && (
           <div>
             <h4 className="mb-2 text-sm font-medium">Diskon Aktif</h4>
