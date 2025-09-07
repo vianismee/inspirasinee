@@ -12,3 +12,12 @@ export const formatedCurrency = (amount: number) => {
     minimumFractionDigits: 0,
   }).format(amount);
 };
+
+export const formatPhoneNumber = (phone: string | null | undefined): string => {
+  // Jika nomor tidak ada atau terlalu pendek, kembalikan teks default
+  if (!phone || phone.length < 4) {
+    return "Nomor tidak valid";
+  }
+  const lastFourDigits = phone.slice(-4);
+  return `******${lastFourDigits}`;
+};

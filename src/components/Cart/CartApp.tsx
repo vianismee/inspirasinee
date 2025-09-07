@@ -1,5 +1,3 @@
-// src/components/Cart/CartApp.tsx
-
 "use client";
 
 import { useCustomerStore } from "@/stores/customerStore";

@@ -165,7 +165,6 @@ export default function TableJob() {
                     {order.invoice_id}
                   </DialogTitle>
                   <DialogDescription>
-                    Dibuat pada:{" "}
                     {new Date(order.created_at).toLocaleDateString("id-ID", {
                       weekday: "long",
                       year: "numeric",

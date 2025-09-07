@@ -22,3 +22,16 @@ export type IDiscount = {
   discount_code: string;
   discounted_amount: number;
 };
+
+export type Orders = {
+  customer_id: string;
+  customers: Customers;
+  invoice_id: string;
+  status: string;
+  order_item: OrderItem[];
+  subtotal: number;
+  order_discounts?: Discount[];
+  total_price: number;
+  payment: string;
+  created_at: string;
+};

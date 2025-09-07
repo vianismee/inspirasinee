@@ -7,7 +7,7 @@ import { Suspense } from "react";
 
 export default function Page() {
   return (
-    <div className="flex flex-col py-4 md:gap-6 md:py-6 px-6">
+    <div className="flex flex-col gap-4">
       <Headers
         title="Dashboard"
         desc="Admin dashbord untuk update Tracking"

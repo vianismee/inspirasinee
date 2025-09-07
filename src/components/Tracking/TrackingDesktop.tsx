@@ -1,0 +1,176 @@
+"use client";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { Separator } from "../ui/separator";
+import { Button } from "../ui/button";
+import TimelineProgress from "../time-line-progress";
+import { formatedCurrency, formatPhoneNumber } from "@/lib/utils";
+import { Logo } from "../Logo";
+import { MapPin, Phone, User } from "lucide-react";
+import { Badge } from "../ui/badge";
+import { Orders } from "@/types/index";
+
+interface TrackingDesktopProps {
+  order: Orders;
+}
+
+export function TrackingDesktop({ order }: TrackingDesktopProps) {
+  const customer = order.customers;
+
+  return (
+    <main
+      className="absolute inset-0 min-h-screen w-full p-4 sm:p-6 md:p-8"
+      style={{
+        backgroundImage: `
+              linear-gradient(to right, rgba(229,231,235,0.8) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(229,231,235,0.8) 1px, transparent 1px),
+              radial-gradient(circle 500px at 20% 80%, rgba(139,92,246,0.3), transparent),
+              radial-gradient(circle 500px at 80% 20%, rgba(59,130,246,0.3), transparent)
+            `,
+        backgroundSize: "48px 48px, 48px 48px, 100% 100%, 100% 100%",
+      }}
+    >
+      <div className="max-w-6xl mx-auto">
+        <header className="flex flex-col items-center gap-4 mb-10">
+          <Logo size={12} className="scale-120" />
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="lg:col-span-2">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold tracking-wider">
+                  {order?.invoice_id}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground pt-1">
+                  {new Date(order.created_at).toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                <Separator />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-semibold mb-3">Detail Pelanggan</h3>
+                    <div className="text-sm text-muted-foreground space-y-2">
+                      <div className="flex items-center gap-3">
+                        <User size={16} />
+                        <span>{customer.username}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Phone size={16} />
+                        <span>
+                          {formatPhoneNumber(order.customers.whatsapp)}
+                        </span>
+                      </div>
+                      {customer.alamat && (
+                        <div className="flex items-start gap-3">
+                          <MapPin size={16} className="mt-1 flex-shrink-0" />
+                          <span>{customer.alamat}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-3">Metode Pembayaran</h3>
+                    <Badge
+                      variant={
+                        order.payment === "Pending" ? "destructive" : "default"
+                      }
+                      className={
+                        order.payment !== "Pending"
+                          ? "bg-green-100 text-green-800"
+                          : ""
+                      }
+                    >
+                      {order.payment}
+                    </Badge>
+                  </div>
+                </div>
+                <Separator />
+                <div>
+                  <h3 className="font-semibold mb-3">Rincian Order</h3>
+                  <div className="space-y-3">
+                    {order?.order_item.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center text-sm"
+                      >
+                        <div>
+                          <span className="font-semibold">
+                            {item.shoe_name}
+                          </span>
+                          <p className="text-xs text-muted-foreground">
+                            {item.service}
+                          </p>
+                        </div>
+                        <span className="font-mono">
+                          {formatedCurrency(parseFloat(item.amount))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="bg-zinc-50 flex flex-col gap-2 p-6">
+                <div className="w-full space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <p className="text-muted-foreground font-medium">
+                      Subtotal
+                    </p>
+                    <p className="font-mono font-medium">
+                      {formatedCurrency(order?.subtotal || 0)}
+                    </p>
+                  </div>
+                  {order?.order_discounts?.map((d, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <p className="text-muted-foreground">
+                        Diskon - {d.discount_code}
+                      </p>
+                      <p className="font-mono text-green-600">
+                        -{formatedCurrency(d.discounted_amount)}
+                      </p>
+                    </div>
+                  ))}
+                  <Separator className="my-2" />
+                  <div className="flex justify-between items-center font-bold text-base">
+                    <p>Total</p>
+                    <p className="font-mono text-lg">
+                      {formatedCurrency(order?.total_price || 0)}
+                    </p>
+                  </div>
+                </div>
+              </CardFooter>
+            </Card>
+          </div>
+
+          <div className="lg:col-span-1 flex flex-col gap-8">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl">Status Order</CardTitle>
+                <p className="text-sm text-muted-foreground pt-1">
+                  Lacak Status Order
+                </p>
+              </CardHeader>
+              <CardContent>
+                <TimelineProgress progress={order?.status || ""} />
+              </CardContent>
+            </Card>
+            <Button size={"lg"} className="w-full py-6 text-base font-bold">
+              Hubungi Kami
+            </Button>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
