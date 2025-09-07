@@ -1,6 +1,6 @@
 "use client";
 import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
-import React, { useEffect } from "react";
+import React from "react";
 import { DataTable } from "../data-table/data-table";
 import { DataTableToolbar } from "../data-table/data-table-toolbar";
 import { parseAsString, useQueryState } from "nuqs";
@@ -85,7 +85,7 @@ export function CatalogTable() {
         size: 32,
       },
     ],
-    []
+    [deleteService]
   );
 
   const { table } = useDataTable({

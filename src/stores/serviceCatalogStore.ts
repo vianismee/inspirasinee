@@ -79,7 +79,7 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "service_catalog" },
-          (payload) => {
+          () => {
             get().fetchCatalog();
           }
         )
