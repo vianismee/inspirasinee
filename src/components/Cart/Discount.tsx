@@ -1,5 +1,3 @@
-// components/Discount.tsx
-
 "use client";
 
 import { useCartStore } from "@/stores/cartStore";
@@ -8,7 +6,6 @@ import { formatedCurrency } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-// <<< BARU: Impor komponen yang dibutuhkan untuk Select
 import {
   Select,
   SelectContent,
@@ -21,9 +18,7 @@ export function Discount() {
   const { activeDiscounts, addDiscount, removeDiscount } = useCartStore();
   const { discountOptions } = useServiceCatalogStore();
 
-  // <<< BARU: Logika untuk menangani pemilihan dari dropdown
   const handleSelectDiscount = (selectedValue: string) => {
-    // Cari objek diskon lengkap berdasarkan nama yang dipilih
     const selectedDiscount = discountOptions.find(
       (option) => option.label === selectedValue
     );
@@ -32,7 +27,6 @@ export function Discount() {
     }
   };
 
-  // <<< BARU: Filter pilihan diskon agar tidak menampilkan yang sudah aktif
   const availableOptions = discountOptions.filter(
     (option) => !activeDiscounts.some((d) => d.label === option.label)
   );
@@ -47,10 +41,17 @@ export function Discount() {
           <h4 className="mb-2 text-sm font-medium">Pilih Diskon</h4>
           <Select
             onValueChange={handleSelectDiscount}
+            value=""
             disabled={availableOptions.length === 0}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Pilih diskon yang tersedia..." />
+            <SelectTrigger className="w-full">
+              <SelectValue
+                placeholder={
+                  availableOptions.length === 0
+                    ? "Tidak Ada Diskon Lagi"
+                    : "Pilih diskon yang tersedia..."
+                }
+              />
             </SelectTrigger>
             <SelectContent>
               {availableOptions.map((option) => (

@@ -21,7 +21,7 @@ export default function AdminLayout({
       <SidebarInset>
         <div className="flex flex-col h-screen">
           <SiteHeader />
-          <div className="flex flex-1 flex-col overflow-y-auto">
+          <div className="flex flex-1 flex-col ">
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 md:gap-6">
                 <NuqsAdapter>{children}</NuqsAdapter>

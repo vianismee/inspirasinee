@@ -16,21 +16,15 @@ import { Label } from "../ui/label";
 import { formatedCurrency } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
+// Impor fungsi yang sudah dipisahkan
+import { generateReceiptText } from "@/lib/invoiceUtils";
+import { IItems } from "@/types"; // Impor tipe IItems jika diperlukan
 
 export function Payment() {
   const PAYMENT = [
-    {
-      label: "Pending",
-      value: "Pending",
-    },
-    {
-      label: "Cash",
-      value: "Cash",
-    },
-    {
-      label: "QRIS",
-      value: "QRIS",
-    },
+    { label: "Pending", value: "Pending" },
+    { label: "Cash", value: "Cash" },
+    { label: "QRIS", value: "QRIS" },
   ];
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -39,7 +33,7 @@ export function Payment() {
     setPayment,
     handleSubmit,
     resetCart,
-    cart,
+    cart, // Asumsikan tipe datanya adalah { shoeName: string, serviceName: string, amount: number }
     payment,
     invoice,
     subTotal,
@@ -47,36 +41,24 @@ export function Payment() {
   } = useCartStore();
   const { activeCustomer, clearCustomer } = useCustomerStore();
 
-  let receiptText = `Hallo kak *${activeCustomer?.username}*\n\n`;
-  receiptText += `Berikut Invoice Order\n\n`;
-  receiptText += `Invoice No. *${invoice}*\n`;
-  receiptText += `Tanggal: ${new Date().toLocaleDateString("id-ID")}\n`;
-  receiptText += `-----------------------------------\n\n`;
-  receiptText += `*Detail Service:*\n\n`;
-  cart.forEach((text) => {
-    receiptText += `*${text.shoeName}*\n`;
-    receiptText += `${text.serviceName} - ${formatedCurrency(text.amount)}\n\n`;
-  });
+  // **PENYESUAIAN DI SINI**
+  // Ubah struktur data 'cart' dari store agar sesuai dengan tipe IItems
+  const formattedCart: IItems[] = cart.map((item) => ({
+    shoe_name: item.shoeName,
+    service: item.serviceName,
+    amount: String(item.amount),
+  }));
 
-  receiptText += `\n-----------------------------------\n`;
-  receiptText += `Subtotal: ${formatedCurrency(subTotal)} \n`;
-  if (activeDiscounts.length > 0) {
-    receiptText += `Diskon:\n`;
-    activeDiscounts.forEach((discount) => {
-      const discountValue = discount.percent
-        ? subTotal * discount.percent
-        : discount.amount || 0;
-      receiptText += `- ${discount.label}: -${formatedCurrency(
-        discountValue
-      )}\n`;
-    });
-  }
-  receiptText += `*Total Pembayaran: ${formatedCurrency(totalPrice)}*\n`;
-  receiptText += `Metode Pembayaran: ${payment}\n\n`;
-  receiptText += `\n-----------------------------------\n\n`;
-  receiptText += `Tracking Order kamu di: \n`;
-  receiptText += `https://inspirasinee.vercel.app/tracking/${invoice}\n`;
-  receiptText += `Terimakasih atas Kepercayaannya`;
+  const receiptText = activeCustomer
+    ? generateReceiptText({
+        customer: activeCustomer,
+        invoice,
+        cart: formattedCart,
+        subTotal,
+        totalPrice,
+        payment,
+      })
+    : "";
 
   const encode = encodeURIComponent(receiptText);
   const whatsappURL = `https://wa.me/${activeCustomer?.whatsapp}?text=${encode}`;
@@ -164,15 +146,10 @@ export function Payment() {
                   Kirim Invoice
                 </Button>
               </a>
-              <DialogClose>
-                <Button
-                  onClick={handleClearData}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Transaksi Baru
-                </Button>
-              </DialogClose>
+
+              <Button onClick={handleClearData} variant="outline">
+                Transaksi Baru
+              </Button>
             </div>
           )}
         </DialogFooter>

@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useCustomerStore } from "./customerStore";
 import { toast } from "sonner";
 
+// Antarmuka untuk item di dalam keranjang
 interface CartItem {
   id: number;
   shoeName: string;
@@ -11,12 +12,15 @@ interface CartItem {
   amount: number;
 }
 
+// Fungsi untuk menghitung ulang subtotal dan total harga
 const recalculateTotals = (cart: CartItem[], activeDiscounts: Discount[]) => {
   const subTotal = cart.reduce((total, item) => total + item.amount, 0);
 
   const totalDiscountValue = activeDiscounts.reduce((total, discount) => {
     if (discount.percent) {
-      return total + subTotal * discount.percent;
+      // DIBULATKAN: Hasil diskon persen dibulatkan sebelum dijumlahkan
+      const discountValue = Math.round(subTotal * discount.percent);
+      return total + discountValue;
     }
     if (discount.amount) {
       return total + discount.amount;
@@ -24,10 +28,12 @@ const recalculateTotals = (cart: CartItem[], activeDiscounts: Discount[]) => {
     return total;
   }, 0);
 
-  const totalPrice = Math.max(0, subTotal - totalDiscountValue);
+  // DIBULATKAN: Harga total akhir juga dibulatkan
+  const totalPrice = Math.round(Math.max(0, subTotal - totalDiscountValue));
   return { subTotal, totalPrice };
 };
 
+// Antarmuka untuk state dari cart store
 interface CartState {
   invoice: string;
   cart: CartItem[];
@@ -50,6 +56,7 @@ interface CartState {
   resetCart: () => void;
 }
 
+// Objek kosong sebagai template untuk item baru
 const emptyService: Omit<CartItem, "id"> = {
   shoeName: "",
   serviceName: "",
@@ -57,6 +64,7 @@ const emptyService: Omit<CartItem, "id"> = {
 };
 
 export const useCartStore = create<CartState>((set, get) => ({
+  // State awal
   invoice: "",
   cart: [{ ...emptyService, id: Date.now() }],
   subTotal: 0,
@@ -64,6 +72,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   totalPrice: 0,
   payment: "Cash",
 
+  // Aksi-aksi (actions)
   setInvoice: (id) => set({ invoice: id }),
   setPayment: (payment) => set({ payment }),
 
@@ -140,21 +149,39 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     const supabase = createClient();
     try {
-      const { error: orderError } = await supabase.from("orders").insert({
+      let customerIdToUse = activeCustomer.customer_id;
+
+      if (activeCustomer.isNew) {
+        toast.info("Menyimpan data pelanggan baru...");
+        const { isNew, ...customerToInsert } = activeCustomer;
+        const { data: newCustomer, error: customerInsertError } = await supabase
+          .from("customers")
+          .insert(customerToInsert)
+          .select("customer_id")
+          .single();
+
+        if (customerInsertError) {
+          throw new Error(
+            `Gagal menyimpan pelanggan baru: ${customerInsertError.message}`
+          );
+        }
+        customerIdToUse = newCustomer.customer_id;
+      }
+
+      await supabase.from("orders").insert({
         invoice_id: invoice,
         status: "ongoing",
-        customer_id: activeCustomer.customer_id,
-        subtotal: subTotal,
-        total_price: totalPrice,
+        customer_id: customerIdToUse,
+        subtotal: subTotal, // subTotal sudah pasti integer
+        total_price: totalPrice, // totalPrice sudah dibulatkan
         payment: payment,
       });
-      if (orderError)
-        throw new Error(`Gagal menyimpan pesanan: ${orderError.message}`);
 
       if (activeDiscounts.length > 0) {
         const discountsToInsert = activeDiscounts.map((discount) => {
+          // DIBULATKAN: Pastikan nilai yang dikirim ke DB juga bulat
           const appliedAmount = discount.percent
-            ? subTotal * discount.percent
+            ? Math.round(subTotal * discount.percent)
             : discount.amount || 0;
 
           return {
@@ -164,11 +191,7 @@ export const useCartStore = create<CartState>((set, get) => ({
           };
         });
 
-        const { error: discountError } = await supabase
-          .from("order_discounts")
-          .insert(discountsToInsert);
-        if (discountError)
-          throw new Error(`Gagal menyimpan diskon: ${discountError.message}`);
+        await supabase.from("order_discounts").insert(discountsToInsert);
       }
 
       const itemsToInsert = cart.map((item) => ({
@@ -177,16 +200,15 @@ export const useCartStore = create<CartState>((set, get) => ({
         service: item.serviceName,
         amount: item.amount,
       }));
-      const { error: itemsError } = await supabase
-        .from("order_item")
-        .insert(itemsToInsert);
-      if (itemsError)
-        throw new Error(`Gagal menyimpan item pesanan: ${itemsError.message}`);
+
+      await supabase.from("order_item").insert(itemsToInsert);
 
       return true;
     } catch (error) {
-      toast.error((error as Error).message);
-      console.log((error as Error).message);
+      const errorMessage = (error as Error).message;
+      toast.error(errorMessage);
+      console.error("Error saat submit:", errorMessage);
+      // Rollback logic could be added here if needed
       return false;
     }
   },

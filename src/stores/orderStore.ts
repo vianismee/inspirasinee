@@ -14,8 +14,17 @@ interface Discount {
   discounted_amount: number;
 }
 
+interface Customers {
+  customer_id: string;
+  username: string;
+  whatsapp: string;
+  alamat?: string;
+  email?: string;
+}
+
 interface Orders {
   customer_id: string;
+  customers: Customers;
   invoice_id: string;
   status: string;
   order_item: OrderItem[];
@@ -33,6 +42,7 @@ interface OrdersState {
   fetchOrder: (invoice?: string) => Promise<boolean>;
   updateOrderStep: (invoice_id: string, newStep: string) => Promise<void>;
   deleteInvoice: (invoice_id: string) => Promise<void>;
+  updatePayment: (invoice_id: string, newPayment: string) => Promise<void>;
   subscribeToOrders: (invoice_id?: string) => () => void;
 }
 
@@ -44,7 +54,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
   fetchOrder: async (invoice) => {
     set({ isLoading: true });
     const supabase = createClient();
-    const selectQuery = "*, order_item (*), order_discounts(*)";
+    const selectQuery = "*, order_item (*), order_discounts(*), customers(*)";
     try {
       if (invoice) {
         const { data: singleData, error: errorData } = await supabase
@@ -90,7 +100,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         throw error;
       }
 
-      console.log(
+      toast.success(
         `Status untuk invoice ${invoice_id} berhasil diubah menjadi ${newStep}`
       );
     } catch (error) {
@@ -151,5 +161,23 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       return;
     }
     toast.success(`Berhasil mnghapus Invoice ${invoice_id}`);
+  },
+
+  updatePayment: async (invoice_id, newPayment) => {
+    const supabase = createClient();
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ payment: newPayment })
+        .eq("invoice_id", invoice_id);
+      if (error) {
+        throw error;
+      }
+      toast.success(
+        `Status Pembayaran Invoice ${invoice_id} berhasil diubah menjadi ${newPayment}`
+      );
+    } catch (error) {
+      throw error;
+    }
   },
 }));

@@ -45,9 +45,8 @@ export function CartApp() {
   };
 
   return (
-    // 1. Pastikan parent section memenuhi tinggi layar
-    <section className="w-full flex flex-col bg-zinc-200">
-      <div className="flex-1 overflow-y-auto flex flex-col py-5 gap-4 px-6">
+    <section className="w-full flex flex-col bg-zinc-200 h-full">
+      <div className="flex-1 overflow-y-auto flex flex-col py-5 gap-4 px-6 mb-20">
         <Card>
           <CardContent>
             <div className="font-bold text-xl">INVOICE ID {invoiceId}</div>
@@ -76,7 +75,7 @@ export function CartApp() {
         <Services />
         <Discount />
       </div>
-      <div className="sticky bottom-0 mt-auto flex-shrink-0 flex justify-between items-center px-5 py-3 bg-white border-t">
+      <div className="fixed md:sticky w-full bottom-0 flex-shrink-0 flex justify-between items-center px-5 py-3 bg-white border-t">
         <Button variant={"outline"} onClick={handleBatal}>
           Batal
         </Button>

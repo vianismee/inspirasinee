@@ -38,15 +38,17 @@ export default function ServiceForm({ onFormSuccess }: ServiceFormProps) {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // Tunggu proses upload selesai
       await uploadService({ service: values });
       onFormSuccess();
     } catch (error) {
       console.error("Gagal mengupload service:", error);
-      // Tampilkan notifikasi error jika perlu
     } finally {
-      setIsLoading(false); // Hentikan loading
+      setIsLoading(false);
     }
+  }
+
+  if (isLoading) {
+    return <div>Loading ....</div>;
   }
 
   return (
