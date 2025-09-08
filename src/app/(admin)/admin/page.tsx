@@ -7,17 +7,19 @@ import { Suspense } from "react";
 
 export default function Page() {
   return (
-    <div className="flex flex-col gap-4">
-      <Headers
-        title="Dashboard"
-        desc="Admin dashbord untuk update Tracking"
-        buttonTitle="Tambah Order"
-        href="/admin/order"
-        icon={PlusCircle}
-      />
-      <Suspense fallback={<TableSkeleton />}>
-        <TableJob />
-      </Suspense>
+    <div className="w-full  h-screen px-[30px] py-[30px]">
+      <div className="flex flex-col gap-4">
+        <Headers
+          title="Dashboard"
+          desc="Admin dashbord untuk update Tracking"
+          buttonTitle="Tambah Order"
+          href="/admin/order"
+          icon={PlusCircle}
+        />
+        <Suspense fallback={<TableSkeleton />}>
+          <TableJob />
+        </Suspense>
+      </div>
     </div>
   );
 }

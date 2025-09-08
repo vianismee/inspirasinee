@@ -5,7 +5,7 @@ import TableSkeleton from "../Dashboard/TableSekeleton";
 
 export function CatalogApp() {
   return (
-    <div className="px-6">
+    <div className="w-full  h-screen px-[30px] py-[30px]">
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl text-center md:text-left sm:text-3xl font-bold text-gray-900 dark:text-white">

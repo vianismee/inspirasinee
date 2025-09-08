@@ -153,6 +153,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
       if (activeCustomer.isNew) {
         toast.info("Menyimpan data pelanggan baru...");
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { isNew, ...customerToInsert } = activeCustomer;
         const { data: newCustomer, error: customerInsertError } = await supabase
           .from("customers")

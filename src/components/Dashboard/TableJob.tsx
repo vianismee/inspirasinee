@@ -1,7 +1,7 @@
 "use client";
 
-import type { Column, ColumnDef } from "@tanstack/react-table";
-// Impor semua ikon yang dibutuhkan dari lucide-react
+import type { ColumnDef } from "@tanstack/react-table";
+// Impor ikon
 import {
   MoreHorizontal,
   Text,
@@ -15,13 +15,27 @@ import {
   Phone,
   MapPin,
 } from "lucide-react";
-import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
+// Impor dari nuqs untuk state di URL
+import {
+  parseAsArrayOf,
+  parseAsString,
+  useQueryState,
+  parseAsInteger,
+} from "nuqs";
 import * as React from "react";
 
-// Impor komponen UI dari shadcn/ui
+// Impor komponen UI
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,25 +47,15 @@ import {
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { Separator } from "@/components/ui/separator";
 
-// Impor hooks, stores, dan tipe data
+// Impor lain-lain
 import { useDataTable } from "@/hooks/use-data-table";
+import formatTimeAgo from "@/lib/formatDateAgo";
+import { generateReceiptText } from "@/lib/invoiceUtils";
+import { formatedCurrency } from "@/lib/utils";
 import { useOrderStore } from "@/stores/orderStore";
 import { ICustomers, IDiscount, IItems } from "@/types";
-import formatTimeAgo from "@/lib/formatDateAgo";
-
-// Impor fungsi utilitas
-import { generateReceiptText } from "@/lib/invoiceUtils";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-} from "../ui/dialog";
-import { DialogTitle, DialogTrigger } from "@radix-ui/react-dialog";
-import { Label } from "../ui/label";
-import { Separator } from "../ui/separator";
-import { formatedCurrency } from "@/lib/utils";
 
 // Interface untuk struktur data order
 interface Orders {
@@ -68,27 +72,40 @@ interface Orders {
 }
 
 export default function TableJob() {
+  // State untuk filter dari URL
   const [invoice_id] = useQueryState(
     "invoice_id",
     parseAsString.withDefault("")
   );
-
   const [status] = useQueryState(
     "status",
     parseAsArrayOf(parseAsString).withDefault([])
   );
 
-  const { fetchOrder, orders, subscribeToOrders, deleteInvoice } =
-    useOrderStore();
+  // State untuk pagination dari URL
+  const [page] = useQueryState("page", parseAsInteger.withDefault(1));
+  const [perPage] = useQueryState("perPage", parseAsInteger.withDefault(10));
 
+  // Ambil state dan actions dari store
+  const {
+    fetchOrder,
+    orders,
+    count, // Ambil total data
+    subscribeToOrders,
+    deleteInvoice,
+    updateOrderStep,
+    updatePayment,
+  } = useOrderStore();
+
+  // useEffect untuk mengambil data saat halaman atau ukuran halaman berubah
   React.useEffect(() => {
-    fetchOrder();
+    // Panggil fetchOrder dengan opsi pagination
+    fetchOrder({ page, pageSize: perPage });
     const unsubscribe = subscribeToOrders();
-    return () => {
-      unsubscribe();
-    };
-  }, [fetchOrder, subscribeToOrders]);
+    return () => unsubscribe();
+  }, [fetchOrder, subscribeToOrders, page, perPage]);
 
+  // Logika filter client-side (opsional, bisa dipindah ke server)
   const filteredData = React.useMemo(() => {
     return orders.filter((project) => {
       const matchesTitle =
@@ -130,10 +147,10 @@ export default function TableJob() {
       {
         id: "invoice_id",
         accessorKey: "invoice_id",
-        header: ({ column }: { column: Column<Orders, unknown> }) => (
+        header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Invoice" />
         ),
-        cell: ({ cell }) => <div>{cell.getValue<Orders["invoice_id"]>()}</div>,
+        cell: ({ cell }) => <div>{cell.getValue<string>()}</div>,
         meta: {
           label: "Invoice ID",
           placeholder: "Search Invoice",
@@ -147,13 +164,12 @@ export default function TableJob() {
         accessorKey: "customers",
         header: "Customer",
         cell: ({ row }) => {
-          const order = row.original; // Ambil data order untuk kemudahan akses
-
+          const order = row.original;
           return (
             <Dialog>
               <DialogTrigger asChild>
                 <Button
-                  variant={"link"}
+                  variant="link"
                   className="h-auto p-0 text-blue-600 hover:underline focus-visible:ring-0"
                 >
                   {order.customers.username}
@@ -173,39 +189,33 @@ export default function TableJob() {
                     })}
                   </DialogDescription>
                 </DialogHeader>
-
                 <Separator />
-
-                {/* === Detail Pelanggan === */}
                 <div className="flex flex-col gap-3">
                   <h3 className="font-semibold text-md">Detail Pelanggan</h3>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground space-y-2">
                     <div className="flex items-center gap-3">
                       <User className="w-4 h-4" />
                       <span>{order.customers.username}</span>
                     </div>
-                    <div className="flex items-center gap-3 mt-2">
+                    <div className="flex items-center gap-3">
                       <Phone className="w-4 h-4" />
                       <span>{order.customers.whatsapp}</span>
                     </div>
                     {order.customers.alamat && (
-                      <div className="flex items-start gap-3 mt-2">
-                        <MapPin className="w-4 h-4 mt-1" />
+                      <div className="flex items-start gap-3">
+                        <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
                         <span>{order.customers.alamat}</span>
                       </div>
                     )}
                   </div>
                 </div>
-
                 <Separator />
-
-                {/* === Detail Layanan === */}
                 <div className="flex flex-col gap-3">
                   <h3 className="font-semibold text-md">Order Detail</h3>
                   <div className="flex flex-col gap-4">
                     {order.order_item.map((item, index) => (
                       <div
-                        key={index}
+                        key={item.shoe_name + index}
                         className="flex justify-between items-center text-sm"
                       >
                         <div className="flex flex-col">
@@ -221,10 +231,7 @@ export default function TableJob() {
                     ))}
                   </div>
                 </div>
-
                 <Separator />
-
-                {/* === Ringkasan Pembayaran === */}
                 <div className="flex flex-col gap-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
@@ -232,24 +239,20 @@ export default function TableJob() {
                       {formatedCurrency(order.subtotal)}
                     </span>
                   </div>
-                  {order.order_discounts &&
-                    order.order_discounts.length > 0 &&
-                    order.order_discounts.map((discount, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center text-sm"
-                      >
-                        {/* Menggunakan discount_code sebagai label */}
-                        <span className="text-muted-foreground">
-                          Diskon ({discount.discount_code})
-                        </span>
-                        <span className="font-mono text-green-600">
-                          {/* Menggunakan discounted_amount langsung untuk nilainya */}
-                          -{formatedCurrency(discount.discounted_amount)}
-                        </span>
-                      </div>
-                    ))}
-                  <div className="flex justify-between items-center text-md font-bold">
+                  {order.order_discounts?.map((discount, index) => (
+                    <div
+                      key={discount.discount_code + index}
+                      className="flex justify-between items-center text-sm"
+                    >
+                      <span className="text-muted-foreground">
+                        Diskon ({discount.discount_code})
+                      </span>
+                      <span className="font-mono text-green-600">
+                        -{formatedCurrency(discount.discounted_amount)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between items-center text-md font-bold mt-2 pt-2 border-t">
                     <span>Total Pembayaran</span>
                     <span className="font-mono">
                       {formatedCurrency(order.total_price)}
@@ -302,31 +305,22 @@ export default function TableJob() {
             {
               value: "finish",
               label: "Finish",
-              className:
-                "border-transparent bg-green-500 text-primary-foreground shadow hover:bg-green-500/80",
+              className: "bg-green-600 hover:bg-green-600/80 text-white",
               icon: CheckCircle2,
             },
           ];
-
           const currentStatusValue = row.getValue<string>("status");
           const currentStatus = statusOptions.find(
-            (status) => status.value === currentStatusValue
+            (s) => s.value === currentStatusValue
           );
-          const { updateOrderStep } = useOrderStore.getState();
-          const invoiceId = (row.original as { invoice_id: string }).invoice_id;
-
-          if (!currentStatus) {
-            return <span>-</span>;
-          }
-
+          if (!currentStatus) return <span>-</span>;
           const Icon = currentStatus.icon;
-
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="h-auto p-1 focus-visible:ring-0"
+                  className="h-auto p-1 rounded-full focus-visible:ring-0"
                 >
                   <Badge
                     variant={currentStatus.variant}
@@ -343,7 +337,9 @@ export default function TableJob() {
                 {statusOptions.map((status) => (
                   <DropdownMenuItem
                     key={status.value}
-                    onSelect={() => updateOrderStep(invoiceId, status.value)}
+                    onSelect={() =>
+                      updateOrderStep(row.original.invoice_id, status.value)
+                    }
                     disabled={currentStatusValue === status.value}
                   >
                     {status.label}
@@ -374,14 +370,12 @@ export default function TableJob() {
             {
               value: "QRIS",
               label: "QRIS",
-              className:
-                "border-transparent bg-green-500 text-primary-foreground shadow",
+              className: "bg-green-600 hover:bg-green-600/80 text-white",
             },
             {
               value: "Cash",
               label: "Cash",
-              className:
-                "border-transparent bg-green-500 text-primary-foreground shadow",
+              className: "bg-green-600 hover:bg-green-600/80 text-white",
             },
             {
               value: "Pending",
@@ -389,42 +383,36 @@ export default function TableJob() {
               variant: "destructive" as const,
             },
           ];
-
           const currentPaymentValue = row.getValue<string>("payment");
-          const currentPayement = statusPayment.find(
-            (status) => status.value === currentPaymentValue
+          const currentPayment = statusPayment.find(
+            (p) => p.value === currentPaymentValue
           );
-          const { updatePayment } = useOrderStore.getState();
-          const invoiceId = (row.original as { invoice_id: string }).invoice_id;
-
-          if (!currentPayement) {
-            return <span>-</span>;
-          }
-
+          if (!currentPayment) return <span>-</span>;
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant={"ghost"}
-                  className="h-auto p-1 focus-visible:ring-0"
+                  className="h-auto p-1 rounded-full focus-visible:ring-0"
                 >
                   <Badge
-                    variant={currentPayement?.variant}
-                    className={currentPayement?.className}
+                    variant={currentPayment?.variant}
+                    className={currentPayment?.className}
                   >
-                    {currentPayement?.label}
+                    {currentPayment?.label}
                   </Badge>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Ubah Status</DropdownMenuLabel>
+                <DropdownMenuLabel>Ubah Metode</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {statusPayment.map((status) => (
                   <DropdownMenuItem
                     key={status.value}
-                    onSelect={() => {
-                      updatePayment(invoiceId, status.value);
-                    }}
+                    onSelect={() =>
+                      updatePayment(row.original.invoice_id, status.value)
+                    }
+                    disabled={currentPaymentValue === status.value}
                   >
                     {status.label}
                   </DropdownMenuItem>
@@ -437,7 +425,7 @@ export default function TableJob() {
       {
         id: "created_at",
         accessorKey: "created_at",
-        header: ({ column }: { column: Column<Orders, unknown> }) => (
+        header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Date Order" />
         ),
         cell: ({ row }) => (
@@ -466,10 +454,10 @@ export default function TableJob() {
             window.open(whatsappURL, "_blank");
           };
           return (
-            <div className="bg-white flex h-full w-full items-center justify-center ">
+            <div className="flex items-center justify-center">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
                     <MoreHorizontal className="h-4 w-4" />
                     <span className="sr-only">Open menu</span>
                   </Button>
@@ -479,16 +467,16 @@ export default function TableJob() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onSelect={handleSendWhatsapp}
-                    className="flex items-center gap-2 cursor-pointer"
+                    className="flex items-center gap-2"
                   >
                     <Send className="h-4 w-4" />
                     Kirim Invoice
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    className="text-red-600 focus:text-red-600 flex items-center gap-2 cursor-pointer"
+                    className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
                     onSelect={() => deleteInvoice(order.invoice_id)}
                   >
-                    <Trash2 className="h-4 w-4 text-red-600" />
+                    <Trash2 className="h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -497,15 +485,21 @@ export default function TableJob() {
           );
         },
         size: 32,
+        enableHiding: false,
       },
     ],
-    [deleteInvoice]
+    [deleteInvoice, updateOrderStep, updatePayment]
   );
+
+  const pageCount = React.useMemo(() => {
+    if (count === 0) return 1;
+    return Math.ceil(count / perPage);
+  }, [count, perPage]);
 
   const { table } = useDataTable({
     data: filteredData,
     columns,
-    pageCount: 1,
+    pageCount: pageCount,
     initialState: {
       sorting: [{ id: "created_at", desc: true }],
       columnPinning: { right: ["actions"] },
