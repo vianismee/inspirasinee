@@ -20,6 +20,8 @@ import { useCustomerStore } from "@/stores/customerStore";
 import { useRouter } from "next/navigation";
 import { useCustomerID } from "@/hooks/useNanoID";
 import Link from "next/link";
+import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
+import { useEffect } from "react";
 
 const formSchema = z.object({
   username: z.string().min(2, { message: "Nama Customer Wajib di Isi" }),
@@ -32,6 +34,10 @@ export function OrderApp() {
   const router = useRouter();
   const prepareCustomer = useCustomerStore((state) => state.prepareCustomer);
   const custoemerId = useCustomerID();
+  const fetchCatalog = useServiceCatalogStore((state) => state.fetchCatalog);
+  useEffect(() => {
+    fetchCatalog();
+  }, [fetchCatalog]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

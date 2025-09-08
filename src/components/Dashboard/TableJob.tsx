@@ -441,6 +441,14 @@ export default function TableJob() {
               alert("Nomor WhatsApp customer tidak ditemukan.");
               return;
             }
+
+            // BARU: Format data diskon sebelum dikirim
+            const formattedDiscounts = order.order_discounts?.map((d) => ({
+              label: d.discount_code,
+              amount: d.discounted_amount,
+            }));
+
+            // UBAH: Kirim data diskon yang sudah diformat
             const receiptText = generateReceiptText({
               customer: order.customers,
               invoice: order.invoice_id,
@@ -448,7 +456,9 @@ export default function TableJob() {
               subTotal: order.subtotal,
               totalPrice: order.total_price,
               payment: order.payment,
+              discounts: formattedDiscounts, // <-- Tambahkan properti ini
             });
+
             const encodedText = encodeURIComponent(receiptText);
             const whatsappURL = `https://wa.me/${order.customers.whatsapp}?text=${encodedText}`;
             window.open(whatsappURL, "_blank");

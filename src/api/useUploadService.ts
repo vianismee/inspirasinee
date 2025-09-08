@@ -9,6 +9,7 @@ interface UseUploadServiceProps {
 export const uploadService = async ({ service }: UseUploadServiceProps) => {
   const finalDataService = {
     name: service.name,
+    category_id: service.category_id,
     amount: service.amount,
   };
 

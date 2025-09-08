@@ -18,7 +18,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 // Impor fungsi yang sudah dipisahkan
 import { generateReceiptText } from "@/lib/invoiceUtils";
-import { IItems } from "@/types"; // Impor tipe IItems jika diperlukan
+import { IItems } from "@/types";
 
 export function Payment() {
   const PAYMENT = [
@@ -33,7 +33,7 @@ export function Payment() {
     setPayment,
     handleSubmit,
     resetCart,
-    cart, // Asumsikan tipe datanya adalah { shoeName: string, serviceName: string, amount: number }
+    cart,
     payment,
     invoice,
     subTotal,
@@ -41,13 +41,22 @@ export function Payment() {
   } = useCartStore();
   const { activeCustomer, clearCustomer } = useCustomerStore();
 
-  // **PENYESUAIAN DI SINI**
-  // Ubah struktur data 'cart' dari store agar sesuai dengan tipe IItems
   const formattedCart: IItems[] = cart.map((item) => ({
     shoe_name: item.shoeName,
     service: item.serviceName,
     amount: String(item.amount),
   }));
+
+  // <<< BARU: Format data diskon dari cart store sebelum dikirim
+  const formattedDiscounts = activeDiscounts.map((discount) => {
+    const amount = discount.percent
+      ? Math.round(subTotal * discount.percent)
+      : discount.amount || 0;
+    return {
+      label: discount.label,
+      amount: amount,
+    };
+  });
 
   const receiptText = activeCustomer
     ? generateReceiptText({
@@ -57,6 +66,7 @@ export function Payment() {
         subTotal,
         totalPrice,
         payment,
+        discounts: formattedDiscounts, // <<< UBAH: Kirim diskon yang sudah diformat
       })
     : "";
 
@@ -105,7 +115,7 @@ export function Payment() {
                 key={index}
                 htmlFor={`payment-${paymentItem.value}`}
                 className="flex gap-2 items-center w-full py-3 pl-4 border-2 border-zinc-300 rounded-md cursor-pointer
-                peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:ring-2 peer-data-[state=checked]:ring-blue-200
+                has-[:checked]:border-blue-500 has-[:checked]:ring-2 has-[:checked]:ring-blue-200
                 transition-all"
               >
                 <RadioGroupItem
@@ -131,7 +141,7 @@ export function Payment() {
                 <Button variant="outline">Batal</Button>
               </DialogClose>
               <Button onClick={handleProcessPayment} disabled={isLoading}>
-                Proses
+                {isLoading ? "Memproses..." : "Proses"}
               </Button>
             </>
           ) : (
@@ -146,10 +156,11 @@ export function Payment() {
                   Kirim Invoice
                 </Button>
               </a>
-
-              <Button onClick={handleClearData} variant="outline">
-                Transaksi Baru
-              </Button>
+              <DialogClose asChild>
+                <Button onClick={handleClearData} variant="outline">
+                  Transaksi Baru
+                </Button>
+              </DialogClose>
             </div>
           )}
         </DialogFooter>

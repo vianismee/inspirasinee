@@ -1,5 +1,6 @@
 export type IService = {
   name: string;
+  category_id: number;
   amount: number | 0;
 };
 

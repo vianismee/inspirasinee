@@ -1,16 +1,18 @@
-// File: lib/invoiceUtils.ts
+import { ICustomers, IDiscount, IItems } from "@/types";
+import { formatedCurrency } from "./utils";
 
-import { formatedCurrency } from "@/lib/utils";
-// Impor tipe data yang sudah Anda definisikan
-import { ICustomers, IItems } from "@/types";
-
-interface InvoiceData {
+// Interface untuk data yang dibutuhkan oleh fungsi
+interface ReceiptData {
   customer: ICustomers;
   invoice: string;
-  cart: IItems[]; // Menggunakan tipe IItems[]
+  cart: IItems[];
   subTotal: number;
   totalPrice: number;
   payment: string;
+  discounts?: {
+    label: string;
+    amount: number;
+  }[];
 }
 
 export const generateReceiptText = ({
@@ -20,32 +22,64 @@ export const generateReceiptText = ({
   subTotal,
   totalPrice,
   payment,
-}: InvoiceData): string => {
-  let receiptText = `Hallo kak *${customer?.username}*\n\n`;
-  receiptText += `Berikut Invoice Order\n\n`;
-  receiptText += `Invoice No. *${invoice}*\n`;
-  receiptText += `Tanggal: ${new Date().toLocaleDateString("id-ID")}\n`;
-  receiptText += `-----------------------------------\n\n`;
-  receiptText += `*Detail Service:*\n\n`;
+  discounts,
+}: ReceiptData): string => {
+  // Format tanggal menjadi D/M/YYYY
+  const today = new Date();
+  const formattedDate = `${today.getDate()}/${
+    today.getMonth() + 1
+  }/${today.getFullYear()}`;
 
-  // Sesuaikan dengan properti dari tipe IItems
-  cart.forEach((item) => {
-    // PERUBAHAN: item.shoe_name dan item.service
-    receiptText += `*${item.shoe_name}*\n`;
-    // PERUBAHAN: parseFloat(item.amount) karena tipenya string
-    receiptText += `${item.service} - ${formatedCurrency(
-      parseFloat(item.amount)
-    )}\n\n`;
-  });
+  const greeting = `Hallo kak *${customer.username}*\n\nBerikut Invoice Order\n\n`;
 
-  receiptText += `\n-----------------------------------\n`;
-  receiptText += `Subtotal: ${formatedCurrency(subTotal)} \n`;
-  receiptText += `*Total Pembayaran: ${formatedCurrency(totalPrice)}*\n`;
-  receiptText += `Metode Pembayaran: ${payment}\n\n`;
-  receiptText += `\n-----------------------------------\n\n`;
-  receiptText += `Tracking Order kamu di: \n`;
-  receiptText += `https://inspirasinee.vercel.app/tracking/${invoice}\n`;
-  receiptText += `Terimakasih atas Kepercayaannya`;
+  const invoiceDetails =
+    `Invoice No. *${invoice}*\n` + `Tanggal: ${formattedDate}\n`;
 
-  return receiptText;
+  const separator = `-----------------------------------\n\n`;
+
+  const orderDetailsHeader = `Detail Service:\n\n`;
+  const orderDetails = cart
+    .map(
+      (item) =>
+        `${item.shoe_name}\n` +
+        `${item.service} - ${formatedCurrency(parseFloat(item.amount))}`
+    )
+    .join("\n\n");
+
+  const summaryHeader = `\n\n-----------------------------------\n`;
+  const subTotalText = `Subtotal: ${formatedCurrency(subTotal)}`;
+
+  // Logika untuk memformat setiap diskon
+  const discountsText =
+    discounts && discounts.length > 0
+      ? "\n" +
+        discounts
+          .map((d) => `- ${d.label}: -${formatedCurrency(d.amount)}`)
+          .join("\n")
+      : "";
+
+  const totalText = `\n*Total Pembayaran: ${formatedCurrency(totalPrice)}*`;
+  const paymentMethod = `\nMetode Pembayaran: ${payment}`;
+
+  const trackingInfo =
+    `\n\n-----------------------------------\n\n` +
+    `Tracking Order kamu di:\n` +
+    `https://inspirasinee.vercel.app/tracking/${invoice}`;
+
+  const footer = `\nTerimakasih atas Kepercayaannya`;
+
+  return (
+    greeting +
+    invoiceDetails +
+    separator +
+    orderDetailsHeader +
+    orderDetails +
+    summaryHeader +
+    subTotalText +
+    discountsText +
+    totalText +
+    paymentMethod +
+    trackingInfo +
+    footer
+  );
 };

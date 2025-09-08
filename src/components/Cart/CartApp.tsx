@@ -12,7 +12,6 @@ import { Discount } from "./Discount";
 import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { Payment } from "./Payment";
-import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
 import { Button } from "../ui/button";
 
 export function CartApp() {
@@ -21,11 +20,6 @@ export function CartApp() {
   const { clearCustomer } = useCustomerStore();
   const { totalPrice, setInvoice, resetCart } = useCartStore();
   const router = useRouter();
-  const fetchCatalog = useServiceCatalogStore((state) => state.fetchCatalog);
-
-  useEffect(() => {
-    fetchCatalog();
-  }, [fetchCatalog]);
 
   useEffect(() => {
     if (!activeCustomer) {
