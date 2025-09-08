@@ -19,7 +19,7 @@ export function TrackingApp({ params }: TrackingPageProps) {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    fetchOrder(params);
+    fetchOrder({ invoice: params });
     const unsubscribe = subscribeToOrders(params);
     return () => unsubscribe();
   }, [fetchOrder, subscribeToOrders, params]);
