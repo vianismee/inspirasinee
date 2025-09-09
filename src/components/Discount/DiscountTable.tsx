@@ -1,3 +1,5 @@
+// components/discount/DiscountTable.tsx
+
 "use client";
 
 import { useServiceCatalogStore, Discount } from "@/stores/serviceCatalogStore";
@@ -57,17 +59,23 @@ export function DiscountTable() {
       {
         accessorKey: "label",
         header: "Label",
+        meta: {
+          label: "Label Diskon",
+          placeholder: "Cari berdasarkan label...",
+          variant: "text",
+        },
+        enableColumnFilter: true,
       },
       {
         id: "value",
-        header: "Nilai",
+        header: "Nominal",
         cell: ({ row }) => {
           const { amount, percent } = row.original;
           if (amount) {
             return <span>{formatedCurrency(amount)}</span>;
           }
           if (percent) {
-            return <span>{`${percent * 100}%`}</span>;
+            return <span>{`${(percent * 100).toFixed()}%`}</span>;
           }
           return <span>-</span>;
         },
@@ -86,7 +94,7 @@ export function DiscountTable() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                  <DropdownMenuLabel>Action</DropdownMenuLabel>
                   <DropdownMenuItem
                     onClick={() => {
                       setEditingDiscount(discount);
@@ -100,7 +108,7 @@ export function DiscountTable() {
                     className="text-red-600"
                     onClick={() => deleteDiscount(discount.id)}
                   >
-                    <Trash2 className="mr-2 h-4 w-4" /> Hapus
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -119,7 +127,7 @@ export function DiscountTable() {
   });
 
   if (!isMounted) {
-    return null;
+    return null; // atau skeleton loader
   }
 
   return (
@@ -127,8 +135,8 @@ export function DiscountTable() {
       <DataTable table={table}>
         <DataTableToolbar table={table}>
           <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> Tambah Diskon
+            <Button onClick={() => setIsFormOpen(true)}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Discount
             </Button>
           </DialogTrigger>
         </DataTableToolbar>

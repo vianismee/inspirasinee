@@ -25,33 +25,20 @@ interface DiscountFormProps {
   initialData?: Discount | null;
 }
 
+// ✅ PERBAIKAN 1: Sederhanakan skema, hapus preprocess/coerce
 const formSchema = z
   .object({
     label: z.string().min(3, { message: "Label harus minimal 3 karakter." }),
-    // Preprocess menangani input kosong dari form sebelum divalidasi
-    amount: z.preprocess(
-      (val) => (val === "" || val == null ? undefined : val),
-      z.coerce
-        .number({ message: "Nominal harus berupa angka" })
-        .positive("Nominal harus positif")
-        .optional()
-    ),
-    percent: z.preprocess(
-      (val) => (val === "" || val == null ? undefined : val),
-      z.coerce
-        .number({ message: "Persen harus berupa angka" })
-        .min(0.01)
-        .max(100, "Persen maksimal 100")
-        .optional()
-    ),
+    amount: z.number().positive("Nominal harus positif").optional(),
+    percent: z.number().min(0.01).max(100, "Persen maksimal 100").optional(),
   })
   .refine((data) => !(data.amount && data.percent), {
     message: "Hanya isi salah satu, nominal atau persen.",
-    path: ["amount"], // Tampilkan error di field nominal
+    path: ["amount"],
   })
   .refine((data) => data.amount || data.percent, {
     message: "Salah satu dari nominal atau persen harus diisi.",
-    path: ["percent"], // Tampilkan error di field persen
+    path: ["percent"],
   });
 
 type DiscountFormValues = z.infer<typeof formSchema>;
@@ -77,7 +64,6 @@ export default function DiscountForm({
       form.reset({
         label: initialData.label || "",
         amount: initialData.amount ?? undefined,
-        // Konversi dari 0.xx ke xx% untuk ditampilkan di form
         percent: initialData.percent ? initialData.percent * 100 : undefined,
       });
     } else {
@@ -85,12 +71,12 @@ export default function DiscountForm({
     }
   }, [initialData, form]);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: DiscountFormValues) {
     setIsLoading(true);
+    // Pastikan data yang dikirim tidak mengandung undefined
     const dataToSubmit = {
       label: values.label,
       amount: values.amount || null,
-      // Konversi dari xx% ke 0.xx untuk disimpan di database
       percent: values.percent ? values.percent / 100 : null,
     };
 
@@ -131,10 +117,15 @@ export default function DiscountForm({
             <FormItem>
               <FormLabel>Nominal (Rp.)</FormLabel>
               <FormControl>
+                {/* ✅ PERBAIKAN 2: Tambahkan onChange kustom seperti di ServiceForm */}
                 <Input
                   type="number"
                   placeholder="e.g., 10000"
                   {...field}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    field.onChange(value === "" ? undefined : +value);
+                  }}
                   value={field.value ?? ""}
                 />
               </FormControl>
@@ -152,10 +143,15 @@ export default function DiscountForm({
             <FormItem>
               <FormLabel>Persentase (%)</FormLabel>
               <FormControl>
+                {/* ✅ PERBAIKAN 3: Tambahkan onChange kustom seperti di ServiceForm */}
                 <Input
                   type="number"
                   placeholder="e.g., 15"
                   {...field}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    field.onChange(value === "" ? undefined : +value);
+                  }}
                   value={field.value ?? ""}
                 />
               </FormControl>

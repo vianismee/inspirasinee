@@ -39,20 +39,13 @@ interface Service {
 }
 
 export function CatalogTable() {
-  const [isMounted, setIsMounted] = useState(false);
-
-  // State untuk filter dari URL
   const [name] = useQueryState("name", parseAsString.withDefault(""));
   const [category] = useQueryState(
     "category",
     parseAsArrayOf(parseAsString).withDefault([])
   );
-
-  // State untuk dialog form "Add/Edit Service"
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
-
-  // State untuk dialog "Add Category"
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
 
@@ -64,18 +57,12 @@ export function CatalogTable() {
     deleteService,
   } = useServiceCatalogStore();
 
-  // Efek untuk fetch data dan subscribe (hanya berjalan sekali)
   useEffect(() => {
     fetchCatalog();
     const unsubscribe = subscribeToChanges();
     return () => unsubscribe();
   }, [fetchCatalog, subscribeToChanges]);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // Logika filter client-side
   const filteredService = useMemo(() => {
     return serviceCatalog.filter((service) => {
       const matchesName =
@@ -88,7 +75,6 @@ export function CatalogTable() {
     });
   }, [serviceCatalog, name, category]);
 
-  // Fungsi untuk menambah kategori baru
   const handleInsertCategory = async () => {
     if (!newCategoryName.trim()) {
       toast.error("Nama kategori tidak boleh kosong.");
@@ -105,11 +91,11 @@ export function CatalogTable() {
       return;
     }
     toast.success(`Berhasil menambah kategori: ${newCategoryName}`);
+    fetchCatalog();
     setNewCategoryName("");
     setIsCategoryDialogOpen(false);
   };
 
-  // Definisi kolom untuk tabel
   const columns = useMemo<ColumnDef<Service>[]>(
     () => [
       {
@@ -207,7 +193,6 @@ export function CatalogTable() {
     getRowId: (row) => String(row.id),
   });
 
-  // Handler untuk menutup dialog dan mereset state
   const handleDialogChange = (open: boolean) => {
     setIsFormOpen(open);
     if (!open) {
@@ -215,16 +200,10 @@ export function CatalogTable() {
     }
   };
 
-  // Mencegah render di server
-  if (!isMounted) {
-    return null; // Atau tampilkan skeleton loader
-  }
-
   return (
     <div className="w-full space-y-4">
       <DataTable table={table}>
         <DataTableToolbar table={table}>
-          {/* Dialog dan Trigger untuk Tambah/Edit Service */}
           <Dialog open={isFormOpen} onOpenChange={handleDialogChange}>
             <DialogTrigger asChild>
               <Button onClick={() => setIsFormOpen(true)}>
@@ -244,8 +223,6 @@ export function CatalogTable() {
               />
             </DialogContent>
           </Dialog>
-
-          {/* Dialog dan Trigger untuk Tambah Kategori */}
           <Dialog
             open={isCategoryDialogOpen}
             onOpenChange={setIsCategoryDialogOpen}

@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import TableSkeleton from "../Dashboard/TableSekeleton";
-
 import { CatalogTable } from "./CatalogTable";
 
 export function CatalogApp() {

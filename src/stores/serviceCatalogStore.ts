@@ -26,16 +26,20 @@ export interface DiscountFormData {
   percent?: number | null;
 }
 
+type NewServiceData = {
+  name: string;
+  amount: number;
+  category_id: number;
+};
+
 interface ServiceCatalogState {
   serviceCatalog: ServiceCatalog[];
   discountOptions: Discount[];
   serviceCategory: Category[];
   isLoading: boolean;
   fetchCatalog: () => Promise<void>;
-  updateService: (
-    serviceId: number,
-    data: { name: string; amount: number; category_id: number }
-  ) => Promise<void>;
+  addService: (data: NewServiceData) => Promise<void>;
+  updateService: (serviceId: number, data: NewServiceData) => Promise<void>;
   deleteService: (serviceId: number) => Promise<void>;
   subscribeToChanges: () => () => void;
   addDiscount: (data: DiscountFormData) => Promise<void>;
@@ -87,6 +91,25 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
       }
     },
 
+    addService: async (dataToAdd) => {
+      const supabase = createClient();
+      try {
+        const { error } = await supabase
+          .from("service_catalog")
+          .insert(dataToAdd);
+
+        if (error) {
+          throw error;
+        }
+        toast.success(`Layanan "${dataToAdd.name}" berhasil ditambahkan.`);
+        get().fetchCatalog();
+      } catch (error) {
+        console.error("Gagal menambah service:", error);
+        toast.error("Gagal menambah layanan baru.");
+        throw error;
+      }
+    },
+
     updateService: async (serviceId, dataToUpdate) => {
       const supabase = createClient();
       try {
@@ -96,10 +119,8 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           .eq("id", serviceId);
 
         if (error) throw error;
-
         toast.success("Layanan berhasil diperbarui.");
 
-        // Optimistic Update: Perbarui state lokal tanpa perlu fetch ulang
         set((state) => {
           const updatedCatalog = state.serviceCatalog.map((service) => {
             if (service.id === serviceId) {
@@ -132,10 +153,8 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           .eq("id", serviceId);
 
         if (error) throw error;
-
         toast.success("Layanan berhasil dihapus.");
 
-        // Optimistic Update: Hapus dari state lokal
         set((state) => ({
           serviceCatalog: state.serviceCatalog.filter(
             (s) => s.id !== serviceId
@@ -177,8 +196,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           refreshData
         )
         .subscribe();
-
-      // ✅ Fungsi cleanup yang sudah diperbaiki
       return () => {
         supabase.removeChannel(serviceChannel);
         supabase.removeChannel(categoryChannel);
@@ -198,7 +215,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         if (error) throw error;
         toast.success(`Diskon "${newDiscount.label}" berhasil ditambahkan.`);
 
-        // Optimistic update
         set((state) => ({
           discountOptions: [...state.discountOptions, newDiscount].sort(
             (a, b) => a.label.localeCompare(b.label)
@@ -223,7 +239,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         if (error) throw error;
         toast.success(`Diskon "${updatedDiscount.label}" berhasil diperbarui.`);
 
-        // Optimistic update
         set((state) => ({
           discountOptions: state.discountOptions.map((d) =>
             d.id === discountId ? updatedDiscount : d
@@ -238,7 +253,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
     deleteDiscount: async (discountId) => {
       const supabase = createClient();
       try {
-        // Ambil data dulu untuk toast message
         const discountToDelete = get().discountOptions.find(
           (d) => d.id === discountId
         );
@@ -252,7 +266,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         if (error) throw error;
         toast.success(`Diskon "${discountToDelete.label}" berhasil dihapus.`);
 
-        // Optimistic update
         set((state) => ({
           discountOptions: state.discountOptions.filter(
             (d) => d.id !== discountId

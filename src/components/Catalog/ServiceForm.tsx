@@ -4,8 +4,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
-
-// Impor Komponen UI
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -24,15 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-// Impor API & Store
-import { uploadService } from "@/api/useUploadService";
 import {
   useServiceCatalogStore,
   ServiceCatalog,
 } from "@/stores/serviceCatalogStore";
 
-// Props untuk komponen form
 interface ServiceFormProps {
   onFormSuccess: () => void;
   initialData?: ServiceCatalog | null;
@@ -51,7 +45,8 @@ export default function ServiceForm({
   initialData,
 }: ServiceFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const { serviceCategory, updateService } = useServiceCatalogStore();
+  const { serviceCategory, updateService, addService } =
+    useServiceCatalogStore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -59,14 +54,12 @@ export default function ServiceForm({
 
   useEffect(() => {
     if (initialData) {
-      // Mode Edit
       form.reset({
         name: initialData.name || "",
         amount: initialData.amount || 0,
         category_id: initialData.service_category?.id || undefined,
       });
     } else {
-      // Mode Tambah Baru (aman dari undefined)
       form.reset({
         name: "",
         amount: undefined,
@@ -81,7 +74,7 @@ export default function ServiceForm({
       if (initialData) {
         await updateService(initialData.id, values);
       } else {
-        await uploadService({ service: values });
+        await addService(values);
       }
       onFormSuccess();
     } catch (error) {
@@ -94,7 +87,6 @@ export default function ServiceForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Field Nama Service */}
         <FormField
           control={form.control}
           name="name"
@@ -112,8 +104,6 @@ export default function ServiceForm({
             </FormItem>
           )}
         />
-
-        {/* Field Pilihan Kategori */}
         <FormField
           control={form.control}
           name="category_id"
@@ -141,8 +131,6 @@ export default function ServiceForm({
             </FormItem>
           )}
         />
-
-        {/* Field Harga */}
         <FormField
           control={form.control}
           name="amount"
@@ -158,7 +146,6 @@ export default function ServiceForm({
                     const value = event.target.value;
                     field.onChange(value === "" ? undefined : +value);
                   }}
-                  // <<< PERBAIKAN: Gunakan `?? ""` untuk memastikan value tidak pernah undefined
                   value={field.value ?? ""}
                 />
               </FormControl>
