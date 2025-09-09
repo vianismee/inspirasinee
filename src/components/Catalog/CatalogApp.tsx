@@ -1,8 +1,6 @@
 import { Suspense } from "react";
-import { AddService } from "./AddService";
-
 import TableSkeleton from "../Dashboard/TableSekeleton";
-import { AddCatalog } from "./AddCatalog";
+
 import { CatalogTable } from "./CatalogTable";
 
 export function CatalogApp() {
@@ -16,9 +14,6 @@ export function CatalogApp() {
           <p className="text-gray-500 text-center md:text-left dark:text-gray-400 mt-1">
             Manage dan update harga Service Catalog.
           </p>
-        </div>
-        <div className="flex gap-3">
-          <AddCatalog />
         </div>
       </header>
       <Suspense fallback={<TableSkeleton />}>

@@ -11,8 +11,10 @@ import { Input } from "../ui/input";
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
+import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
 
 export function AddCatalog() {
+  const { fetchCatalog } = useServiceCatalogStore();
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [category, setCategory] = useState<string>("");
   const handleInsertCategory = async () => {
@@ -25,6 +27,7 @@ export function AddCatalog() {
       throw error;
     }
     toast.success(`Berhasil Menambah Category ${category}`);
+    fetchCatalog();
     setCategory("");
     setIsOpen(!isOpen);
   };

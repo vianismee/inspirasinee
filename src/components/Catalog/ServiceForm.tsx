@@ -59,12 +59,14 @@ export default function ServiceForm({
 
   useEffect(() => {
     if (initialData) {
+      // Mode Edit
       form.reset({
-        name: initialData.name,
-        amount: initialData.amount,
-        category_id: initialData.service_category?.id,
+        name: initialData.name || "",
+        amount: initialData.amount || 0,
+        category_id: initialData.service_category?.id || undefined,
       });
     } else {
+      // Mode Tambah Baru (aman dari undefined)
       form.reset({
         name: "",
         amount: undefined,

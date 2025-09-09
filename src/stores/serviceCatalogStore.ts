@@ -20,6 +20,11 @@ export interface Category {
   id: number;
   name: string;
 }
+export interface DiscountFormData {
+  label: string;
+  amount?: number | null;
+  percent?: number | null;
+}
 
 interface ServiceCatalogState {
   serviceCatalog: ServiceCatalog[];
@@ -33,6 +38,9 @@ interface ServiceCatalogState {
   ) => Promise<void>;
   deleteService: (serviceId: number) => Promise<void>;
   subscribeToChanges: () => () => void;
+  addDiscount: (data: DiscountFormData) => Promise<void>;
+  updateDiscount: (discountId: number, data: DiscountFormData) => Promise<void>;
+  deleteDiscount: (discountId: number) => Promise<void>;
 }
 
 export const useServiceCatalogStore = create<ServiceCatalogState>(
@@ -51,13 +59,15 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           { data: discountData, error: discountError },
           { data: categoryData, error: categoryError },
         ] = await Promise.all([
-          // Query kembali mengambil semua data service dengan relasinya
           supabase
             .from("service_catalog")
             .select("*, service_category(*)")
             .order("name", { ascending: true }),
           supabase.from("discount").select("*"),
-          supabase.from("service_category").select("*"),
+          supabase
+            .from("service_category")
+            .select("*")
+            .order("name", { ascending: true }),
         ]);
 
         if (serviceError) throw serviceError;
@@ -88,7 +98,25 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         if (error) throw error;
 
         toast.success("Layanan berhasil diperbarui.");
-        get().fetchCatalog(); // Panggil fetch ulang untuk sinkronisasi
+
+        // Optimistic Update: Perbarui state lokal tanpa perlu fetch ulang
+        set((state) => {
+          const updatedCatalog = state.serviceCatalog.map((service) => {
+            if (service.id === serviceId) {
+              const category =
+                state.serviceCategory.find(
+                  (cat) => cat.id === dataToUpdate.category_id
+                ) || null;
+              return {
+                ...service,
+                ...dataToUpdate,
+                service_category: category,
+              };
+            }
+            return service;
+          });
+          return { serviceCatalog: updatedCatalog };
+        });
       } catch (error) {
         console.error("Gagal memperbarui service:", error);
         toast.error("Gagal memperbarui layanan.");
@@ -106,7 +134,8 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         if (error) throw error;
 
         toast.success("Layanan berhasil dihapus.");
-        // Cukup filter state di client, tidak perlu fetch ulang semua data
+
+        // Optimistic Update: Hapus dari state lokal
         set((state) => ({
           serviceCatalog: state.serviceCatalog.filter(
             (s) => s.id !== serviceId
@@ -120,7 +149,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
 
     subscribeToChanges: () => {
       const supabase = createClient();
-      // Saat ada perubahan, fetch ulang semua data
       const refreshData = () => get().fetchCatalog();
 
       const serviceChannel = supabase
@@ -150,11 +178,90 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         )
         .subscribe();
 
+      // ✅ Fungsi cleanup yang sudah diperbaiki
       return () => {
         supabase.removeChannel(serviceChannel);
         supabase.removeChannel(categoryChannel);
         supabase.removeChannel(discountChannel);
       };
+    },
+
+    addDiscount: async (data) => {
+      const supabase = createClient();
+      try {
+        const { data: newDiscount, error } = await supabase
+          .from("discount")
+          .insert(data)
+          .select()
+          .single();
+
+        if (error) throw error;
+        toast.success(`Diskon "${newDiscount.label}" berhasil ditambahkan.`);
+
+        // Optimistic update
+        set((state) => ({
+          discountOptions: [...state.discountOptions, newDiscount].sort(
+            (a, b) => a.label.localeCompare(b.label)
+          ),
+        }));
+      } catch (error) {
+        console.error("Gagal menambah diskon:", error);
+        toast.error("Gagal menambah diskon.");
+      }
+    },
+
+    updateDiscount: async (discountId, data) => {
+      const supabase = createClient();
+      try {
+        const { data: updatedDiscount, error } = await supabase
+          .from("discount")
+          .update(data)
+          .eq("id", discountId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        toast.success(`Diskon "${updatedDiscount.label}" berhasil diperbarui.`);
+
+        // Optimistic update
+        set((state) => ({
+          discountOptions: state.discountOptions.map((d) =>
+            d.id === discountId ? updatedDiscount : d
+          ),
+        }));
+      } catch (error) {
+        console.error("Gagal memperbarui diskon:", error);
+        toast.error("Gagal memperbarui diskon.");
+      }
+    },
+
+    deleteDiscount: async (discountId) => {
+      const supabase = createClient();
+      try {
+        // Ambil data dulu untuk toast message
+        const discountToDelete = get().discountOptions.find(
+          (d) => d.id === discountId
+        );
+        if (!discountToDelete) throw new Error("Diskon tidak ditemukan");
+
+        const { error } = await supabase
+          .from("discount")
+          .delete()
+          .eq("id", discountId);
+
+        if (error) throw error;
+        toast.success(`Diskon "${discountToDelete.label}" berhasil dihapus.`);
+
+        // Optimistic update
+        set((state) => ({
+          discountOptions: state.discountOptions.filter(
+            (d) => d.id !== discountId
+          ),
+        }));
+      } catch (error) {
+        console.error("Gagal menghapus diskon:", error);
+        toast.error("Gagal menghapus diskon.");
+      }
     },
   })
 );
