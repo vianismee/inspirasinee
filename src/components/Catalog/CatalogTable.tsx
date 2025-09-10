@@ -1,7 +1,7 @@
 "use client";
 
 import { useServiceCatalogStore, Category } from "@/stores/serviceCatalogStore";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { DataTable } from "../data-table/data-table";
 import { DataTableToolbar } from "../data-table/data-table-toolbar";
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
@@ -17,20 +17,10 @@ import {
   DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
 import { Button } from "../ui/button";
-import { MoreHorizontal, PlusCircle, Trash2, Pencil } from "lucide-react";
+import { MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import { Badge } from "../ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../ui/dialog";
-import ServiceForm from "./ServiceForm";
-import { toast } from "sonner";
-import { createClient } from "@/utils/supabase/client";
-import { Input } from "../ui/input";
 
+// Tipe untuk data service
 interface Service {
   id: number;
   name: string;
@@ -38,17 +28,20 @@ interface Service {
   service_category: Category | null;
 }
 
-export function CatalogTable() {
+// Tipe untuk props yang diterima dari komponen induk (CatalogApp)
+interface CatalogTableProps {
+  onEdit: (service: Service) => void;
+}
+
+export function CatalogTable({ onEdit }: CatalogTableProps) {
+  // State untuk filtering, dikontrol oleh URL query
   const [name] = useQueryState("name", parseAsString.withDefault(""));
   const [category] = useQueryState(
     "category",
     parseAsArrayOf(parseAsString).withDefault([])
   );
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingService, setEditingService] = useState<Service | null>(null);
-  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
 
+  // Mengambil data dan fungsi dari Zustand store
   const {
     fetchCatalog,
     serviceCatalog,
@@ -57,12 +50,7 @@ export function CatalogTable() {
     deleteService,
   } = useServiceCatalogStore();
 
-  useEffect(() => {
-    fetchCatalog();
-    const unsubscribe = subscribeToChanges();
-    return () => unsubscribe();
-  }, [fetchCatalog, subscribeToChanges]);
-
+  // Filter data service berdasarkan query dari URL
   const filteredService = useMemo(() => {
     return serviceCatalog.filter((service) => {
       const matchesName =
@@ -75,27 +63,7 @@ export function CatalogTable() {
     });
   }, [serviceCatalog, name, category]);
 
-  const handleInsertCategory = async () => {
-    if (!newCategoryName.trim()) {
-      toast.error("Nama kategori tidak boleh kosong.");
-      return;
-    }
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("service_category")
-      .insert({ name: newCategoryName.trim() })
-      .single();
-
-    if (error) {
-      toast.error(`Gagal menambah kategori: ${error.message}`);
-      return;
-    }
-    toast.success(`Berhasil menambah kategori: ${newCategoryName}`);
-    fetchCatalog();
-    setNewCategoryName("");
-    setIsCategoryDialogOpen(false);
-  };
-
+  // Definisi kolom untuk data table
   const columns = useMemo<ColumnDef<Service>[]>(
     () => [
       {
@@ -159,17 +127,14 @@ export function CatalogTable() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="flex items-center gap-2"
-                    onSelect={() => {
-                      setEditingService(service);
-                      setIsFormOpen(true);
-                    }}
+                    onSelect={() => onEdit(service)} // Memanggil fungsi onEdit dari props
                   >
                     <Pencil className="h-4 w-4" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="flex items-center gap-2 text-red-600 focus:text-red-600 focus:bg-red-50"
-                    onSelect={() => deleteService(service.id)}
+                    onSelect={() => deleteService(service.id)} // Memanggil fungsi delete dari store
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
@@ -182,73 +147,22 @@ export function CatalogTable() {
         size: 32,
       },
     ],
-    [deleteService, serviceCategory]
+    [deleteService, serviceCategory, onEdit] // Menambahkan onEdit sebagai dependency
   );
 
+  // Inisialisasi table menggunakan custom hook
   const { table } = useDataTable({
     data: filteredService,
     columns,
-    pageCount: -1,
+    pageCount: -1, // Diasumsikan tidak ada pagination sisi client
     initialState: { columnPinning: { right: ["actions"] } },
     getRowId: (row) => String(row.id),
   });
 
-  const handleDialogChange = (open: boolean) => {
-    setIsFormOpen(open);
-    if (!open) {
-      setEditingService(null);
-    }
-  };
-
   return (
     <div className="w-full space-y-4">
       <DataTable table={table}>
-        <DataTableToolbar table={table}>
-          <Dialog open={isFormOpen} onOpenChange={handleDialogChange}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setIsFormOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Service
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingService ? "Edit Service" : "Tambah Service Baru"}
-                </DialogTitle>
-              </DialogHeader>
-              <ServiceForm
-                onFormSuccess={() => setIsFormOpen(false)}
-                initialData={editingService}
-              />
-            </DialogContent>
-          </Dialog>
-          <Dialog
-            open={isCategoryDialogOpen}
-            onOpenChange={setIsCategoryDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Button variant={"outline"} className="ml-2">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Category
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add Service Category</DialogTitle>
-              </DialogHeader>
-              <div className="flex gap-3 py-4">
-                <Input
-                  placeholder="e.g. Premium Wash"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleInsertCategory()}
-                />
-                <Button onClick={handleInsertCategory}>Add</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </DataTableToolbar>
+        <DataTableToolbar table={table} />
       </DataTable>
     </div>
   );

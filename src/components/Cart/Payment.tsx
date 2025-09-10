@@ -105,34 +105,19 @@ export function Payment() {
           <h1 className="w-full text-center font-bold text-2xl">
             {formatedCurrency(totalPrice)}
           </h1>
-          <RadioGroup
-            className="flex w-full gap-4"
-            onValueChange={(value) => setPayment(value)}
-            defaultValue={payment}
-          >
-            {PAYMENT.map((paymentItem, index) => (
-              <Label
-                key={index}
-                htmlFor={`payment-${paymentItem.value}`}
-                className="flex gap-2 items-center w-full py-3 pl-4 border-2 border-zinc-300 rounded-md cursor-pointer
-                has-[:checked]:border-blue-500 has-[:checked]:ring-2 has-[:checked]:ring-blue-200
-                transition-all"
+          <div className="flex flex-col sm:flex-row w-full gap-3">
+            {PAYMENT.map((paymentItem) => (
+              <Button
+                key={paymentItem.value}
+                variant={payment === paymentItem.value ? "default" : "outline"}
+                onClick={() => setPayment(paymentItem.value)}
+                className="w-full justify-start py-6 text-md font-medium"
               >
-                <RadioGroupItem
-                  value={paymentItem.value}
-                  id={`payment-${paymentItem.value}`}
-                  className="peer sr-only"
-                />
-                <div
-                  className="flex h-5 w-5 items-center justify-center rounded-full border border-zinc-400
-                  peer-data-[state=checked]:border-blue-500 peer-data-[state=checked]:bg-blue-500"
-                >
-                  <div className="h-2 w-2 rounded-full bg-white"></div>
-                </div>
-                <span className="text-md font-bold">{paymentItem.label}</span>
-              </Label>
+                {/* Anda bisa menambahkan ikon di sini jika mau */}
+                {paymentItem.label}
+              </Button>
             ))}
-          </RadioGroup>
+          </div>
         </div>
         <DialogFooter>
           {!isSuccess ? (

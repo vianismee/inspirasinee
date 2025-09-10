@@ -30,6 +30,7 @@ import {
   ComboboxItem,
   ComboboxTrigger,
 } from "@/components/ui/combobox";
+import { ScrollArea } from "../ui/scroll-area";
 
 export function Services() {
   const { cart, addItem, removeItem, updateItem, subTotal, resetCart } =
@@ -96,23 +97,29 @@ export function Services() {
 
                 <ComboboxContent>
                   <ComboboxEmpty>Layanan tidak ditemukan.</ComboboxEmpty>
-                  {Object.entries(groupedServices).map(
-                    ([category, services], index) => (
-                      <React.Fragment key={category}>
-                        <ComboboxGroup>
-                          <ComboboxGroupLabel>{category}</ComboboxGroupLabel>
-                          {services.map((service) => (
-                            <ComboboxItem key={service.id} value={service.name}>
-                              {service.name}
-                            </ComboboxItem>
-                          ))}
-                        </ComboboxGroup>
-                        {index < Object.entries(groupedServices).length - 1 && (
-                          <Separator className="my-1" />
-                        )}
-                      </React.Fragment>
-                    )
-                  )}
+                  <ScrollArea className="h-[250px]">
+                    {Object.entries(groupedServices).map(
+                      ([category, services], index) => (
+                        <React.Fragment key={category}>
+                          <ComboboxGroup>
+                            <ComboboxGroupLabel>{category}</ComboboxGroupLabel>
+                            {services.map((service) => (
+                              <ComboboxItem
+                                key={service.id}
+                                value={service.name}
+                              >
+                                {service.name}
+                              </ComboboxItem>
+                            ))}
+                          </ComboboxGroup>
+                          {index <
+                            Object.entries(groupedServices).length - 1 && (
+                            <Separator className="my-1" />
+                          )}
+                        </React.Fragment>
+                      )
+                    )}
+                  </ScrollArea>
                 </ComboboxContent>
               </Combobox>
             </div>
