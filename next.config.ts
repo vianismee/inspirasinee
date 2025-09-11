@@ -1,5 +1,15 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {};
+const withPWA = require("next-pwa")({
+  dest: "public",
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === "development",
+});
 
-export default nextConfig;
+// 2. Bungkus `nextConfig` Anda dengan `withPWA`
+const nextConfig: NextConfig = {
+  // Konfigurasi Next.js Anda yang lain bisa ditambahkan di sini jika ada
+};
+
+export default withPWA(nextConfig);

@@ -5,6 +5,10 @@ import { Toaster } from "sonner";
 export const metadata: Metadata = {
   title: "INSPIRASINEE",
   description: "Cuci Sepatu Terbaik di Kota Malang",
+  manifest: "/manifest.json",
+  icons: {
+    apple: "/asset/apple-touch-icon.png", // Ini akan membuat <link rel="apple-touch-icon" ...>
+  },
 };
 
 export default function RootLayout({
