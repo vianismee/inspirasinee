@@ -2,11 +2,46 @@ import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { create } from "zustand";
 
+// 1. Definisikan tipe data baru untuk hasil grouping
+interface ServiceDetail {
+  service: string;
+  amount: string;
+}
+
+interface GroupedOrderItem {
+  shoe_name: string;
+  services: ServiceDetail[];
+}
+
+// Tipe data `OrderItem` asli dari database (tidak diubah)
 interface OrderItem {
   service: string;
   shoe_name: string;
   amount: string;
 }
+
+// 2. Buat fungsi helper untuk mengelompokkan data
+const groupOrderItems = (items: OrderItem[]): GroupedOrderItem[] => {
+  if (!items || items.length === 0) {
+    return [];
+  }
+
+  const grouped = items.reduce((acc, item) => {
+    if (!acc[item.shoe_name]) {
+      acc[item.shoe_name] = [];
+    }
+    acc[item.shoe_name].push({
+      service: item.service,
+      amount: item.amount,
+    });
+    return acc;
+  }, {} as Record<string, ServiceDetail[]>);
+
+  return Object.entries(grouped).map(([shoe_name, services]) => ({
+    shoe_name,
+    services,
+  }));
+};
 
 interface Discount {
   order_invoice_id: number;
@@ -27,7 +62,7 @@ interface Orders {
   customers: Customers;
   invoice_id: string;
   status: string;
-  order_item: OrderItem[];
+  order_item: GroupedOrderItem[]; // Tipe data diubah menjadi hasil grouping
   subtotal: number;
   order_discounts?: Discount[];
   total_price: number;
@@ -35,13 +70,11 @@ interface Orders {
   created_at: string;
 }
 
-// <<< UBAH: Perbarui tipe data untuk fetchOrder
 interface OrdersState {
   orders: Orders[];
   count: number;
   singleOrders: Orders | null;
   isLoading: boolean;
-  // Opsi sekarang menjadi sebuah objek untuk fleksibilitas
   fetchOrder: (options?: {
     invoice?: string;
     page?: number;
@@ -59,49 +92,58 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
   isLoading: false,
   count: 0,
 
-  // <<< UBAH: Logika fetchOrder dirombak total untuk mendukung pagination
   fetchOrder: async (options = {}) => {
     set({ isLoading: true });
-    // Destrukturisasi opsi dengan nilai default untuk pagination
     const { invoice, page = 1, pageSize = 10 } = options;
     const supabase = createClient();
     const selectQuery = "*, order_item (*), order_discounts(*), customers(*)";
 
     try {
-      // 1. Logika untuk mengambil SATU order (tidak berubah)
       if (invoice) {
         const { data: singleData, error: errorData } = await supabase
           .from("orders")
           .select(selectQuery)
           .eq("invoice_id", invoice)
           .single();
+
         if (errorData) {
           console.error("Gagal memuat data order tunggal:", errorData);
           set({ singleOrders: null });
           return false;
         }
-        set({ singleOrders: singleData });
+
+        // 3. Lakukan grouping SEBELUM menyimpan ke state
+        const groupedItems = groupOrderItems(
+          singleData.order_item as OrderItem[]
+        );
+        const processedData = { ...singleData, order_item: groupedItems };
+
+        set({ singleOrders: processedData });
         return true;
       }
 
-      // 2. Logika BARU untuk mengambil BANYAK order dengan pagination
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
 
       const { data, error, count } = await supabase
         .from("orders")
-        .select(selectQuery, { count: "exact" }) // 'exact' untuk mendapatkan total data
-        .range(from, to) // Ambil data sesuai rentang halaman
+        .select(selectQuery, { count: "exact" })
+        .range(from, to)
         .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Gagal memuat data orders:", error);
-        set({ orders: [], count: 0 }); // Reset jika gagal
+        set({ orders: [], count: 0 });
         return false;
       }
 
-      // Set state dengan data halaman ini dan total data keseluruhan
-      set({ orders: data || [], count: count || 0 });
+      // 3. Lakukan grouping untuk setiap order SEBELUM menyimpan ke state
+      const processedData = (data || []).map((order) => ({
+        ...order,
+        order_item: groupOrderItems(order.order_item as OrderItem[]),
+      }));
+
+      set({ orders: processedData as Orders[], count: count || 0 });
       return true;
     } catch (error) {
       console.error("Terjadi kesalahan pada fetchOrder:", error);
@@ -132,7 +174,6 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     }
   },
 
-  // Fungsi subscribe sekarang kompatibel dengan fetchOrder yang baru
   subscribeToOrders: (invoice_id) => {
     const supabase = createClient();
     const channel = supabase
@@ -143,13 +184,10 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
           event: "*",
           schema: "public",
           table: "orders",
-          // Jika ada invoice_id, hanya dengarkan perubahan pada baris itu
           filter: invoice_id ? `invoice_id=eq.${invoice_id}` : undefined,
         },
         (payload) => {
           console.log("Perubahan terdeteksi:", payload);
-          // Panggil fetchOrder lagi untuk memperbarui data
-          // Jika ada invoice_id, fetch data tunggal itu. Jika tidak, fetch halaman pertama.
           get().fetchOrder({ invoice: invoice_id });
         }
       )

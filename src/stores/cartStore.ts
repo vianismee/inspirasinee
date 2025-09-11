@@ -4,21 +4,32 @@ import { createClient } from "@/utils/supabase/client";
 import { useCustomerStore } from "./customerStore";
 import { toast } from "sonner";
 
-// Antarmuka untuk item di dalam keranjang
-interface CartItem {
-  id: number;
-  shoeName: string;
-  serviceName: string;
+// BARU: Tipe data untuk satu layanan dalam item
+export interface ServiceItem {
+  name: string;
   amount: number;
 }
 
-// Fungsi untuk menghitung ulang subtotal dan total harga
+// UBAH: Antarmuka untuk item di dalam keranjang
+interface CartItem {
+  id: number;
+  shoeName: string;
+  services: ServiceItem[]; // Setiap item punya array layanan
+}
+
+// UBAH: Fungsi untuk menghitung ulang subtotal dan total harga
 const recalculateTotals = (cart: CartItem[], activeDiscounts: Discount[]) => {
-  const subTotal = cart.reduce((total, item) => total + item.amount, 0);
+  // Hitung subtotal dengan menjumlahkan semua harga layanan di setiap item
+  const subTotal = cart.reduce((total, item) => {
+    const itemTotal = item.services.reduce(
+      (itemSum, service) => itemSum + service.amount,
+      0
+    );
+    return total + itemTotal;
+  }, 0);
 
   const totalDiscountValue = activeDiscounts.reduce((total, discount) => {
     if (discount.percent) {
-      // DIBULATKAN: Hasil diskon persen dibulatkan sebelum dijumlahkan
       const discountValue = Math.round(subTotal * discount.percent);
       return total + discountValue;
     }
@@ -28,12 +39,11 @@ const recalculateTotals = (cart: CartItem[], activeDiscounts: Discount[]) => {
     return total;
   }, 0);
 
-  // DIBULATKAN: Harga total akhir juga dibulatkan
   const totalPrice = Math.round(Math.max(0, subTotal - totalDiscountValue));
   return { subTotal, totalPrice };
 };
 
-// Antarmuka untuk state dari cart store
+// UBAH: Antarmuka untuk state dari cart store
 interface CartState {
   invoice: string;
   cart: CartItem[];
@@ -44,29 +54,28 @@ interface CartState {
   setPayment: (payment: string) => void;
   setInvoice: (id: string) => void;
   addItem: () => void;
-  updateItem: (
-    id: number,
-    field: keyof CartItem,
-    value: string | number
-  ) => void;
+  // UBAH: updateItem hanya untuk shoeName
+  updateItem: (id: number, field: "shoeName", value: string) => void;
   removeItem: (id: number) => void;
+  // BARU: Aksi untuk menambah dan menghapus layanan
+  addServiceToItem: (itemId: number, service: ServiceItem) => void;
+  removeServiceFromItem: (itemId: number, serviceName: string) => void;
   addDiscount: (discount: Discount) => void;
   removeDiscount: (discountName: string) => void;
   handleSubmit: () => Promise<boolean>;
   resetCart: () => void;
 }
 
-// Objek kosong sebagai template untuk item baru
-const emptyService: Omit<CartItem, "id"> = {
+// UBAH: Objek kosong sebagai template untuk item baru
+const emptyItem: Omit<CartItem, "id"> = {
   shoeName: "",
-  serviceName: "",
-  amount: 0,
+  services: [],
 };
 
 export const useCartStore = create<CartState>((set, get) => ({
-  // State awal
+  // UBAH: State awal
   invoice: "",
-  cart: [{ ...emptyService, id: Date.now() }],
+  cart: [{ ...emptyItem, id: Date.now() }],
   subTotal: 0,
   activeDiscounts: [],
   totalPrice: 0,
@@ -78,9 +87,9 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   addItem: () =>
     set((state) => {
-      const newCart = [...state.cart, { ...emptyService, id: Date.now() }];
-      const totals = recalculateTotals(newCart, state.activeDiscounts);
-      return { cart: newCart, ...totals };
+      const newCart = [...state.cart, { ...emptyItem, id: Date.now() }];
+      // Kalkulasi tidak perlu di sini karena item baru harganya 0
+      return { cart: newCart };
     }),
 
   removeItem: (id) =>
@@ -91,17 +100,47 @@ export const useCartStore = create<CartState>((set, get) => ({
       return { cart: newCart, ...totals };
     }),
 
+  // UBAH: updateItem disederhanakan hanya untuk shoeName
   updateItem: (id, field, value) =>
     set((state) => {
-      const { serviceCatalog } = useServiceCatalogStore.getState();
       const newCart = state.cart.map((item) => {
         if (item.id === id) {
-          const updatedItem = { ...item, [field]: value };
-          if (field === "serviceName") {
-            const service = serviceCatalog.find((s) => s.name === value);
-            updatedItem.amount = service?.amount || 0;
+          return { ...item, [field]: value };
+        }
+        return item;
+      });
+      // Tidak perlu kalkulasi ulang karena nama sepatu tidak mengubah harga
+      return { cart: newCart };
+    }),
+
+  // BARU: Aksi untuk menambah layanan ke item
+  addServiceToItem: (itemId, service) =>
+    set((state) => {
+      const newCart = state.cart.map((item) => {
+        if (item.id === itemId) {
+          // Cek agar tidak ada layanan duplikat
+          if (item.services.some((s) => s.name === service.name)) {
+            toast.warning(`Layanan "${service.name}" sudah ada di item ini.`);
+            return item;
           }
-          return updatedItem;
+          const updatedServices = [...item.services, service];
+          return { ...item, services: updatedServices };
+        }
+        return item;
+      });
+      const totals = recalculateTotals(newCart, state.activeDiscounts);
+      return { cart: newCart, ...totals };
+    }),
+
+  // BARU: Aksi untuk menghapus layanan dari item
+  removeServiceFromItem: (itemId, serviceName) =>
+    set((state) => {
+      const newCart = state.cart.map((item) => {
+        if (item.id === itemId) {
+          const updatedServices = item.services.filter(
+            (s) => s.name !== serviceName
+          );
+          return { ...item, services: updatedServices };
         }
         return item;
       });
@@ -111,6 +150,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   addDiscount: (discount) =>
     set((state) => {
+      // ... logika ini tidak berubah ...
       if (state.activeDiscounts.some((d) => d.label === discount.label)) {
         toast.warning(`Diskon "${discount.label}" sudah diterapkan.`);
         return state;
@@ -123,6 +163,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   removeDiscount: (discountName) =>
     set((state) => {
+      // ... logika ini tidak berubah ...
       const newActiveDiscounts = state.activeDiscounts.filter(
         (d) => d.label !== discountName
       );
@@ -140,9 +181,10 @@ export const useCartStore = create<CartState>((set, get) => ({
       toast.error("Data pelanggan belum dipilih.");
       return false;
     }
-    if (cart.some((item) => !item.shoeName || !item.serviceName)) {
+    // UBAH: Validasi baru, cek jika ada item tanpa layanan
+    if (cart.some((item) => !item.shoeName || item.services.length === 0)) {
       toast.error(
-        "Harap lengkapi semua detail item (nama sepatu dan layanan)."
+        "Harap lengkapi semua detail item (nama sepatu dan minimal satu layanan)."
       );
       return false;
     }
@@ -152,8 +194,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       let customerIdToUse = activeCustomer.customer_id;
 
       if (activeCustomer.isNew) {
+        // ... logika simpan customer baru tidak berubah ...
         toast.info("Menyimpan data pelanggan baru...");
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { isNew, ...customerToInsert } = activeCustomer;
         const { data: newCustomer, error: customerInsertError } = await supabase
           .from("customers")
@@ -173,14 +215,14 @@ export const useCartStore = create<CartState>((set, get) => ({
         invoice_id: invoice,
         status: "ongoing",
         customer_id: customerIdToUse,
-        subtotal: subTotal, // subTotal sudah pasti integer
-        total_price: totalPrice, // totalPrice sudah dibulatkan
+        subtotal: subTotal,
+        total_price: totalPrice,
         payment: payment,
       });
 
       if (activeDiscounts.length > 0) {
+        // ... logika simpan diskon tidak berubah ...
         const discountsToInsert = activeDiscounts.map((discount) => {
-          // DIBULATKAN: Pastikan nilai yang dikirim ke DB juga bulat
           const appliedAmount = discount.percent
             ? Math.round(subTotal * discount.percent)
             : discount.amount || 0;
@@ -191,16 +233,20 @@ export const useCartStore = create<CartState>((set, get) => ({
             discounted_amount: appliedAmount,
           };
         });
-
         await supabase.from("order_discounts").insert(discountsToInsert);
       }
 
-      const itemsToInsert = cart.map((item) => ({
-        invoice_id: invoice,
-        shoe_name: item.shoeName,
-        service: item.serviceName,
-        amount: item.amount,
-      }));
+      // UBAH: Logika untuk menyimpan item ke tabel order_item
+      // Kita "ratakan" (flatten) data dari keranjang.
+      // Satu item dengan 3 layanan akan menjadi 3 baris di database.
+      const itemsToInsert = cart.flatMap((item) =>
+        item.services.map((service) => ({
+          invoice_id: invoice,
+          shoe_name: item.shoeName,
+          service: service.name,
+          amount: service.amount,
+        }))
+      );
 
       await supabase.from("order_item").insert(itemsToInsert);
 
@@ -209,7 +255,6 @@ export const useCartStore = create<CartState>((set, get) => ({
       const errorMessage = (error as Error).message;
       toast.error(errorMessage);
       console.error("Error saat submit:", errorMessage);
-      // Rollback logic could be added here if needed
       return false;
     }
   },
@@ -217,7 +262,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   resetCart: () =>
     set({
       invoice: "",
-      cart: [{ ...emptyService, id: Date.now() }],
+      cart: [{ ...emptyItem, id: Date.now() }], // UBAH
       subTotal: 0,
       activeDiscounts: [],
       totalPrice: 0,

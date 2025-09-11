@@ -1,9 +1,9 @@
 "use client";
 
-import { useCartStore } from "@/stores/cartStore";
+import { useCartStore, ServiceItem } from "@/stores/cartStore"; // UBAH: Impor tipe ServiceItem
 import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
 import { formatedCurrency } from "@/lib/utils";
-import { ChevronDown, RotateCcw, Trash } from "lucide-react";
+import { ChevronDown, RotateCcw, Trash, X } from "lucide-react"; // BARU: Impor ikon X
 import * as React from "react";
 
 // Impor Komponen UI
@@ -18,7 +18,6 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Separator } from "../ui/separator";
-// Impor semua komponen Combobox
 import {
   Combobox,
   ComboboxAnchor,
@@ -31,14 +30,24 @@ import {
   ComboboxTrigger,
 } from "@/components/ui/combobox";
 import { ScrollArea } from "../ui/scroll-area";
+import { Badge } from "../ui/badge"; // BARU: Impor Badge
 
 export function Services() {
-  const { cart, addItem, removeItem, updateItem, subTotal, resetCart } =
-    useCartStore();
+  // UBAH: Ambil aksi baru, hapus 'updateItem' karena sudah dipecah
+  const {
+    cart,
+    addItem,
+    removeItem,
+    updateItem, // Masih dipakai untuk shoeName
+    addServiceToItem, // BARU
+    removeServiceFromItem, // BARU
+    subTotal,
+    resetCart,
+  } = useCartStore();
   const { serviceCatalog } = useServiceCatalogStore();
 
-  // Kelompokkan layanan berdasarkan kategori
   const groupedServices = React.useMemo(() => {
+    // ... logika ini tidak berubah
     return serviceCatalog.reduce((acc, service) => {
       const categoryName = service.service_category?.name || "Lainnya";
       if (!acc[categoryName]) {
@@ -49,99 +58,140 @@ export function Services() {
     }, {} as Record<string, typeof serviceCatalog>);
   }, [serviceCatalog]);
 
+  const handleServiceSelect = (itemId: number, serviceName: string) => {
+    const service = serviceCatalog.find((s) => s.name === serviceName);
+    if (service) {
+      addServiceToItem(itemId, { name: service.name, amount: service.amount });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Order Detail</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {cart.map((item) => (
-          <div
-            key={item.id}
-            className="p-4 border rounded-md grid grid-cols-1 md:grid-cols-3 gap-4 relative"
-          >
-            <div className="space-y-2 md:col-span-1">
-              <Label htmlFor={`shoeName-${item.id}`}>Nama Sepatu</Label>
-              <Input
-                id={`shoeName-${item.id}`}
-                value={item.shoeName}
-                onChange={(e) =>
-                  updateItem(item.id, "shoeName", e.target.value)
-                }
-                className="border-zinc-300"
-                placeholder="e.g., Nike Air Jordan"
-              />
-            </div>
+        {cart.map((item) => {
+          // BARU: Hitung total per item di sini
+          const itemTotal = item.services.reduce(
+            (sum, service) => sum + service.amount,
+            0
+          );
 
-            <div className="space-y-2 md:col-span-1">
-              <Label htmlFor={`service-${item.id}`}>Jenis Layanan</Label>
-              <Combobox
-                value={item.serviceName}
-                onValueChange={(service) => {
-                  updateItem(item.id, "serviceName", service);
-                }}
-              >
-                <ComboboxAnchor>
-                  {/* UBAH: Input dibuat readOnly agar tidak bisa diketik */}
-                  <ComboboxTrigger>
-                    <ComboboxInput
-                      id={`service-${item.id}`}
-                      placeholder="Pilih layanan..."
-                      className="w-full border-zinc-400 cursor-default"
-                      readOnly
-                      value={item.serviceName}
-                    />
-                    <ChevronDown className="h-4 w-4" />
-                  </ComboboxTrigger>
-                </ComboboxAnchor>
-
-                <ComboboxContent>
-                  <ComboboxEmpty>Layanan tidak ditemukan.</ComboboxEmpty>
-                  <ScrollArea className="h-[250px]">
-                    {Object.entries(groupedServices).map(
-                      ([category, services], index) => (
-                        <React.Fragment key={category}>
-                          <ComboboxGroup>
-                            <ComboboxGroupLabel>{category}</ComboboxGroupLabel>
-                            {services.map((service) => (
-                              <ComboboxItem
-                                key={service.id}
-                                value={service.name}
-                              >
-                                {service.name}
-                              </ComboboxItem>
-                            ))}
-                          </ComboboxGroup>
-                          {index <
-                            Object.entries(groupedServices).length - 1 && (
-                            <Separator className="my-1" />
-                          )}
-                        </React.Fragment>
-                      )
-                    )}
-                  </ScrollArea>
-                </ComboboxContent>
-              </Combobox>
-            </div>
-
-            <div className="flex items-end justify-between md:col-span-1">
-              <div className="space-y-2">
-                <Label>Harga</Label>
-                <p className="font-semibold text-lg">
-                  {formatedCurrency(item.amount)}
-                </p>
+          return (
+            <div
+              key={item.id}
+              className="p-4 border rounded-md grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6 relative"
+            >
+              {/* === Kolom Nama Sepatu (Tidak banyak berubah) === */}
+              <div className="space-y-2 md:col-span-1">
+                <Label htmlFor={`shoeName-${item.id}`}>Nama Sepatu</Label>
+                <Input
+                  id={`shoeName-${item.id}`}
+                  value={item.shoeName}
+                  onChange={(e) =>
+                    updateItem(item.id, "shoeName", e.target.value)
+                  }
+                  className="border-zinc-300"
+                  placeholder="e.g., Nike Air Jordan"
+                />
               </div>
-              <Button
-                variant="destructive"
-                size="icon"
-                onClick={() => removeItem(item.id)}
-                disabled={cart.length <= 1}
-              >
-                <Trash className="h-4 w-4" />
-              </Button>
+
+              {/* === Kolom Harga & Tombol Hapus (Layout disesuaikan) === */}
+              <div className="flex items-end justify-between md:col-span-1">
+                <div className="space-y-2">
+                  <Label>Harga</Label>
+                  <p className="font-semibold text-lg">
+                    {formatedCurrency(itemTotal)}{" "}
+                    {/* UBAH: Gunakan itemTotal */}
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => removeItem(item.id)}
+                  disabled={cart.length <= 1}
+                >
+                  <Trash className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* === Bagian Layanan (Dirombak Total) === */}
+              <div className="space-y-4 md:col-span-2">
+                <Label>Layanan Tambahan</Label>
+                {/* BARU: Area untuk menampilkan layanan yang dipilih sebagai Badge */}
+                <div className="flex flex-wrap gap-2">
+                  {item.services.length > 0 ? (
+                    item.services.map((service) => (
+                      <Badge
+                        key={service.name}
+                        variant="secondary"
+                        className="py-1 px-2 text-sm"
+                      >
+                        {service.name}
+                        <button
+                          onClick={() =>
+                            removeServiceFromItem(item.id, service.name)
+                          }
+                          className="ml-2 rounded-full hover:bg-zinc-300 dark:hover:bg-zinc-600 p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))
+                  ) : (
+                    <p className="text-xs text-zinc-500">
+                      Belum ada layanan yang ditambahkan.
+                    </p>
+                  )}
+                </div>
+                <Combobox
+                  onValueChange={(val) => handleServiceSelect(item.id, val)}
+                  value=""
+                >
+                  <ComboboxAnchor>
+                    <ComboboxTrigger>
+                      <ComboboxInput
+                        placeholder="+ Tambah layanan"
+                        className="w-full border-zinc-400"
+                        readOnly
+                      />
+                      <ChevronDown className="h-4 w-4" />
+                    </ComboboxTrigger>
+                  </ComboboxAnchor>
+                  <ComboboxContent>
+                    <ComboboxEmpty>Layanan tidak ditemukan.</ComboboxEmpty>
+                    <ScrollArea className="h-[250px]">
+                      {Object.entries(groupedServices).map(
+                        ([category, services], index) => (
+                          <React.Fragment key={category}>
+                            <ComboboxGroup>
+                              <ComboboxGroupLabel>
+                                {category}
+                              </ComboboxGroupLabel>
+                              {services.map((service) => (
+                                <ComboboxItem
+                                  key={service.id}
+                                  value={service.name}
+                                >
+                                  {service.name}
+                                </ComboboxItem>
+                              ))}
+                            </ComboboxGroup>
+                            {index <
+                              Object.entries(groupedServices).length - 1 && (
+                              <Separator className="my-1" />
+                            )}
+                          </React.Fragment>
+                        )
+                      )}
+                    </ScrollArea>
+                  </ComboboxContent>
+                </Combobox>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         <Button variant="default" onClick={addItem} className="w-full">
           + Tambah Item

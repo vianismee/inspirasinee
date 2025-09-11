@@ -13,9 +13,8 @@ import { formatedCurrency, formatPhoneNumber } from "@/lib/utils";
 import { Logo } from "../Logo";
 import { MapPin, Phone, User } from "lucide-react";
 import { Badge } from "../ui/badge";
-import { Orders } from "@/types/index"; // Ganti dengan tipe data order Anda
+import { Orders } from "@/types/index";
 
-// Terima 'order' sebagai prop
 interface TrackingMobileProps {
   order: Orders;
 }
@@ -23,6 +22,7 @@ interface TrackingMobileProps {
 export function TrackingMobile({ order }: TrackingMobileProps) {
   return (
     <main className="w-full bg-white max-w-2xl mx-auto">
+      {/* ... bagian atas tidak berubah ... */}
       <section className="h-screen sticky top-0 z-0">
         <div className="relative translate-y-[30px] z-10 w-full flex flex-col gap-10 items-center justify-center">
           <Logo size={15} />
@@ -55,6 +55,7 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
             </CardContent>
           </Card>
           <Card className="w-full border shadow-2xs">
+            {/* ... CardHeader dan Detail Pelanggan tidak berubah ... */}
             <CardHeader>
               <CardTitle className="text-lg font-bold tracking-wider">
                 {order?.invoice_id}
@@ -92,26 +93,33 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
               <Separator />
               <div className="flex flex-col gap-3">
                 <h3 className="font-semibold text-md">Detail Order</h3>
+                {/* === UBAH BAGIAN INI === */}
                 <div className="flex flex-col gap-4">
-                  {order?.order_item.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-center text-sm"
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-bold">{item.shoe_name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {item.service}
-                        </span>
+                  {order?.order_item.map((groupedItem, index) => (
+                    <div key={index} className="flex flex-col text-sm">
+                      <span className="font-bold">{groupedItem.shoe_name}</span>
+                      <div className="flex flex-col pl-2">
+                        {groupedItem.services.map((service, serviceIndex) => (
+                          <div
+                            key={serviceIndex}
+                            className="flex justify-between items-center"
+                          >
+                            <span className="text-xs text-muted-foreground">
+                              - {service.service}
+                            </span>
+                            <span className="font-mono text-xs">
+                              {formatedCurrency(parseFloat(service.amount))}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                      <span className="font-mono">
-                        {formatedCurrency(parseFloat(item.amount))}
-                      </span>
                     </div>
                   ))}
                 </div>
+                {/* === AKHIR BAGIAN PERUBAHAN === */}
               </div>
             </CardContent>
+            {/* ... CardFooter tidak berubah ... */}
             <CardFooter className="flex flex-col gap-2">
               <Separator />
               <div className="w-full flex flex-col gap-2 pt-4">
@@ -145,6 +153,7 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
               </div>
             </CardFooter>
           </Card>
+          {/* ... sisa komponen tidak berubah ... */}
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center text-sm">

@@ -27,22 +27,23 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
       className="absolute inset-0 min-h-screen w-full p-4 sm:p-6 md:p-8"
       style={{
         backgroundImage: `
-              linear-gradient(to right, rgba(229,231,235,0.8) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(229,231,235,0.8) 1px, transparent 1px),
-              radial-gradient(circle 500px at 20% 80%, rgba(139,92,246,0.3), transparent),
-              radial-gradient(circle 500px at 80% 20%, rgba(59,130,246,0.3), transparent)
-            `,
+            linear-gradient(to right, rgba(229,231,235,0.8) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(229,231,235,0.8) 1px, transparent 1px),
+            radial-gradient(circle 500px at 20% 80%, rgba(139,92,246,0.3), transparent),
+            radial-gradient(circle 500px at 80% 20%, rgba(59,130,246,0.3), transparent)
+          `,
         backgroundSize: "48px 48px, 48px 48px, 100% 100%, 100% 100%",
       }}
     >
       <div className="max-w-6xl mx-auto">
+        {/* ... header tidak berubah ... */}
         <header className="flex flex-col items-center gap-4 mb-10">
           <Logo size={12} className="scale-120" />
         </header>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
           <div className="lg:col-span-2">
             <Card className="shadow-lg">
+              {/* ... CardHeader dan Detail Pelanggan tidak berubah ... */}
               <CardHeader>
                 <CardTitle className="text-xl font-bold tracking-wider">
                   {order?.invoice_id}
@@ -99,28 +100,35 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                 <Separator />
                 <div>
                   <h3 className="font-semibold mb-3">Rincian Order</h3>
-                  <div className="space-y-3">
-                    {order?.order_item.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center text-sm"
-                      >
-                        <div>
-                          <span className="font-semibold">
-                            {item.shoe_name}
-                          </span>
-                          <p className="text-xs text-muted-foreground">
-                            {item.service}
-                          </p>
-                        </div>
-                        <span className="font-mono">
-                          {formatedCurrency(parseFloat(item.amount))}
+                  {/* === UBAH BAGIAN INI === */}
+                  <div className="space-y-4">
+                    {order?.order_item.map((groupedItem, index) => (
+                      <div key={index} className="flex flex-col text-sm">
+                        <span className="font-semibold">
+                          {groupedItem.shoe_name}
                         </span>
+                        <div className="flex flex-col pl-3 mt-1 space-y-1">
+                          {groupedItem.services.map((service, serviceIndex) => (
+                            <div
+                              key={serviceIndex}
+                              className="flex justify-between items-center"
+                            >
+                              <p className="text-xs text-muted-foreground">
+                                - {service.service}
+                              </p>
+                              <span className="font-mono text-xs">
+                                {formatedCurrency(parseFloat(service.amount))}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
+                  {/* === AKHIR BAGIAN PERUBAHAN === */}
                 </div>
               </CardContent>
+              {/* ... CardFooter tidak berubah ... */}
               <CardFooter className="bg-zinc-50 flex flex-col gap-2 p-6">
                 <div className="w-full space-y-2">
                   <div className="flex justify-between text-sm">
@@ -152,7 +160,7 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
               </CardFooter>
             </Card>
           </div>
-
+          {/* ... sisa komponen tidak berubah ... */}
           <div className="lg:col-span-1 flex flex-col gap-8">
             <Card className="shadow-lg">
               <CardHeader className="text-center">

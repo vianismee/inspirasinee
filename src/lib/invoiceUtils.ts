@@ -1,4 +1,4 @@
-import { ICustomers, IDiscount, IItems } from "@/types";
+import { ICustomers, IItems } from "@/types";
 import { formatedCurrency } from "./utils";
 
 // Interface untuk data yang dibutuhkan oleh fungsi
@@ -38,12 +38,28 @@ export const generateReceiptText = ({
   const separator = `-----------------------------------\n\n`;
 
   const orderDetailsHeader = `Detail Service:\n\n`;
-  const orderDetails = cart
-    .map(
-      (item) =>
-        `${item.shoe_name}\n` +
-        `${item.service} - ${formatedCurrency(parseFloat(item.amount))}`
-    )
+
+  // BARU: Logika untuk mengelompokkan dan memformat detail order
+  const groupedCart = cart.reduce((acc, item) => {
+    if (!acc[item.shoe_name]) {
+      acc[item.shoe_name] = [];
+    }
+    acc[item.shoe_name].push({
+      service: item.service,
+      amount: item.amount,
+    });
+    return acc;
+  }, {} as Record<string, { service: string; amount: string }[]>);
+
+  const orderDetails = Object.entries(groupedCart)
+    .map(([shoeName, services]) => {
+      const servicesText = services
+        .map(
+          (s) => `  - ${s.service} ${formatedCurrency(parseFloat(s.amount))}`
+        )
+        .join("\n");
+      return `${shoeName}\n${servicesText}`;
+    })
     .join("\n\n");
 
   const summaryHeader = `\n\n-----------------------------------\n`;

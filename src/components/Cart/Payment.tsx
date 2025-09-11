@@ -11,8 +11,6 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { Wallet2 } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import { Label } from "../ui/label";
 import { formatedCurrency } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -41,13 +39,15 @@ export function Payment() {
   } = useCartStore();
   const { activeCustomer, clearCustomer } = useCustomerStore();
 
-  const formattedCart: IItems[] = cart.map((item) => ({
-    shoe_name: item.shoeName,
-    service: item.serviceName,
-    amount: String(item.amount),
-  }));
+  // UBAH: Sesuaikan format data keranjang untuk struk WhatsApp
+  const formattedCart: IItems[] = cart.flatMap((item) =>
+    item.services.map((service) => ({
+      shoe_name: item.shoeName,
+      service: service.name,
+      amount: String(service.amount),
+    }))
+  );
 
-  // <<< BARU: Format data diskon dari cart store sebelum dikirim
   const formattedDiscounts = activeDiscounts.map((discount) => {
     const amount = discount.percent
       ? Math.round(subTotal * discount.percent)
@@ -66,7 +66,7 @@ export function Payment() {
         subTotal,
         totalPrice,
         payment,
-        discounts: formattedDiscounts, // <<< UBAH: Kirim diskon yang sudah diformat
+        discounts: formattedDiscounts,
       })
     : "";
 
@@ -105,7 +105,7 @@ export function Payment() {
           <h1 className="w-full text-center font-bold text-2xl">
             {formatedCurrency(totalPrice)}
           </h1>
-          <div className="flex flex-col sm:flex-row w-full gap-3">
+          <div className="flex flex-col sm:flex-row w-full gap-3 pt-2">
             {PAYMENT.map((paymentItem) => (
               <Button
                 key={paymentItem.value}
@@ -113,7 +113,6 @@ export function Payment() {
                 onClick={() => setPayment(paymentItem.value)}
                 className="w-full justify-start py-6 text-md font-medium"
               >
-                {/* Anda bisa menambahkan ikon di sini jika mau */}
                 {paymentItem.label}
               </Button>
             ))}

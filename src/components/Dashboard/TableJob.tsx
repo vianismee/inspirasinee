@@ -14,6 +14,7 @@ import {
   User,
   Phone,
   MapPin,
+  CheckCheck,
 } from "lucide-react";
 // Impor dari nuqs untuk state di URL
 import {
@@ -55,24 +56,13 @@ import formatTimeAgo from "@/lib/formatDateAgo";
 import { generateReceiptText } from "@/lib/invoiceUtils";
 import { formatedCurrency } from "@/lib/utils";
 import { useOrderStore } from "@/stores/orderStore";
-import { ICustomers, IDiscount, IItems } from "@/types";
+// UBAH: Impor tipe Orders dari file global
+import { Orders, IItems } from "@/types";
 
-// Interface untuk struktur data order
-interface Orders {
-  customer_id: string;
-  invoice_id: string;
-  customers: ICustomers;
-  status: string;
-  order_item: IItems[];
-  subtotal: number;
-  order_discounts?: IDiscount[];
-  total_price: number;
-  payment: string;
-  created_at: string;
-}
+// UBAH: Hapus definisi interface Orders lokal karena sudah diimpor
 
 export default function TableJob() {
-  // State untuk filter dari URL
+  // ... state dan hooks tidak berubah ...
   const [invoice_id] = useQueryState(
     "invoice_id",
     parseAsString.withDefault("")
@@ -81,31 +71,24 @@ export default function TableJob() {
     "status",
     parseAsArrayOf(parseAsString).withDefault([])
   );
-
-  // State untuk pagination dari URL
   const [page] = useQueryState("page", parseAsInteger.withDefault(1));
   const [perPage] = useQueryState("perPage", parseAsInteger.withDefault(10));
-
-  // Ambil state dan actions dari store
   const {
     fetchOrder,
     orders,
-    count, // Ambil total data
+    count,
     subscribeToOrders,
     deleteInvoice,
     updateOrderStep,
     updatePayment,
   } = useOrderStore();
 
-  // useEffect untuk mengambil data saat halaman atau ukuran halaman berubah
   React.useEffect(() => {
-    // Panggil fetchOrder dengan opsi pagination
     fetchOrder({ page, pageSize: perPage });
     const unsubscribe = subscribeToOrders();
     return () => unsubscribe();
   }, [fetchOrder, subscribeToOrders, page, perPage]);
 
-  // Logika filter client-side (opsional, bisa dipindah ke server)
   const filteredData = React.useMemo(() => {
     return orders.filter((project) => {
       const matchesTitle =
@@ -119,6 +102,7 @@ export default function TableJob() {
 
   const columns = React.useMemo<ColumnDef<Orders>[]>(
     () => [
+      // ... kolom select, invoice_id tidak berubah ...
       {
         id: "select",
         header: ({ table }) => (
@@ -176,6 +160,7 @@ export default function TableJob() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
+                {/* ... DialogHeader dan Detail Pelanggan tidak berubah ... */}
                 <DialogHeader>
                   <DialogTitle className="text-lg font-bold tracking-wider">
                     {order.invoice_id}
@@ -212,25 +197,37 @@ export default function TableJob() {
                 <Separator />
                 <div className="flex flex-col gap-3">
                   <h3 className="font-semibold text-md">Order Detail</h3>
+                  {/* === UBAH BAGIAN INI === */}
                   <div className="flex flex-col gap-4">
-                    {order.order_item.map((item, index) => (
+                    {order.order_item.map((groupedItem, index) => (
                       <div
-                        key={item.shoe_name + index}
-                        className="flex justify-between items-center text-sm"
+                        key={groupedItem.shoe_name + index}
+                        className="flex flex-col text-sm"
                       >
-                        <div className="flex flex-col">
-                          <span className="font-bold">{item.shoe_name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {item.service}
-                          </span>
-                        </div>
-                        <span className="font-mono">
-                          {formatedCurrency(parseFloat(item.amount))}
+                        <span className="font-bold">
+                          {groupedItem.shoe_name}
                         </span>
+                        <div className="flex flex-col pl-2 mt-1 space-y-1">
+                          {groupedItem.services.map((service, serviceIndex) => (
+                            <div
+                              key={service.service + serviceIndex}
+                              className="flex justify-between items-center"
+                            >
+                              <span className="text-xs text-muted-foreground">
+                                - {service.service}
+                              </span>
+                              <span className="font-mono text-xs">
+                                {formatedCurrency(parseFloat(service.amount))}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
+                  {/* === AKHIR BAGIAN PERUBAHAN === */}
                 </div>
+                {/* ... Sisa dialog tidak berubah ... */}
                 <Separator />
                 <div className="flex flex-col gap-2">
                   <div className="flex justify-between items-center text-sm">
@@ -278,6 +275,7 @@ export default function TableJob() {
           );
         },
       },
+      // ... kolom status, payment, created_at, dan actions tidak berubah ...
       {
         id: "status",
         accessorKey: "status",
@@ -437,32 +435,43 @@ export default function TableJob() {
         cell: function Cell({ row }) {
           const order = row.original;
           const handleSendWhatsapp = () => {
+            // ... fungsi ini tidak berubah
             if (!order.customers?.whatsapp) {
               alert("Nomor WhatsApp customer tidak ditemukan.");
               return;
             }
-
-            // BARU: Format data diskon sebelum dikirim
             const formattedDiscounts = order.order_discounts?.map((d) => ({
               label: d.discount_code,
               amount: d.discounted_amount,
             }));
-
-            // UBAH: Kirim data diskon yang sudah diformat
             const receiptText = generateReceiptText({
               customer: order.customers,
               invoice: order.invoice_id,
-              cart: order.order_item,
+              cart: order.order_item.flatMap((item) =>
+                item.services.map((service) => ({
+                  shoe_name: item.shoe_name,
+                  service: service.service,
+                  amount: service.amount,
+                }))
+              ),
               subTotal: order.subtotal,
               totalPrice: order.total_price,
               payment: order.payment,
-              discounts: formattedDiscounts, // <-- Tambahkan properti ini
+              discounts: formattedDiscounts,
             });
-
             const encodedText = encodeURIComponent(receiptText);
             const whatsappURL = `https://wa.me/${order.customers.whatsapp}?text=${encodedText}`;
             window.open(whatsappURL, "_blank");
           };
+
+          // BARU: Definisikan aksi untuk tombol Selesaikan (ganti dengan logikamu)
+          const handleCompleteOrder = () => {
+            // CONTOH: Ganti alert ini dengan logikamu, misalnya memindahkan order ke arsip
+            alert(
+              `Menyelesaikan dan mengarsipkan invoice: ${order.invoice_id}`
+            );
+          };
+
           return (
             <div className="flex items-center justify-center">
               <DropdownMenu>
@@ -482,6 +491,18 @@ export default function TableJob() {
                     <Send className="h-4 w-4" />
                     Kirim Invoice
                   </DropdownMenuItem>
+
+                  {/* === TOMBOL BARU DITAMBAHKAN DI SINI === */}
+                  <DropdownMenuItem
+                    onSelect={handleCompleteOrder}
+                    disabled={order.status !== "finish"} // <-- Kondisi di sini
+                    className="flex items-center gap-2"
+                  >
+                    <CheckCheck className="h-4 w-4" />
+                    Selesaikan
+                  </DropdownMenuItem>
+                  {/* === AKHIR DARI TOMBOL BARU === */}
+
                   <DropdownMenuItem
                     className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
                     onSelect={() => deleteInvoice(order.invoice_id)}
