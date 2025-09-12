@@ -1,6 +1,6 @@
 import { useCartStore } from "@/stores/cartStore";
 import { useCustomerStore } from "@/stores/customerStore";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../ui/dialog";
+} from "@/components/ui/dialog";
 import { Wallet2 } from "lucide-react";
 import { formatedCurrency } from "@/lib/utils";
 import { useState } from "react";
@@ -90,10 +90,20 @@ export function Payment() {
     setIsSuccess(false);
   };
 
+  // Logic untuk membuka dialog baru setelah sukses
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const handleDialogStateChange = (open: boolean) => {
+    // Jika dialog ditutup dan transaksi sudah sukses, reset state
+    if (!open && isSuccess) {
+      handleClearData();
+    }
+    setIsDialogOpen(open);
+  };
+
   return (
-    <Dialog>
+    <Dialog open={isDialogOpen} onOpenChange={handleDialogStateChange}>
       <DialogTrigger asChild>
-        <Button>Payment</Button>
+        <Button onClick={() => setIsDialogOpen(true)}>Payment</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader className="w-full flex items-center">
@@ -105,7 +115,7 @@ export function Payment() {
           <h1 className="w-full text-center font-bold text-2xl">
             {formatedCurrency(totalPrice)}
           </h1>
-          <div className="flex flex-col sm:flex-row w-full gap-3 pt-2">
+          <div className="flex flex-col w-full gap-3 pt-2">
             {PAYMENT.map((paymentItem) => (
               <Button
                 key={paymentItem.value}
@@ -141,7 +151,12 @@ export function Payment() {
                 </Button>
               </a>
               <DialogClose asChild>
-                <Button onClick={handleClearData} variant="outline">
+                {/* FIX: Tambahkan className="w-full" agar konsisten */}
+                <Button
+                  onClick={handleClearData}
+                  variant="outline"
+                  className="w-full"
+                >
                   Transaksi Baru
                 </Button>
               </DialogClose>

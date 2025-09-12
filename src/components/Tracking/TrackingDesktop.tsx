@@ -1,4 +1,6 @@
 "use client";
+
+import { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -14,6 +16,10 @@ import { Logo } from "../Logo";
 import { MapPin, Phone, User } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Orders } from "@/types/index";
+import { ContactCs, generateComplaintText } from "@/lib/invoiceUtils";
+
+// --- PERBAIKAN: Gunakan konstanta untuk nomor yang berulang ---
+const WHATSAPP_NUMBER = "+6289525444734";
 
 interface TrackingDesktopProps {
   order: Orders;
@@ -21,6 +27,18 @@ interface TrackingDesktopProps {
 
 export function TrackingDesktop({ order }: TrackingDesktopProps) {
   const customer = order.customers;
+
+  const { contactAdminUrl, complainChatUrl } = useMemo(() => {
+    const contactMessage = ContactCs(order.invoice_id);
+    const complaintMessage = generateComplaintText(order.invoice_id);
+    const encodedContact = encodeURIComponent(contactMessage);
+    const encodedComplain = encodeURIComponent(complaintMessage);
+
+    return {
+      contactAdminUrl: `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedContact}`,
+      complainChatUrl: `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedComplain}`,
+    };
+  }, [order.invoice_id]);
 
   return (
     <main
@@ -36,14 +54,13 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
       }}
     >
       <div className="max-w-6xl mx-auto">
-        {/* ... header tidak berubah ... */}
         <header className="flex flex-col items-center gap-4 mb-10">
           <Logo size={12} className="scale-120" />
         </header>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          {/* Kolom Kiri: Detail Order */}
           <div className="lg:col-span-2">
             <Card className="shadow-lg">
-              {/* ... CardHeader dan Detail Pelanggan tidak berubah ... */}
               <CardHeader>
                 <CardTitle className="text-xl font-bold tracking-wider">
                   {order?.invoice_id}
@@ -60,6 +77,7 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
               <CardContent className="flex flex-col gap-4">
                 <Separator />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Detail Pelanggan */}
                   <div>
                     <h3 className="font-semibold mb-3">Detail Pelanggan</h3>
                     <div className="text-sm text-muted-foreground space-y-2">
@@ -81,6 +99,7 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                       )}
                     </div>
                   </div>
+                  {/* Metode Pembayaran */}
                   <div>
                     <h3 className="font-semibold mb-3">Metode Pembayaran</h3>
                     <Badge
@@ -98,9 +117,9 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                   </div>
                 </div>
                 <Separator />
+                {/* Rincian Order */}
                 <div>
                   <h3 className="font-semibold mb-3">Rincian Order</h3>
-                  {/* === UBAH BAGIAN INI === */}
                   <div className="space-y-4">
                     {order?.order_item.map((groupedItem, index) => (
                       <div key={index} className="flex flex-col text-sm">
@@ -125,10 +144,9 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                       </div>
                     ))}
                   </div>
-                  {/* === AKHIR BAGIAN PERUBAHAN === */}
                 </div>
               </CardContent>
-              {/* ... CardFooter tidak berubah ... */}
+              {/* Total Pembayaran */}
               <CardFooter className="bg-zinc-50 flex flex-col gap-2 p-6">
                 <div className="w-full space-y-2">
                   <div className="flex justify-between text-sm">
@@ -160,7 +178,8 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
               </CardFooter>
             </Card>
           </div>
-          {/* ... sisa komponen tidak berubah ... */}
+
+          {/* Kolom Kanan: Status & Aksi */}
           <div className="lg:col-span-1 flex flex-col gap-8">
             <Card className="shadow-lg">
               <CardHeader className="text-center">
@@ -173,9 +192,35 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                 <TimelineProgress progress={order?.status || ""} />
               </CardContent>
             </Card>
-            <Button size={"lg"} className="w-full py-6 text-base font-bold">
-              Hubungi Kami
-            </Button>
+            {/* Tombol Aksi */}
+            <div className="flex flex-col w-full gap-2">
+              <a
+                href={contactAdminUrl}
+                target="_blank"
+                className="w-full"
+                rel="noopener noreferrer"
+              >
+                <Button size={"lg"} className="w-full py-6 text-base font-bold">
+                  Hubungi Kami
+                </Button>
+              </a>
+              {order.status === "finish" && (
+                <a
+                  href={complainChatUrl}
+                  target="_blank"
+                  className="w-full"
+                  rel="noopener noreferrer"
+                >
+                  <Button
+                    size={"lg"}
+                    variant={"outline"}
+                    className="w-full py-6 text-base font-bold"
+                  >
+                    Complain
+                  </Button>
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -99,3 +99,42 @@ export const generateReceiptText = ({
     footer
   );
 };
+
+export const ContactCs = (invoice: string) => {
+  const greeting = `Hallo Min, saya mau bertanya terkait pesanan dengan nomor invoice *${invoice}*.`;
+  const separator = `\n-----------------------------------\n\n`;
+  const questionPlaceholder = `[Silakan ketik pertanyaan atau keluhan Anda di sini]\n\n`;
+  const closing = `Terima kasih.`;
+
+  return greeting + separator + questionPlaceholder + closing;
+};
+
+export const generateComplaintText = (invoice: string) => {
+  const header = `*[KELUHAN PELANGGAN]*\n\n`;
+  const intro = `Admin INSPIRASINEE,\n\nSaya ingin mengajukan keluhan terkait pesanan dengan nomor invoice berikut:`;
+  const invoiceDetail = `\n\n*Nomor Invoice: ${invoice}*`;
+  const complaintHeader = `\n\n*Detail Keluhan:*\n`;
+  const complaintBody = "[Silahkan ketik Keluhan Disini]";
+  const closing = `\n\nMohon untuk segera ditindaklanjuti.\n\nTerima kasih.`;
+
+  return (
+    header + intro + invoiceDetail + complaintHeader + complaintBody + closing
+  );
+};
+
+export const generatePickupNotificationText = (
+  customerName: string,
+  invoiceId: string
+) => {
+  const STORE_ADDRESS =
+    "Jl. Bunga Coklat No.1, Jatimulyo, Kec. Lowokwaru, Kota Malang, Jawa Timur 65141";
+  const PICKUP_HOURS = "Setiap hari: 15:00 - 21:00 WIB";
+
+  const greeting = `Hallo kak *${customerName}*,\n\n`;
+  const body = `Kami informasikan bahwa pesanan Anda dengan nomor invoice *${invoiceId}* sudah selesai dan *siap untuk diambil*.`;
+  const locationInfo = `\n\nSilakan datang ke lokasi kami di:\n${STORE_ADDRESS}`;
+  const hoursInfo = `\n\nJam operasional pengambilan:\n${PICKUP_HOURS}`;
+  const closing = `\n\nMohon tunjukkan notifikasi ini saat pengambilan. Terima kasih! 🙏`;
+
+  return greeting + body + locationInfo + hoursInfo + closing;
+};

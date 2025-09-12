@@ -53,11 +53,14 @@ import { Separator } from "@/components/ui/separator";
 // Impor lain-lain
 import { useDataTable } from "@/hooks/use-data-table";
 import formatTimeAgo from "@/lib/formatDateAgo";
-import { generateReceiptText } from "@/lib/invoiceUtils";
+import {
+  generatePickupNotificationText,
+  generateReceiptText,
+} from "@/lib/invoiceUtils";
 import { formatedCurrency } from "@/lib/utils";
 import { useOrderStore } from "@/stores/orderStore";
 // UBAH: Impor tipe Orders dari file global
-import { Orders, IItems } from "@/types";
+import { Orders } from "@/types";
 
 // UBAH: Hapus definisi interface Orders lokal karena sudah diimpor
 
@@ -102,7 +105,6 @@ export default function TableJob() {
 
   const columns = React.useMemo<ColumnDef<Orders>[]>(
     () => [
-      // ... kolom select, invoice_id tidak berubah ...
       {
         id: "select",
         header: ({ table }) => (
@@ -275,7 +277,6 @@ export default function TableJob() {
           );
         },
       },
-      // ... kolom status, payment, created_at, dan actions tidak berubah ...
       {
         id: "status",
         accessorKey: "status",
@@ -435,7 +436,6 @@ export default function TableJob() {
         cell: function Cell({ row }) {
           const order = row.original;
           const handleSendWhatsapp = () => {
-            // ... fungsi ini tidak berubah
             if (!order.customers?.whatsapp) {
               alert("Nomor WhatsApp customer tidak ditemukan.");
               return;
@@ -463,13 +463,14 @@ export default function TableJob() {
             const whatsappURL = `https://wa.me/${order.customers.whatsapp}?text=${encodedText}`;
             window.open(whatsappURL, "_blank");
           };
-
-          // BARU: Definisikan aksi untuk tombol Selesaikan (ganti dengan logikamu)
           const handleCompleteOrder = () => {
-            // CONTOH: Ganti alert ini dengan logikamu, misalnya memindahkan order ke arsip
-            alert(
-              `Menyelesaikan dan mengarsipkan invoice: ${order.invoice_id}`
+            const finishOrder = generatePickupNotificationText(
+              order.customers.username,
+              order.invoice_id
             );
+            const encodedText = encodeURIComponent(finishOrder);
+            const whatsappURL = `https://wa.me/${order.customers.whatsapp}?text=${encodedText}`;
+            window.open(whatsappURL, "_blank");
           };
 
           return (
@@ -499,9 +500,8 @@ export default function TableJob() {
                     className="flex items-center gap-2"
                   >
                     <CheckCheck className="h-4 w-4" />
-                    Selesaikan
+                    Finish
                   </DropdownMenuItem>
-                  {/* === AKHIR DARI TOMBOL BARU === */}
 
                   <DropdownMenuItem
                     className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
