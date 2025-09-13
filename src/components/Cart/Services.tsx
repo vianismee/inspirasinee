@@ -1,6 +1,6 @@
 "use client";
 
-import { useCartStore, ServiceItem } from "@/stores/cartStore"; // UBAH: Impor tipe ServiceItem
+import { useCartStore } from "@/stores/cartStore"; // UBAH: Impor tipe ServiceItem
 import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
 import { formatedCurrency } from "@/lib/utils";
 import { ChevronDown, RotateCcw, Trash, X } from "lucide-react"; // BARU: Impor ikon X

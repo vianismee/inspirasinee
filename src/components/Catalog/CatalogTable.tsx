@@ -1,7 +1,7 @@
 "use client";
 
 import { useServiceCatalogStore, Category } from "@/stores/serviceCatalogStore";
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { DataTable } from "../data-table/data-table";
 import { DataTableToolbar } from "../data-table/data-table-toolbar";
 import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
@@ -42,13 +42,8 @@ export function CatalogTable({ onEdit }: CatalogTableProps) {
   );
 
   // Mengambil data dan fungsi dari Zustand store
-  const {
-    fetchCatalog,
-    serviceCatalog,
-    serviceCategory,
-    subscribeToChanges,
-    deleteService,
-  } = useServiceCatalogStore();
+  const { serviceCatalog, serviceCategory, deleteService } =
+    useServiceCatalogStore();
 
   // Filter data service berdasarkan query dari URL
   const filteredService = useMemo(() => {

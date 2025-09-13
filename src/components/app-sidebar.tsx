@@ -41,29 +41,8 @@ const data = {
       url: "/admin/discount",
       icon: IconTicket,
     },
-    {
-      title: "Customer",
-      url: "/admin/customer",
-      icon: IconUsers,
-    },
   ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
-  ],
+  navSecondary: [],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

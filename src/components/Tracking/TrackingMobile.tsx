@@ -14,12 +14,27 @@ import { Logo } from "../Logo";
 import { MapPin, Phone, User } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Orders } from "@/types/index";
+import { useMemo } from "react";
+import { ContactCs, generateComplaintText } from "@/lib/invoiceUtils";
 
+const WHATSAPP_NUMBER = "+6289525444734";
 interface TrackingMobileProps {
   order: Orders;
 }
 
 export function TrackingMobile({ order }: TrackingMobileProps) {
+  const customer = order.customers;
+  const { contactAdminUrl, complainChatUrl } = useMemo(() => {
+    const contactMessage = ContactCs(order.invoice_id);
+    const complaintMessage = generateComplaintText(order.invoice_id);
+    const encodedContact = encodeURIComponent(contactMessage);
+    const encodedComplain = encodeURIComponent(complaintMessage);
+
+    return {
+      contactAdminUrl: `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedContact}`,
+      complainChatUrl: `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedComplain}`,
+    };
+  }, [order.invoice_id]);
   return (
     <main className="w-full bg-white max-w-2xl mx-auto">
       {/* ... bagian atas tidak berubah ... */}
@@ -175,9 +190,34 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
               </div>
             </CardHeader>
           </Card>
-          <Button size={"lg"} className="py-[30px] font-bold text-xl">
-            Contact Us
-          </Button>
+          <div className="w-full flex flex-col gap-3">
+            <a
+              href={contactAdminUrl}
+              target="_blank"
+              className="w-full"
+              rel="noopener noreferrer"
+            >
+              <Button size={"lg"} className="w-full py-6 text-base font-bold">
+                Hubungi Kami
+              </Button>
+            </a>
+            {order.status === "finish" && (
+              <a
+                href={complainChatUrl}
+                target="_blank"
+                className="w-full"
+                rel="noopener noreferrer"
+              >
+                <Button
+                  size={"lg"}
+                  variant={"outline"}
+                  className="w-full py-6 text-base font-bold"
+                >
+                  Complain
+                </Button>
+              </a>
+            )}
+          </div>
         </div>
       </section>
     </main>
