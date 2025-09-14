@@ -1,10 +1,8 @@
-// BARU: Tipe untuk satu layanan di dalam item yang sudah dikelompokkan
 export type ServiceDetail = {
   service: string;
   amount: string;
 };
 
-// BARU: Tipe untuk item yang sudah dikelompokkan berdasarkan nama sepatu
 export type GroupedOrderItem = {
   shoe_name: string;
   services: ServiceDetail[];
@@ -28,6 +26,8 @@ export type ICustomers = {
   whatsapp: string;
   alamat?: string;
   email?: string;
+  orders?: Orders[];
+  totalSpent?: number;
 };
 
 export type IDiscount = {
@@ -38,12 +38,12 @@ export type IDiscount = {
 
 export type Orders = {
   customer_id: string;
-  customers: ICustomers; // Seharusnya ICustomers agar konsisten
+  customers: ICustomers;
   invoice_id: string;
   status: string;
-  order_item: GroupedOrderItem[]; // UBAH: Menggunakan tipe data yang sudah dikelompokkan
+  order_item: GroupedOrderItem[];
   subtotal: number;
-  order_discounts?: IDiscount[]; // Seharusnya IDiscount agar konsisten
+  order_discounts?: IDiscount[];
   total_price: number;
   payment: string;
   created_at: string;

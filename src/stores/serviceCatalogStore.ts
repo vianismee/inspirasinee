@@ -169,12 +169,15 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
     subscribeToChanges: () => {
       const supabase = createClient();
       const refreshData = () => get().fetchCatalog();
+      // TAMBAHKAN BARIS INI
+      const schema =
+        process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
 
       const serviceChannel = supabase
         .channel("service_catalog_changes")
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "service_catalog" },
+          { event: "*", schema: schema, table: "service_catalog" }, // UBAH INI
           refreshData
         )
         .subscribe();
@@ -183,7 +186,7 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         .channel("service_category_changes")
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "service_category" },
+          { event: "*", schema: schema, table: "service_category" }, // UBAH INI
           refreshData
         )
         .subscribe();
@@ -192,7 +195,7 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         .channel("discount_changes")
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "discount" },
+          { event: "*", schema: schema, table: "discount" }, // UBAH INI
           refreshData
         )
         .subscribe();
