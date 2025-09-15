@@ -1,36 +1,31 @@
-// src/components/Customer/CustomerCard.tsx
-
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription } from "@/components/ui/card";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { DialogHeader, DialogTitle } from "@/components/ui/dialog"; // <-- Impor komponen Dialog
-import { ICustomers, Orders } from "@/types";
+import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ICustomers } from "@/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "../ui/separator";
 import {
   Phone,
   Mail,
   MapPin,
-  ShoppingCart,
+  BrushCleaning,
   Wallet,
   Search,
+  Send,
 } from "lucide-react";
-import { formatedCurrency, formatPhoneNumber } from "@/lib/utils";
+import { formatedCurrency } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 import { Input } from "../ui/input";
 import { useState } from "react";
+import { Button } from "../ui/button";
+import { generateChatCustomer } from "@/lib/invoiceUtils";
 
 interface CustomerCardProps {
   customer: ICustomers | null;
@@ -47,6 +42,14 @@ export function CustomerCard({ customer }: CustomerCardProps) {
     );
   }
 
+  const handleSendMessage = () => {
+    const message = generateChatCustomer(customer);
+    const whatsappUrl = `https://wa.me/${
+      customer.whatsapp
+    }?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
+  };
+
   const filteredOrders =
     customer.orders?.filter((order) =>
       order.invoice_id.toLowerCase().includes(searchInvoice.toLowerCase())
@@ -54,35 +57,37 @@ export function CustomerCard({ customer }: CustomerCardProps) {
 
   return (
     <Card className="shadow-lg border-0">
-      {/* --- BAGIAN YANG DIPERBAIKI --- */}
-      <DialogHeader className="p-6">
-        <div className="flex flex-col items-center text-center gap-2">
-          <Avatar className="w-20 h-20 text-3xl">
-            <AvatarFallback>
-              {customer.username.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="space-y-1">
-            <DialogTitle>{customer.username}</DialogTitle>
-            <CardDescription>ID: {customer.customer_id}</CardDescription>
-          </div>
-        </div>
-      </DialogHeader>
-      {/* --- AKHIR BAGIAN YANG DIPERBAIKI --- */}
-
       <CardContent className="space-y-4 pt-0 p-6">
+        <DialogHeader className="p-6">
+          <div className="flex flex-col items-center text-center gap-2">
+            <Avatar className="w-20 h-20 text-3xl">
+              <AvatarFallback>
+                {customer.username.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="space-y-1">
+              <DialogTitle>{customer.username}</DialogTitle>
+              <CardDescription>ID: {customer.customer_id}</CardDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
         <div className="grid grid-cols-2 gap-4 text-center">
           <div className="space-y-1 p-2 rounded-md bg-muted/50">
-            <ShoppingCart className="w-5 h-5 mx-auto text-muted-foreground" />
-            <p className="font-bold text-lg">{customer.orders?.length || 0}</p>
-            <p className="text-xs text-muted-foreground">Total Pesanan</p>
+            <div>
+              <BrushCleaning className="w-5 h-5 mx-auto text-muted-foreground" />
+              <p className="font-bold text-lg">
+                {customer.orders?.length || 0}
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">Total Service</p>
           </div>
           <div className="space-y-1 p-2 rounded-md bg-muted/50">
             <Wallet className="w-5 h-5 mx-auto text-muted-foreground" />
             <p className="font-bold text-lg">
               {formatedCurrency(customer.totalSpent || 0)}
             </p>
-            <p className="text-xs text-muted-foreground">Total Belanja</p>
+            <p className="text-xs text-muted-foreground">Total Spent</p>
           </div>
         </div>
         <Separator />
@@ -114,45 +119,55 @@ export function CustomerCard({ customer }: CustomerCardProps) {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Cari invoice..."
+              placeholder="Cari invoice untuk melihat riwayat..."
               className="pl-8 h-9"
               value={searchInvoice}
               onChange={(e) => setSearchInvoice(e.target.value)}
             />
           </div>
-          <Accordion type="single" collapsible className="w-full">
-            {filteredOrders.length > 0 ? (
-              filteredOrders.map((order) => (
-                <AccordionItem key={order.invoice_id} value={order.invoice_id}>
-                  <AccordionTrigger>
-                    <div className="flex justify-between w-full pr-4">
-                      <span className="font-mono text-sm">
-                        {order.invoice_id}
-                      </span>
-                      <Badge variant="outline">{order.status}</Badge>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-2 text-xs pl-2 border-l-2 ml-2">
-                      <p>
-                        <strong>Tanggal:</strong>{" "}
-                        {new Date(order.created_at).toLocaleDateString("id-ID")}
-                      </p>
-                      <p>
-                        <strong>Total:</strong>{" "}
-                        {formatedCurrency(order.total_price)}
-                      </p>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Tidak ada riwayat pesanan yang cocok.
-              </p>
-            )}
-          </Accordion>
+          {searchInvoice && (
+            <Accordion type="single" collapsible className="w-full">
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map((order) => (
+                  <AccordionItem
+                    key={order.invoice_id}
+                    value={order.invoice_id}
+                  >
+                    <AccordionTrigger>
+                      <div className="flex justify-between w-full pr-4">
+                        <span className="font-mono text-sm">
+                          {order.invoice_id}
+                        </span>
+                        <Badge variant="outline">{order.status}</Badge>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-2 text-xs pl-2 border-l-2 ml-2">
+                        <p>
+                          <strong>Tanggal:</strong>{" "}
+                          {new Date(order.created_at).toLocaleDateString(
+                            "id-ID"
+                          )}
+                        </p>
+                        <p>
+                          <strong>Total:</strong>{" "}
+                          {formatedCurrency(order.total_price)}
+                        </p>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Tidak ada riwayat pesanan yang cocok.
+                </p>
+              )}
+            </Accordion>
+          )}
         </div>
+        <Button className="w-full" onClick={handleSendMessage}>
+          <Send className="mr-2 h-4 w-4" /> Hubungi Pelanggan
+        </Button>
       </CardContent>
     </Card>
   );

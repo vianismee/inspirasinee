@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import TableSkeleton from "../Dashboard/TableSekeleton";
 import { CatalogTable } from "./CatalogTable";
-import { Button } from "../ui/button"; // Import komponen yang dibutuhkan
+import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,14 +11,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Trash2, Pencil, Save } from "lucide-react";
 import ServiceForm from "./ServiceForm";
 import { Input } from "../ui/input";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
 
-// Definisikan tipe Service di sini agar bisa digunakan
 interface Service {
   id: number;
   name: string;
@@ -27,13 +26,22 @@ interface Service {
 }
 
 export function CatalogApp() {
-  // 1. Pindahkan semua state dan fungsi yang relevan ke sini
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(
+    null
+  );
+  const [editingCategoryName, setEditingCategoryName] = useState<string>("");
 
-  const { fetchCatalog, subscribeToChanges } = useServiceCatalogStore();
+  const {
+    fetchCatalog,
+    subscribeToChanges,
+    serviceCategory,
+    updateCategory,
+    deleteCategory,
+  } = useServiceCatalogStore();
 
   useEffect(() => {
     fetchCatalog();
@@ -57,15 +65,39 @@ export function CatalogApp() {
       return;
     }
     toast.success(`Berhasil menambah kategori: ${newCategoryName}`);
-    fetchCatalog();
+    fetchCatalog(); // fetch ulang untuk memperbarui daftar
     setNewCategoryName("");
-    setIsCategoryDialogOpen(false);
+  };
+
+  const handleStartEditCategory = (category: { id: number; name: string }) => {
+    setEditingCategoryId(category.id);
+    setEditingCategoryName(category.name);
+  };
+
+  const handleSaveCategory = async (categoryId: number) => {
+    if (!editingCategoryName.trim()) {
+      toast.error("Nama kategori tidak boleh kosong.");
+      return;
+    }
+    await updateCategory(categoryId, editingCategoryName.trim());
+    setEditingCategoryId(null);
+    setEditingCategoryName("");
+  };
+
+  const handleDeleteCategory = (category: { id: number; name: string }) => {
+    if (
+      window.confirm(
+        `Apakah Anda yakin ingin menghapus kategori "${category.name}"?`
+      )
+    ) {
+      deleteCategory(category.id);
+    }
   };
 
   const handleDialogChange = (open: boolean) => {
     setIsFormOpen(open);
     if (!open) {
-      setEditingService(null); // Reset service yang diedit saat dialog ditutup
+      setEditingService(null);
     }
   };
 
@@ -86,7 +118,6 @@ export function CatalogApp() {
           </p>
         </div>
 
-        {/* 3. Pindahkan JSX Tombol dan Dialog ke sini */}
         <div className="flex items-center flex-wrap gap-2 justify-center sm:justify-end">
           <Dialog open={isFormOpen} onOpenChange={handleDialogChange}>
             <DialogTrigger asChild>
@@ -95,7 +126,6 @@ export function CatalogApp() {
                 Add Service
               </Button>
             </DialogTrigger>
-            {/* Konten dialog untuk Tambah/Edit Service */}
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>
@@ -111,26 +141,95 @@ export function CatalogApp() {
 
           <Dialog
             open={isCategoryDialogOpen}
-            onOpenChange={setIsCategoryDialogOpen}
+            onOpenChange={(isOpen) => {
+              setIsCategoryDialogOpen(isOpen);
+              if (!isOpen) {
+                setEditingCategoryId(null);
+              }
+            }}
           >
             <DialogTrigger asChild>
               <Button variant={"outline"}>
                 <PlusCircle className="mr-2 h-4 w-4" />
-                Add Category
+                Manage Categories
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Add Service Category</DialogTitle>
+                <DialogTitle>Manage Service Categories</DialogTitle>
               </DialogHeader>
-              <div className="flex gap-3 py-4">
+              <div className="flex gap-3 pt-4">
                 <Input
                   placeholder="e.g. Premium Wash"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleInsertCategory()}
                 />
-                <Button onClick={handleInsertCategory}>Add</Button>
+                <Button onClick={handleInsertCategory}>Add New</Button>
+              </div>
+
+              <div className="mt-6 space-y-3 max-h-60 overflow-y-auto pr-2">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Existing Categories
+                </h4>
+                {serviceCategory.length > 0 ? (
+                  serviceCategory.map((category) => (
+                    <div
+                      key={category.id}
+                      className="flex items-center justify-between gap-2 p-2 rounded-md bg-gray-50 dark:bg-gray-800"
+                    >
+                      {editingCategoryId === category.id ? (
+                        <>
+                          <Input
+                            value={editingCategoryName}
+                            onChange={(e) =>
+                              setEditingCategoryName(e.target.value)
+                            }
+                            onKeyDown={(e) =>
+                              e.key === "Enter" &&
+                              handleSaveCategory(category.id)
+                            }
+                            className="h-9"
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-green-600 hover:text-green-700"
+                            onClick={() => handleSaveCategory(category.id)}
+                          >
+                            <Save className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-sm">{category.name}</span>
+                          <div className="flex items-center">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-blue-600 hover:text-blue-700"
+                              onClick={() => handleStartEditCategory(category)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleDeleteCategory(category)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-center text-gray-500 py-4">
+                    No categories found.
+                  </p>
+                )}
               </div>
             </DialogContent>
           </Dialog>
@@ -138,7 +237,6 @@ export function CatalogApp() {
       </header>
 
       <Suspense fallback={<TableSkeleton />}>
-        {/* 4. Kirim fungsi handleEdit sebagai props ke CatalogTable */}
         <CatalogTable onEdit={handleEdit} />
       </Suspense>
     </div>

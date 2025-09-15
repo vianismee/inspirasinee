@@ -20,6 +20,7 @@ export interface Category {
   id: number;
   name: string;
 }
+
 export interface DiscountFormData {
   label: string;
   amount?: number | null;
@@ -45,6 +46,8 @@ interface ServiceCatalogState {
   addDiscount: (data: DiscountFormData) => Promise<void>;
   updateDiscount: (discountId: number, data: DiscountFormData) => Promise<void>;
   deleteDiscount: (discountId: number) => Promise<void>;
+  updateCategory: (categoryId: number, newName: string) => Promise<void>;
+  deleteCategory: (categoryId: number) => Promise<void>;
 }
 
 export const useServiceCatalogStore = create<ServiceCatalogState>(
@@ -169,7 +172,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
     subscribeToChanges: () => {
       const supabase = createClient();
       const refreshData = () => get().fetchCatalog();
-      // TAMBAHKAN BARIS INI
       const schema =
         process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
 
@@ -177,7 +179,7 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         .channel("service_catalog_changes")
         .on(
           "postgres_changes",
-          { event: "*", schema: schema, table: "service_catalog" }, // UBAH INI
+          { event: "*", schema: schema, table: "service_catalog" },
           refreshData
         )
         .subscribe();
@@ -186,7 +188,7 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         .channel("service_category_changes")
         .on(
           "postgres_changes",
-          { event: "*", schema: schema, table: "service_category" }, // UBAH INI
+          { event: "*", schema: schema, table: "service_category" },
           refreshData
         )
         .subscribe();
@@ -195,7 +197,7 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         .channel("discount_changes")
         .on(
           "postgres_changes",
-          { event: "*", schema: schema, table: "discount" }, // UBAH INI
+          { event: "*", schema: schema, table: "discount" },
           refreshData
         )
         .subscribe();
@@ -277,6 +279,52 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
       } catch (error) {
         console.error("Gagal menghapus diskon:", error);
         toast.error("Gagal menghapus diskon.");
+      }
+    },
+
+    updateCategory: async (categoryId, newName) => {
+      const supabase = createClient();
+      try {
+        const { error } = await supabase
+          .from("service_category")
+          .update({ name: newName })
+          .eq("id", categoryId);
+
+        if (error) throw error;
+
+        toast.success(`Kategori berhasil diubah menjadi "${newName}".`);
+        get().fetchCatalog();
+      } catch (error) {
+        console.error("Gagal memperbarui kategori:", error);
+        toast.error("Gagal memperbarui kategori.");
+      }
+    },
+
+    deleteCategory: async (categoryId) => {
+      const supabase = createClient();
+      try {
+        const categoryToDelete = get().serviceCategory.find(
+          (c) => c.id === categoryId
+        );
+        if (!categoryToDelete) throw new Error("Kategori tidak ditemukan.");
+
+        const { error } = await supabase
+          .from("service_category")
+          .delete()
+          .eq("id", categoryId);
+
+        if (error) throw error;
+
+        toast.success(`Kategori "${categoryToDelete.name}" berhasil dihapus.`);
+        get().fetchCatalog();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
+        console.error("Gagal menghapus kategori:", error);
+        toast.error(
+          error.message.includes("foreign key constraint")
+            ? "Gagal hapus: Kategori masih digunakan oleh layanan."
+            : "Gagal menghapus kategori."
+        );
       }
     },
   })

@@ -190,8 +190,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
           table: "orders",
           filter: invoice_id ? `invoice_id=eq.${invoice_id}` : undefined,
         },
-        (payload) => {
-          console.log("Perubahan terdeteksi:", payload);
+        () => {
           get().fetchOrder({ invoice: invoice_id });
         }
       )
