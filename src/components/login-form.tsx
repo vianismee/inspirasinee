@@ -1,3 +1,6 @@
+"use client";
+
+import { useFormStatus } from "react-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +13,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/app/login/action";
+
+// 3. Buat komponen tombol terpisah untuk menggunakan hook
+function LoginButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button type="submit" className="w-full" disabled={pending}>
+      {pending ? "Logging in..." : "Login"}
+    </Button>
+  );
+}
 
 export function LoginForm({
   className,
@@ -47,9 +61,8 @@ export function LoginForm({
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full">
-                  Login
-                </Button>
+                {/* 4. Ganti tombol lama dengan komponen LoginButton baru */}
+                <LoginButton />
               </div>
             </div>
           </form>

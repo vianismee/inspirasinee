@@ -176,18 +176,21 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
 
   subscribeToOrders: (invoice_id) => {
     const supabase = createClient();
+    // TAMBAHKAN BARIS INI
+    const schema =
+      process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
+
     const channel = supabase
       .channel(`orders-realtime-channel-${invoice_id || "all"}`)
       .on(
         "postgres_changes",
         {
           event: "*",
-          schema: "public",
+          schema: schema, // UBAH INI
           table: "orders",
           filter: invoice_id ? `invoice_id=eq.${invoice_id}` : undefined,
         },
-        (payload) => {
-          console.log("Perubahan terdeteksi:", payload);
+        () => {
           get().fetchOrder({ invoice: invoice_id });
         }
       )

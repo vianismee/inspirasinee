@@ -138,3 +138,10 @@ export const generatePickupNotificationText = (
 
   return greeting + body + locationInfo + hoursInfo + closing;
 };
+
+export const generateChatCustomer = (customer: ICustomers) => {
+  const header = `Hallo kak *${customer.username} (${customer.customer_id})*\n`;
+  const body = `[Isi Pesan]`;
+
+  return header + body;
+};

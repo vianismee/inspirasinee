@@ -3,10 +3,7 @@
 import * as React from "react";
 import {
   IconDashboard,
-  IconHelp,
   IconListDetails,
-  IconSearch,
-  IconSettings,
   IconTicket,
   IconUsers,
 } from "@tabler/icons-react";
@@ -40,6 +37,11 @@ const data = {
       title: "Discount",
       url: "/admin/discount",
       icon: IconTicket,
+    },
+    {
+      title: "Customer",
+      url: "/admin/customer",
+      icon: IconUsers,
     },
   ],
   navSecondary: [],

@@ -493,7 +493,6 @@ export default function TableJob() {
                     Kirim Invoice
                   </DropdownMenuItem>
 
-                  {/* === TOMBOL BARU DITAMBAHKAN DI SINI === */}
                   <DropdownMenuItem
                     onSelect={handleCompleteOrder}
                     disabled={order.status !== "finish"} // <-- Kondisi di sini
