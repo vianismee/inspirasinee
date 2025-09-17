@@ -14,9 +14,9 @@ import { Wallet2 } from "lucide-react";
 import { formatedCurrency } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
-// Impor fungsi yang sudah dipisahkan
 import { generateReceiptText } from "@/lib/invoiceUtils";
 import { IItems } from "@/types";
+import { useRouter } from "next/navigation"; // 1. Impor useRouter
 
 export function Payment() {
   const PAYMENT = [
@@ -26,6 +26,8 @@ export function Payment() {
   ];
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const router = useRouter(); // 2. Inisialisasi router
+
   const {
     totalPrice,
     setPayment,
@@ -39,7 +41,6 @@ export function Payment() {
   } = useCartStore();
   const { activeCustomer, clearCustomer } = useCustomerStore();
 
-  // UBAH: Sesuaikan format data keranjang untuk struk WhatsApp
   const formattedCart: IItems[] = cart.flatMap((item) =>
     item.services.map((service) => ({
       shoe_name: item.shoeName,
@@ -75,6 +76,20 @@ export function Payment() {
 
   const handleProcessPayment = async () => {
     setIsLoading(true);
+
+    // 3. Tambahkan logika untuk QRIS
+    if (payment === "QRIS") {
+      if (totalPrice <= 0) {
+        toast.error("Tidak ada total tagihan untuk dibayar.");
+        setIsLoading(false);
+        return;
+      }
+      // Arahkan ke halaman qris, data totalPrice sudah ada di cartStore
+      router.push("/admin/order/service/qris");
+      return; // Hentikan eksekusi di sini agar tidak lanjut ke handleSubmit
+    }
+
+    // Logika ini hanya berjalan jika pembayaran BUKAN QRIS
     const success = await handleSubmit();
     setIsLoading(false);
 
@@ -90,10 +105,8 @@ export function Payment() {
     setIsSuccess(false);
   };
 
-  // Logic untuk membuka dialog baru setelah sukses
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const handleDialogStateChange = (open: boolean) => {
-    // Jika dialog ditutup dan transaksi sudah sukses, reset state
     if (!open && isSuccess) {
       handleClearData();
     }
@@ -151,7 +164,6 @@ export function Payment() {
                 </Button>
               </a>
               <DialogClose asChild>
-                {/* FIX: Tambahkan className="w-full" agar konsisten */}
                 <Button
                   onClick={handleClearData}
                   variant="outline"
