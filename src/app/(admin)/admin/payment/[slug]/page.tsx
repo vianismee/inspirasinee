@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useParams } from "next/navigation"; // <- Hook dari next/navigation
+import { useRouter, useParams } from "next/navigation";
 import QRCode from "qrcode";
 import { useOrderStore } from "@/stores/orderStore";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { generateQRIS } from "@/lib/QRISUtils";
 import Image from "next/image";
 
-// Komponen untuk loading state (tidak berubah)
+// Komponen untuk loading state
 const LoadingSpinner = () => (
   <div className="flex flex-col items-center justify-center gap-4">
     <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -20,29 +20,36 @@ const LoadingSpinner = () => (
 
 export default function InvoicePaymentPage() {
   const router = useRouter();
-  const params = useParams(); // <- Gunakan useParams untuk mendapatkan slug
-  const slug = params.slug as string;
+  const params = useParams();
+  const slug = params.slug as string; // Ambil invoice_id dari URL
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // Gunakan orderStore untuk mengambil data order yang sudah ada
   const { singleOrders, fetchOrder, isLoading, updatePayment } =
     useOrderStore();
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Ambil data order spesifik berdasarkan slug saat komponen dimuat
   useEffect(() => {
     if (slug) {
       fetchOrder({ invoice: slug });
     }
   }, [slug, fetchOrder]);
 
+  // Generate QR code SETELAH data order berhasil dimuat
   useEffect(() => {
     const staticQrisCode = process.env.NEXT_PUBLIC_STATIC_QRIS_CODE;
+
+    // Gunakan singleOrders (dari orderStore), bukan totalPrice (dari cartStore)
     if (singleOrders && staticQrisCode && canvasRef.current) {
+      // Validasi tambahan: jika order sudah lunas, jangan tampilkan QR
       if (singleOrders.payment !== "Pending") {
         toast.info("Invoice ini sudah lunas.");
-        router.replace("/admin/order");
+        router.replace("/admin");
         return;
       }
+
       try {
         const dynamicQrisData = generateQRIS(
           staticQrisCode,
@@ -54,16 +61,18 @@ export default function InvoicePaymentPage() {
           errorCorrectionLevel: "H",
         });
       } catch (error) {
+        console.log(error);
         toast.error("Gagal membuat QR Code.");
       }
     }
-  }, [singleOrders, router]);
+  }, [singleOrders, router]); // Dependency diubah ke singleOrders
 
   const handleConfirmPayment = async () => {
     setIsProcessing(true);
+    // Update pembayaran menjadi 'QRIS'
     await updatePayment(slug, "QRIS");
     setIsProcessing(false);
-    router.push("/admin/order");
+    router.push("/admin"); // Kembali ke tabel setelah pembayaran berhasil
   };
 
   return (
@@ -84,9 +93,7 @@ export default function InvoicePaymentPage() {
               alt={"Logo QRIS"}
               className="mx-auto mb-4"
             />
-            <h1 className="text-2xl font-bold mb-2">
-              Scan QRIS untuk Membayar
-            </h1>
+            <h1 className="text-2xl font-bold mb-2">Scan QRIS</h1>
             <p className="text-gray-600 mb-4">
               Invoice ID: {singleOrders.invoice_id}
             </p>
@@ -114,7 +121,7 @@ export default function InvoicePaymentPage() {
                 {isProcessing ? "Memproses..." : "Tandai Sudah Bayar (QRIS)"}
               </Button>
               <Button
-                onClick={() => router.back()}
+                onClick={() => router.push("/admin")}
                 variant="outline"
                 className="w-full"
               >
