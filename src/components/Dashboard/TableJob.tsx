@@ -15,6 +15,7 @@ import {
   Phone,
   MapPin,
   CheckCheck,
+  QrCode,
 } from "lucide-react";
 // Impor dari nuqs untuk state di URL
 import {
@@ -59,13 +60,10 @@ import {
 } from "@/lib/invoiceUtils";
 import { formatedCurrency } from "@/lib/utils";
 import { useOrderStore } from "@/stores/orderStore";
-// UBAH: Impor tipe Orders dari file global
 import { Orders } from "@/types";
-
-// UBAH: Hapus definisi interface Orders lokal karena sudah diimpor
+import { useRouter } from "next/navigation";
 
 export default function TableJob() {
-  // ... state dan hooks tidak berubah ...
   const [invoice_id] = useQueryState(
     "invoice_id",
     parseAsString.withDefault("")
@@ -473,6 +471,8 @@ export default function TableJob() {
             window.open(whatsappURL, "_blank");
           };
 
+          const router = useRouter();
+
           return (
             <div className="flex items-center justify-center">
               <DropdownMenu>
@@ -485,6 +485,19 @@ export default function TableJob() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
                   <DropdownMenuSeparator />
+
+                  {order.payment === "Pending" && (
+                    <DropdownMenuItem
+                      onSelect={() =>
+                        router.push(`/admin/payment/${order.invoice_id}`)
+                      }
+                      className="flex items-center gap-2"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      Pembayaran QRIS
+                    </DropdownMenuItem>
+                  )}
+
                   <DropdownMenuItem
                     onSelect={handleSendWhatsapp}
                     className="flex items-center gap-2"
@@ -495,7 +508,7 @@ export default function TableJob() {
 
                   <DropdownMenuItem
                     onSelect={handleCompleteOrder}
-                    disabled={order.status !== "finish"} // <-- Kondisi di sini
+                    disabled={order.status !== "finish"}
                     className="flex items-center gap-2"
                   >
                     <CheckCheck className="h-4 w-4" />
