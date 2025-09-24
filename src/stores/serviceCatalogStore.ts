@@ -87,7 +87,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           serviceCategory: categoryData || [],
         });
       } catch (error) {
-        console.error("Gagal memuat data katalog:", error);
         toast.error("Gagal memuat data katalog.");
       } finally {
         set({ isLoading: false });
@@ -107,7 +106,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         toast.success(`Layanan "${dataToAdd.name}" berhasil ditambahkan.`);
         get().fetchCatalog();
       } catch (error) {
-        console.error("Gagal menambah service:", error);
         toast.error("Gagal menambah layanan baru.");
         throw error;
       }
@@ -142,7 +140,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           return { serviceCatalog: updatedCatalog };
         });
       } catch (error) {
-        console.error("Gagal memperbarui service:", error);
         toast.error("Gagal memperbarui layanan.");
       }
     },
@@ -164,7 +161,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           ),
         }));
       } catch (error) {
-        console.error("Gagal menghapus service:", error);
         toast.error("Gagal menghapus layanan.");
       }
     },
@@ -226,7 +222,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           ),
         }));
       } catch (error) {
-        console.error("Gagal menambah diskon:", error);
         toast.error("Gagal menambah diskon.");
       }
     },
@@ -250,7 +245,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           ),
         }));
       } catch (error) {
-        console.error("Gagal memperbarui diskon:", error);
         toast.error("Gagal memperbarui diskon.");
       }
     },
@@ -277,7 +271,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           ),
         }));
       } catch (error) {
-        console.error("Gagal menghapus diskon:", error);
         toast.error("Gagal menghapus diskon.");
       }
     },
@@ -295,7 +288,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         toast.success(`Kategori berhasil diubah menjadi "${newName}".`);
         get().fetchCatalog();
       } catch (error) {
-        console.error("Gagal memperbarui kategori:", error);
         toast.error("Gagal memperbarui kategori.");
       }
     },
@@ -319,7 +311,6 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         get().fetchCatalog();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
-        console.error("Gagal menghapus kategori:", error);
         toast.error(
           error.message.includes("foreign key constraint")
             ? "Gagal hapus: Kategori masih digunakan oleh layanan."

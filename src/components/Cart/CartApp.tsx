@@ -1,8 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { InfoCustomer } from "./InfoCustomer";
@@ -12,14 +12,25 @@ import { Discount } from "./Discount";
 import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { Payment } from "./Payment";
+import { PointsRedemption } from "@/components/Referral/PointsRedemption";
+import { ReferralCodeInput } from "@/components/Referral/ReferralCodeInput";
 import { Button } from "../ui/button";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
   const activeCustomer = useCustomerStore((state) => state.activeCustomer);
   const { clearCustomer } = useCustomerStore();
-  const { totalPrice, setInvoice, resetCart } = useCartStore();
+  const { totalPrice, setInvoice, resetCart, setReferralDiscount } = useCartStore();
+  const { updateCustomerReferralData } = useCustomerStore();
   const router = useRouter();
+
+  // Referral state for new customers
+  const [referralData, setReferralData] = useState<{
+    referralCode: string;
+    isValid: boolean;
+    discountAmount?: number;
+    referrerId?: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!activeCustomer) {
@@ -30,6 +41,34 @@ export function CartApp() {
   useEffect(() => {
     setInvoice(invoiceId);
   }, [invoiceId, setInvoice]);
+
+  // Apply referral discount if customer has valid referral code
+  useEffect(() => {
+    if (activeCustomer?.referralCodeValid && activeCustomer?.referralDiscountAmount) {
+      setReferralDiscount(activeCustomer.referralDiscountAmount);
+    } else if (referralData?.isValid && referralData?.discountAmount) {
+      setReferralDiscount(referralData.discountAmount);
+    } else {
+      setReferralDiscount(0);
+    }
+  }, [activeCustomer, referralData, setReferralDiscount]);
+
+  const handleReferralApplied = (data: {
+    referralCode: string;
+    isValid: boolean;
+    discountAmount?: number;
+    referrerId?: string;
+  }) => {
+    // Update local state
+    setReferralData(data);
+
+    // Update customer store with referral data
+    updateCustomerReferralData({
+      referralCode: data.referralCode,
+      referralCodeValid: data.isValid,
+      referralDiscountAmount: data.discountAmount,
+    });
+  };
 
   const handleBatal = () => {
     resetCart();
@@ -66,6 +105,13 @@ export function CartApp() {
         </Card>
         <Services />
         <Discount />
+
+        {/* Referral Code Input - Only show for new customers */}
+        {activeCustomer?.isNew && (
+          <ReferralCodeInput onReferralApplied={handleReferralApplied} />
+        )}
+
+        <PointsRedemption />
       </div>
       <div className="fixed md:sticky w-full bottom-0 flex-shrink-0 flex justify-between items-center px-5 py-3 bg-white border-t">
         <Button variant={"outline"} onClick={handleBatal}>

@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,7 +22,6 @@ import { useRouter } from "next/navigation";
 import { useCustomerID } from "@/hooks/useNanoID";
 import Link from "next/link";
 import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
-import { useEffect } from "react";
 
 const formSchema = z.object({
   username: z.string().min(2, { message: "Nama Customer Wajib di Isi" }),
@@ -35,6 +35,7 @@ export function OrderApp() {
   const prepareCustomer = useCustomerStore((state) => state.prepareCustomer);
   const custoemerId = useCustomerID();
   const fetchCatalog = useServiceCatalogStore((state) => state.fetchCatalog);
+
   useEffect(() => {
     fetchCatalog();
   }, [fetchCatalog]);

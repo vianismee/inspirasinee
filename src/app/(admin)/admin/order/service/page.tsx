@@ -1,9 +1,9 @@
-import { CartApp } from "@/components/Cart/CartApp";
+import { AdminCartWrapper } from "@/components/Admin/AdminCartWrapper";
 
 export default function ServicePage() {
   return (
-    <div>
-      <CartApp />
+    <div className="h-screen">
+      <AdminCartWrapper />
     </div>
   );
 }

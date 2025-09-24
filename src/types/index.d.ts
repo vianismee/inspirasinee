@@ -28,12 +28,49 @@ export type ICustomers = {
   email?: string;
   orders?: Orders[];
   totalSpent?: number;
+  points_balance?: number;
 };
 
 export type IDiscount = {
   order_invoice_id: number;
   discount_code: string;
   discounted_amount: number;
+};
+
+export type IReferralSettings = {
+  id?: number;
+  setting_name: string;
+  setting_value: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ICustomerPoints = {
+  id?: number;
+  customer_id: string;
+  points_balance: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type IPointTransaction = {
+  id?: number;
+  customer_id: string;
+  transaction_type: 'credit' | 'debit';
+  points: number;
+  order_invoice_id?: string;
+  related_customer_id?: string;
+  description?: string;
+  created_at?: string;
+};
+
+export type ICustomerPointsSummary = {
+  customer_id: string;
+  points_balance: number;
+  username: string;
+  whatsapp: string;
+  points_created_at?: string;
+  points_updated_at?: string;
 };
 
 export type Orders = {
@@ -47,4 +84,8 @@ export type Orders = {
   total_price: number;
   payment: string;
   created_at: string;
+  referral_code_used?: string;
+  referral_discount_amount?: number;
+  points_used?: number;
+  points_discount_amount?: number;
 };

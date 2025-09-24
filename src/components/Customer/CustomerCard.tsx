@@ -19,13 +19,15 @@ import {
   Wallet,
   Search,
   Send,
+  Gift,
 } from "lucide-react";
 import { formatedCurrency } from "@/lib/utils";
 import { Badge } from "../ui/badge";
 import { Input } from "../ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { generateChatCustomer } from "@/lib/invoiceUtils";
+import { useReferralStore } from "@/stores/referralStore";
 
 interface CustomerCardProps {
   customer: ICustomers | null;
@@ -33,6 +35,23 @@ interface CustomerCardProps {
 
 export function CustomerCard({ customer }: CustomerCardProps) {
   const [searchInvoice, setSearchInvoice] = useState("");
+  const [pointsBalance, setPointsBalance] = useState(0);
+  const { getCustomerPointsBalance } = useReferralStore();
+
+  useEffect(() => {
+    const fetchPoints = async () => {
+      if (customer) {
+        try {
+          const balance = await getCustomerPointsBalance(customer.customer_id);
+          setPointsBalance(balance);
+        } catch (error) {
+          console.error("Error fetching points balance:", error);
+        }
+      }
+    };
+
+    fetchPoints();
+  }, [customer, getCustomerPointsBalance]);
 
   if (!customer) {
     return (
@@ -72,7 +91,7 @@ export function CustomerCard({ customer }: CustomerCardProps) {
           </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-4 text-center">
+        <div className="grid grid-cols-3 gap-4 text-center">
           <div className="space-y-1 p-2 rounded-md bg-muted/50">
             <div>
               <BrushCleaning className="w-5 h-5 mx-auto text-muted-foreground" />
@@ -88,6 +107,13 @@ export function CustomerCard({ customer }: CustomerCardProps) {
               {formatedCurrency(customer.totalSpent || 0)}
             </p>
             <p className="text-xs text-muted-foreground">Total Spent</p>
+          </div>
+          <div className="space-y-1 p-2 rounded-md bg-muted/50">
+            <Gift className="w-5 h-5 mx-auto text-muted-foreground" />
+            <p className="font-bold text-lg">
+              {pointsBalance.toLocaleString('id-ID')}
+            </p>
+            <p className="text-xs text-muted-foreground">Points Balance</p>
           </div>
         </div>
         <Separator />
@@ -110,6 +136,21 @@ export function CustomerCard({ customer }: CustomerCardProps) {
                 <span>{customer.alamat}</span>
               </div>
             )}
+          </div>
+        </div>
+        <Separator />
+        <div>
+          <h4 className="font-semibold mb-3 text-sm">Referral Information</h4>
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Your Referral Code:</span>
+              <Badge variant="secondary" className="font-mono">
+                {customer.customer_id}
+              </Badge>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Share this code with friends to earn points when they make their first order.
+            </div>
           </div>
         </div>
         <Separator />

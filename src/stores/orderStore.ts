@@ -68,6 +68,10 @@ interface Orders {
   total_price: number;
   payment: string;
   created_at: string;
+  referral_code_used?: string;
+  referral_discount_amount?: number;
+  points_used?: number;
+  points_discount_amount?: number;
 }
 
 interface OrdersState {
@@ -96,7 +100,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     set({ isLoading: true });
     const { invoice, page = 1, pageSize = 10 } = options;
     const supabase = createClient();
-    const selectQuery = "*, order_item (*), order_discounts(*), customers(*)";
+    const selectQuery = "*, order_item (*), order_discounts(*), customers(*), referral_code_used, referral_discount_amount, points_used, points_discount_amount";
 
     try {
       if (invoice) {
@@ -107,7 +111,6 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
           .single();
 
         if (errorData) {
-          console.error("Gagal memuat data order tunggal:", errorData);
           set({ singleOrders: null });
           return false;
         }
@@ -132,7 +135,6 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Gagal memuat data orders:", error);
         set({ orders: [], count: 0 });
         return false;
       }
@@ -146,7 +148,6 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       set({ orders: processedData as Orders[], count: count || 0 });
       return true;
     } catch (error) {
-      console.error("Terjadi kesalahan pada fetchOrder:", error);
       return false;
     } finally {
       set({ isLoading: false });
@@ -170,7 +171,6 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     } catch (error) {
       const errorMessage = (error as Error).message;
       toast.error(`Gagal mengubah status: ${errorMessage}`);
-      console.error("Terjadi kesalahan saat mencoba mengubah status:", error);
     }
   },
 
@@ -208,7 +208,6 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       .delete()
       .eq("invoice_id", invoice_id);
     if (error) {
-      console.error(error);
       toast.error("Gagal Menghapus data");
       return;
     }

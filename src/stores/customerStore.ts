@@ -2,10 +2,14 @@ import { createClient } from "@/utils/supabase/client";
 import { create } from "zustand";
 import { toast } from "sonner";
 import { ICustomers, Orders } from "@/types";
+import { useReferralStore } from "./referralStore";
 
 // Interface for customer data used when creating an order
 interface CustomerData extends ICustomers {
   isNew: boolean;
+  referralCode?: string;
+  referralCodeValid?: boolean;
+  referralDiscountAmount?: number;
 }
 
 interface CustomerState {
@@ -43,7 +47,6 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       .maybeSingle();
 
     if (findError) {
-      console.log("Gagal mencari Customer", findError);
       toast.error("Gagal mencari customer.");
       return false;
     }
@@ -55,6 +58,19 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
     set({ activeCustomer: { ...customerData, isNew: true } });
     return true;
+  },
+
+  // Update customer with referral data (called from CartApp)
+  updateCustomerReferralData: (referralData: {
+    referralCode?: string;
+    referralCodeValid?: boolean;
+    referralDiscountAmount?: number;
+  }) => {
+    set((state) => ({
+      activeCustomer: state.activeCustomer
+        ? { ...state.activeCustomer, ...referralData }
+        : null,
+    }));
   },
 
   clearCustomer: () => set({ activeCustomer: null }),
@@ -102,7 +118,6 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Terjadi kesalahan";
-      console.error("Gagal memuat data pelanggan:", errorMessage);
       toast.error(`Gagal memuat data pelanggan: ${errorMessage}`);
     } finally {
       set({ isLoading: false });
@@ -112,16 +127,24 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   deleteCustomer: async (customerId: string) => {
     const supabase = createClient();
     try {
-      const { error } = await supabase
-        .from("customers")
-        .delete()
-        .eq("customer_id", customerId);
+      // Use the database function to safely delete customer and all related data
+      const { data, error } = await supabase.rpc('delete_customer_safely', {
+        p_customer_id: customerId
+      });
 
       if (error) throw error;
-      toast.success("Pelanggan berhasil dihapus.");
+
+      if (data) {
+        toast.success("Pelanggan dan semua data terkait berhasil dihapus.");
+
+        // Refresh customer list
+        await get().fetchCustomers();
+      } else {
+        throw new Error("Gagal menghapus pelanggan.");
+      }
     } catch (error) {
-      console.error("Gagal menghapus pelanggan:", error);
-      toast.error("Gagal menghapus pelanggan.");
+      const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan";
+      toast.error(`Gagal menghapus pelanggan: ${errorMessage}`);
     }
   },
 
@@ -165,7 +188,6 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         `Data pelanggan "${updatedCustomer.username}" berhasil diperbarui.`
       );
     } catch (error) {
-      console.error("Gagal memperbarui data pelanggan:", error);
       toast.error("Gagal memperbarui data pelanggan.");
       throw error;
     }
