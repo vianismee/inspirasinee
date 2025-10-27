@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { generateReceiptText } from "@/lib/invoiceUtils";
 import { IItems } from "@/types";
 import { useRouter } from "next/navigation"; // 1. Impor useRouter
+import { Separator } from "@/components/ui/separator";
 
 export function Payment() {
   const PAYMENT = [
@@ -38,6 +39,10 @@ export function Payment() {
     invoice,
     subTotal,
     activeDiscounts,
+    referralCode,
+    referralDiscount,
+    pointsUsed,
+    pointsDiscount,
   } = useCartStore();
   const { activeCustomer, clearCustomer } = useCustomerStore();
 
@@ -68,6 +73,10 @@ export function Payment() {
         totalPrice,
         payment,
         discounts: formattedDiscounts,
+        referralCode: referralCode || undefined,
+        referralDiscount: referralDiscount || undefined,
+        pointsUsed: pointsUsed || undefined,
+        pointsDiscount: pointsDiscount || undefined,
       })
     : "";
 
@@ -121,25 +130,117 @@ export function Payment() {
       <DialogContent>
         <DialogHeader className="w-full flex items-center">
           <DialogTitle className="flex gap-2 items-center text-xl font-bold">
-            <Wallet2 /> Payment
+            {isSuccess ? (
+              <>
+                <Wallet2 /> Transaksi Berhasil!
+              </>
+            ) : (
+              <>
+                <Wallet2 /> Payment
+              </>
+            )}
           </DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-3 w-full">
-          <h1 className="w-full text-center font-bold text-2xl">
-            {formatedCurrency(totalPrice)}
-          </h1>
-          <div className="flex flex-col w-full gap-3 pt-2">
-            {PAYMENT.map((paymentItem) => (
-              <Button
-                key={paymentItem.value}
-                variant={payment === paymentItem.value ? "default" : "outline"}
-                onClick={() => setPayment(paymentItem.value)}
-                className="w-full justify-start py-6 text-md font-medium"
-              >
-                {paymentItem.label}
-              </Button>
-            ))}
-          </div>
+          {!isSuccess ? (
+            <>
+              <h1 className="w-full text-center font-bold text-2xl">
+                {formatedCurrency(totalPrice)}
+              </h1>
+              <div className="flex flex-col w-full gap-3 pt-2">
+                {PAYMENT.map((paymentItem) => (
+                  <Button
+                    key={paymentItem.value}
+                    variant={payment === paymentItem.value ? "default" : "outline"}
+                    onClick={() => setPayment(paymentItem.value)}
+                    className="w-full justify-start py-6 text-md font-medium"
+                  >
+                    {paymentItem.label}
+                  </Button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Success Summary */}
+              <div className="text-center space-y-2">
+                <div className="text-green-600 font-semibold">
+                  ✅ Invoice #{invoice}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Metode Pembayaran: {payment}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Order Summary */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>{formatedCurrency(subTotal)}</span>
+                </div>
+
+                {/* Regular Discounts */}
+                {activeDiscounts.map((discount, index) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Diskon - {discount.label}
+                    </span>
+                    <span className="text-green-600">
+                      -{formatedCurrency(
+                        discount.percent
+                          ? Math.round(subTotal * discount.percent)
+                          : discount.amount || 0
+                      )}
+                    </span>
+                  </div>
+                ))}
+
+                {/* Referral Discount */}
+                {referralCode && referralDiscount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      💰 Referral - {referralCode}
+                    </span>
+                    <span className="text-green-600">
+                      -{formatedCurrency(referralDiscount)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Points Redemption */}
+                {pointsUsed > 0 && pointsDiscount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      🎯 Poin ({pointsUsed} poin)
+                    </span>
+                    <span className="text-green-600">
+                      -{formatedCurrency(pointsDiscount)}
+                    </span>
+                  </div>
+                )}
+
+                <Separator />
+
+                <div className="flex justify-between font-bold">
+                  <span>Total</span>
+                  <span className="text-lg">{formatedCurrency(totalPrice)}</span>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="text-center text-sm text-muted-foreground">
+                {activeCustomer && (
+                  <div>
+                    <div className="font-medium">{activeCustomer.username}</div>
+                    <div>{activeCustomer.customer_id}</div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
         <DialogFooter>
           {!isSuccess ? (

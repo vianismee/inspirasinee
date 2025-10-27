@@ -249,6 +249,31 @@ export default function TableJob() {
                       </span>
                     </div>
                   ))}
+
+                  {/* Referral Discount Display */}
+                  {order.referral_code && order.referral_discount_amount > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">
+                        💰 Referral - {order.referral_code}
+                      </span>
+                      <span className="font-mono text-green-600">
+                        -{formatedCurrency(order.referral_discount_amount)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Points Redemption Display */}
+                  {order.points_used > 0 && order.points_discount_amount > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">
+                        🎯 Poin ({order.points_used} poin)
+                      </span>
+                      <span className="font-mono text-green-600">
+                        -{formatedCurrency(order.points_discount_amount)}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center text-md font-bold mt-2 pt-2 border-t">
                     <span>Total Pembayaran</span>
                     <span className="font-mono">
@@ -456,6 +481,10 @@ export default function TableJob() {
               totalPrice: order.total_price,
               payment: order.payment,
               discounts: formattedDiscounts,
+              referralCode: order.referral_code || undefined,
+              referralDiscount: order.referral_discount_amount || undefined,
+              pointsUsed: order.points_used || undefined,
+              pointsDiscount: order.points_discount_amount || undefined,
             });
             const encodedText = encodeURIComponent(receiptText);
             const whatsappURL = `https://wa.me/${order.customers.whatsapp}?text=${encodedText}`;

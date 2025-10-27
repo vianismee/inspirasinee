@@ -159,6 +159,31 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
                     </span>
                   </div>
                 ))}
+
+                {/* Referral Discount Display */}
+                {order?.referral_code && order?.referral_discount_amount > 0 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">
+                      💰 Referral ({order.referral_code})
+                    </span>
+                    <span className="font-mono text-green-600">
+                      -{formatedCurrency(order.referral_discount_amount)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Points Redemption Display */}
+                {order?.points_used > 0 && order?.points_discount_amount > 0 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">
+                      🎯 Poin ({order.points_used})
+                    </span>
+                    <span className="font-mono text-green-600">
+                      -{formatedCurrency(order.points_discount_amount)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center text-md font-bold pt-2 mt-2 border-t">
                   <span>Total</span>
                   <span className="font-mono">

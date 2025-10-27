@@ -167,6 +167,31 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                       </p>
                     </div>
                   ))}
+
+                  {/* Referral Discount Display */}
+                  {order?.referral_code && order?.referral_discount_amount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <p className="text-muted-foreground">
+                        💰 Referral - {order.referral_code}
+                      </p>
+                      <p className="font-mono text-green-600">
+                        -{formatedCurrency(order.referral_discount_amount)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Points Redemption Display */}
+                  {order?.points_used > 0 && order?.points_discount_amount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <p className="text-muted-foreground">
+                        🎯 Poin ({order.points_used} poin)
+                      </p>
+                      <p className="font-mono text-green-600">
+                        -{formatedCurrency(order.points_discount_amount)}
+                      </p>
+                    </div>
+                  )}
+
                   <Separator className="my-2" />
                   <div className="flex justify-between items-center font-bold text-base">
                     <p>Total</p>

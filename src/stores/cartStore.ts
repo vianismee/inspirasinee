@@ -18,7 +18,12 @@ interface CartItem {
 }
 
 // UBAH: Fungsi untuk menghitung ulang subtotal dan total harga
-const recalculateTotals = (cart: CartItem[], activeDiscounts: Discount[]) => {
+const recalculateTotals = (
+  cart: CartItem[],
+  activeDiscounts: Discount[],
+  referralDiscount: number = 0,
+  pointsDiscount: number = 0
+) => {
   // Hitung subtotal dengan menjumlahkan semua harga layanan di setiap item
   const subTotal = cart.reduce((total, item) => {
     const itemTotal = item.services.reduce(
@@ -39,7 +44,7 @@ const recalculateTotals = (cart: CartItem[], activeDiscounts: Discount[]) => {
     return total;
   }, 0);
 
-  const totalPrice = Math.round(Math.max(0, subTotal - totalDiscountValue));
+  const totalPrice = Math.round(Math.max(0, subTotal - totalDiscountValue - referralDiscount - pointsDiscount));
   return { subTotal, totalPrice };
 };
 
@@ -51,6 +56,12 @@ interface CartState {
   activeDiscounts: Discount[];
   totalPrice: number;
   payment: string;
+  // Referral state
+  referralCode: string;
+  referralDiscount: number;
+  pointsUsed: number;
+  pointsDiscount: number;
+  // Existing methods
   setPayment: (payment: string) => void;
   setInvoice: (id: string) => void;
   addItem: () => void;
@@ -62,6 +73,13 @@ interface CartState {
   removeServiceFromItem: (itemId: number, serviceName: string) => void;
   addDiscount: (discount: Discount) => void;
   removeDiscount: (discountName: string) => void;
+  // Referral methods
+  setReferralCode: (code: string) => void;
+  setReferralDiscount: (amount: number) => void;
+  clearReferralDiscount: () => void;
+  setPointsUsed: (points: number) => void;
+  setPointsDiscount: (amount: number) => void;
+  clearPointsDiscount: () => void;
   handleSubmit: () => Promise<boolean>;
   resetCart: () => void;
 }
@@ -80,10 +98,59 @@ export const useCartStore = create<CartState>((set, get) => ({
   activeDiscounts: [],
   totalPrice: 0,
   payment: "Cash",
+  // Referral state
+  referralCode: "",
+  referralDiscount: 0,
+  pointsUsed: 0,
+  pointsDiscount: 0,
 
   // Aksi-aksi (actions)
   setInvoice: (id) => set({ invoice: id }),
   setPayment: (payment) => set({ payment }),
+
+  // Referral methods
+  setReferralCode: (code) => set({ referralCode: code }),
+  setReferralDiscount: (amount) => {
+    const state = get();
+    const { totalPrice } = recalculateTotals(
+      state.cart,
+      state.activeDiscounts,
+      amount,
+      state.pointsDiscount
+    );
+    set({ referralDiscount: amount, totalPrice });
+  },
+  clearReferralDiscount: () => {
+    const state = get();
+    const { totalPrice } = recalculateTotals(
+      state.cart,
+      state.activeDiscounts,
+      0,
+      state.pointsDiscount
+    );
+    set({ referralCode: "", referralDiscount: 0, totalPrice });
+  },
+  setPointsUsed: (points) => set({ pointsUsed: points }),
+  setPointsDiscount: (amount) => {
+    const state = get();
+    const { totalPrice } = recalculateTotals(
+      state.cart,
+      state.activeDiscounts,
+      state.referralDiscount,
+      amount
+    );
+    set({ pointsDiscount: amount, totalPrice });
+  },
+  clearPointsDiscount: () => {
+    const state = get();
+    const { totalPrice } = recalculateTotals(
+      state.cart,
+      state.activeDiscounts,
+      state.referralDiscount,
+      0
+    );
+    set({ pointsUsed: 0, pointsDiscount: 0, totalPrice });
+  },
 
   addItem: () =>
     set((state) => {
@@ -96,7 +163,12 @@ export const useCartStore = create<CartState>((set, get) => ({
     set((state) => {
       if (state.cart.length <= 1) return state;
       const newCart = state.cart.filter((item) => item.id !== id);
-      const totals = recalculateTotals(newCart, state.activeDiscounts);
+      const totals = recalculateTotals(
+        newCart,
+        state.activeDiscounts,
+        state.referralDiscount,
+        state.pointsDiscount
+      );
       return { cart: newCart, ...totals };
     }),
 
@@ -128,7 +200,12 @@ export const useCartStore = create<CartState>((set, get) => ({
         }
         return item;
       });
-      const totals = recalculateTotals(newCart, state.activeDiscounts);
+      const totals = recalculateTotals(
+        newCart,
+        state.activeDiscounts,
+        state.referralDiscount,
+        state.pointsDiscount
+      );
       return { cart: newCart, ...totals };
     }),
 
@@ -144,7 +221,12 @@ export const useCartStore = create<CartState>((set, get) => ({
         }
         return item;
       });
-      const totals = recalculateTotals(newCart, state.activeDiscounts);
+      const totals = recalculateTotals(
+        newCart,
+        state.activeDiscounts,
+        state.referralDiscount,
+        state.pointsDiscount
+      );
       return { cart: newCart, ...totals };
     }),
 
@@ -156,7 +238,12 @@ export const useCartStore = create<CartState>((set, get) => ({
         return state;
       }
       const newActiveDiscounts = [...state.activeDiscounts, discount];
-      const { totalPrice } = recalculateTotals(state.cart, newActiveDiscounts);
+      const { totalPrice } = recalculateTotals(
+        state.cart,
+        newActiveDiscounts,
+        state.referralDiscount,
+        state.pointsDiscount
+      );
       toast.success(`Diskon "${discount.label}" berhasil diterapkan.`);
       return { activeDiscounts: newActiveDiscounts, totalPrice };
     }),
@@ -167,14 +254,29 @@ export const useCartStore = create<CartState>((set, get) => ({
       const newActiveDiscounts = state.activeDiscounts.filter(
         (d) => d.label !== discountName
       );
-      const { totalPrice } = recalculateTotals(state.cart, newActiveDiscounts);
+      const { totalPrice } = recalculateTotals(
+        state.cart,
+        newActiveDiscounts,
+        state.referralDiscount,
+        state.pointsDiscount
+      );
       toast.info(`Diskon "${discountName}" telah dihapus.`);
       return { activeDiscounts: newActiveDiscounts, totalPrice };
     }),
 
   handleSubmit: async () => {
-    const { cart, subTotal, activeDiscounts, totalPrice, invoice, payment } =
-      get();
+    const {
+      cart,
+      subTotal,
+      activeDiscounts,
+      totalPrice,
+      invoice,
+      payment,
+      referralCode,
+      referralDiscount,
+      pointsUsed,
+      pointsDiscount
+    } = get();
     const { activeCustomer } = useCustomerStore.getState();
 
     if (!activeCustomer) {
@@ -218,6 +320,10 @@ export const useCartStore = create<CartState>((set, get) => ({
         subtotal: subTotal,
         total_price: totalPrice,
         payment: payment,
+        referral_code: referralCode || null,
+        referral_discount_amount: referralDiscount,
+        points_used: pointsUsed,
+        points_discount_amount: pointsDiscount,
       });
 
       if (activeDiscounts.length > 0) {
@@ -250,6 +356,85 @@ export const useCartStore = create<CartState>((set, get) => ({
 
       await supabase.from("order_item").insert(itemsToInsert);
 
+      // Record referral usage and award points if referral was used
+      // Also handle points deduction if points were used
+      if (referralCode && referralCode.trim()) {
+        try {
+          console.log("Recording referral usage after successful order:", {
+            referralCode,
+            customerId: customerIdToUse,
+            invoice,
+            pointsUsed,
+            pointsDiscount
+          });
+
+          const response = await fetch("/api/referral/record", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              referralCode: referralCode.trim(),
+              customerId: customerIdToUse,
+              orderInvoiceId: invoice,
+              pointsUsed: pointsUsed,
+              pointsDiscount: pointsDiscount
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log("Referral usage recorded successfully:", result);
+            let successMessage = "Referral bonus recorded successfully!";
+            if (pointsUsed && pointsUsed > 0) {
+              successMessage += ` Points deducted: ${pointsUsed} points`;
+            }
+            toast.success(successMessage);
+          } else {
+            const errorText = await response.text();
+            console.error("Failed to record referral usage:", response.status, errorText);
+            toast.warning("Order successful, but referral recording failed");
+          }
+        } catch (error) {
+          console.error("Error recording referral usage:", error);
+          toast.warning("Order successful, but referral recording failed");
+        }
+      } else if (pointsUsed && pointsUsed > 0) {
+        // Handle points deduction even if no referral code was used
+        try {
+          console.log("Deducting points after successful order (no referral):", {
+            customerId: customerIdToUse,
+            pointsUsed,
+            invoice
+          });
+
+          const response = await fetch("/api/points/deduct", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              customerId: customerIdToUse,
+              pointsToDeduct: pointsUsed,
+              orderId: invoice
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log("Points deducted successfully:", result);
+            toast.success(`Points deducted! You used ${pointsUsed} points`);
+          } else {
+            const errorText = await response.text();
+            console.error("Failed to deduct points:", response.status, errorText);
+            toast.warning("Order successful, but points deduction failed");
+          }
+        } catch (error) {
+          console.error("Error deducting points:", error);
+          toast.warning("Order successful, but points deduction failed");
+        }
+      }
+
       return true;
     } catch (error) {
       const errorMessage = (error as Error).message;
@@ -267,5 +452,9 @@ export const useCartStore = create<CartState>((set, get) => ({
       activeDiscounts: [],
       totalPrice: 0,
       payment: "Cash",
+      referralCode: "",
+      referralDiscount: 0,
+      pointsUsed: 0,
+      pointsDiscount: 0,
     }),
 }));
