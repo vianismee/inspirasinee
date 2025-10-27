@@ -23,6 +23,10 @@ export function CartApp() {
   const { totalPrice, setInvoice, resetCart } = useCartStore();
   const router = useRouter();
 
+  // Check if customer is new or existing
+  // A customer is considered "new" if they don't have any orders yet
+  const isNewCustomer = !activeCustomer?.has_orders || activeCustomer?.total_orders === 0;
+
   useEffect(() => {
     if (!activeCustomer) {
       router.replace("/admin/order/");
@@ -68,8 +72,10 @@ export function CartApp() {
         </Card>
         <Services />
         <Discount />
-        <Referral />
-        <PointsRedemption />
+        {/* Show Referral Redemption only for new customers */}
+        {isNewCustomer && <Referral />}
+        {/* Show Points Redemption only for existing customers */}
+        {!isNewCustomer && <PointsRedemption />}
       </div>
       <div className="fixed md:sticky w-full bottom-0 flex-shrink-0 flex justify-between items-center px-5 py-3 bg-white border-t">
         <Button variant={"outline"} onClick={handleBatal}>

@@ -22,6 +22,7 @@ export const uploadService = async ({ service }: UseUploadServiceProps) => {
     if (!insertError) {
       toast.success("Berhasil menambah Service");
     }
-  } catch (error) {
+  } catch (err) {
+    console.error("Error uploading service:", err);
   }
 };
