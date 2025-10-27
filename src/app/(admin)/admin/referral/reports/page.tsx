@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Headers } from "@/components/MainComponent/Header";
-import { Calendar, Download, Filter, TrendingUp, Users, Gift, Target } from "lucide-react";
+import { Download, Filter, TrendingUp, Users, Gift, Target } from "lucide-react";
 import { toast } from "sonner";
 
 interface ReferralUsage {
@@ -68,11 +68,7 @@ export default function ReferralReportsPage() {
   });
   const [transactionFilter, setTransactionFilter] = useState<string>("all");
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [dateFilter, transactionFilter]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -92,16 +88,20 @@ export default function ReferralReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFilter]);
 
-  const exportToCSV = (data: any[], filename: string) => {
+  useEffect(() => {
+    fetchAnalytics();
+  }, [dateFilter, transactionFilter, fetchAnalytics]);
+
+  const exportToCSV = (data: ReferralUsage[] | PointsTransaction[], filename: string) => {
     if (data.length === 0) return;
 
     const headers = Object.keys(data[0]);
     const csvContent = [
       headers.join(','),
       ...data.map(row => headers.map(header => {
-        const value = row[header];
+        const value = (row as unknown as Record<string, unknown>)[header];
         return typeof value === 'string' && value.includes(',')
           ? `"${value}"`
           : value;

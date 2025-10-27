@@ -19,11 +19,9 @@ export const uploadService = async ({ service }: UseUploadServiceProps) => {
       .from("service_catalog")
       .insert(finalDataService)
       .single();
-    if (insertError) {
-      console.log("Gagal Menambah Service", insertError);
+    if (!insertError) {
+      toast.success("Berhasil menambah Service");
     }
-    toast.success("Berhasil menambah Service");
   } catch (error) {
-    console.log(error);
   }
 };

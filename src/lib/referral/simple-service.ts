@@ -55,7 +55,6 @@ export class SimpleReferralService {
           .single();
 
         if (dbSettings) {
-          console.log("Using database settings:", dbSettings);
           settings = {
             referral_discount_amount: dbSettings.referral_discount_amount || 5000,
             referrer_points_earned: dbSettings.referrer_points_earned || 10,
@@ -63,8 +62,6 @@ export class SimpleReferralService {
             points_redemption_value: dbSettings.points_redemption_value || 100,
             is_active: dbSettings.is_active !== false
           };
-        } else {
-          console.log("No settings found in database, using defaults");
         }
       } catch (error) {
         console.warn("Referral settings table not found, using default settings:", error);
@@ -76,20 +73,14 @@ export class SimpleReferralService {
 
       // Check new customer
       try {
-        console.log("Looking up new customer with ID:", newCustomerId);
         const { data: newCustomer, error } = await supabase
           .from("customers")
           .select("customer_id")
           .eq("customer_id", newCustomerId)
           .single();
 
-        console.log("New customer query result:", { data: newCustomer, error });
-
         if (newCustomer) {
           newCustomerExists = true;
-          console.log("New customer found:", newCustomer);
-        } else {
-          console.log("New customer not found. Error details:", error);
         }
       } catch (error) {
         console.error("Error checking new customer:", error);
@@ -97,20 +88,14 @@ export class SimpleReferralService {
 
       // Check referrer
       try {
-        console.log("Looking up referrer with ID:", referralCode);
         const { data: referrer, error } = await supabase
           .from("customers")
           .select("customer_id")
           .eq("customer_id", referralCode)
           .single();
 
-        console.log("Referrer query result:", { data: referrer, error });
-
         if (referrer) {
           referrerExists = true;
-          console.log("Referrer found:", referrer);
-        } else {
-          console.log("Referrer not found. Error details:", error);
         }
       } catch (error) {
         console.error("Error checking referrer:", error);
@@ -119,12 +104,6 @@ export class SimpleReferralService {
       // Validate basic requirements
       // For new customers: Don't require the customer to exist in database yet
       // The customer will be added to database when order is successful
-      console.log("Customer validation:", {
-        newCustomerExists,
-        referrerExists,
-        newCustomerId,
-        referralCode
-      });
 
       if (!referrerExists) {
         return {
@@ -145,7 +124,6 @@ export class SimpleReferralService {
 
       // For new customers, skip the referral usage check since they don't exist in database yet
       // The referral usage will be recorded when the order is successfully processed
-      console.log("Skipping referral usage check for new customer (will be recorded after successful order)");
 
       return {
         valid: true,
@@ -229,7 +207,7 @@ export class SimpleReferralService {
     newCustomerId: string,
     orderInvoiceId: string,
     pointsUsed?: number,
-    pointsDiscount?: number
+    _pointsDiscount?: number
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const supabase = await this.getSupabase();
@@ -265,8 +243,7 @@ export class SimpleReferralService {
             customer_id: newCustomerId,
             created_at: new Date().toISOString()
           });
-        console.log("New customer added to database:", newCustomerId);
-      } catch (error) {
+        } catch (error) {
         console.warn("Customer might already exist or insert failed:", error);
       }
 
@@ -289,8 +266,7 @@ export class SimpleReferralService {
           return { success: false, error: error.message };
         }
 
-        console.log("Referral usage recorded successfully");
-      } catch (error) {
+        } catch (error) {
         console.error("Error in referral_usage table:", error);
         return { success: false, error: "Failed to record referral usage" };
       }
@@ -349,8 +325,7 @@ export class SimpleReferralService {
             created_at: new Date().toISOString()
           });
 
-        console.log(`Awarded ${settings.referrer_points_earned} points to referrer ${referralCode}`);
-      } catch (error) {
+        } catch (error) {
         console.error("Error awarding points to referrer:", error);
         // Don't fail the whole operation if points awarding fails
       }
@@ -358,8 +333,6 @@ export class SimpleReferralService {
       // Deduct points from new customer if they used points
       if (pointsUsed && pointsUsed > 0) {
         try {
-          console.log(`Deducting ${pointsUsed} points from customer ${newCustomerId}`);
-
           const { success: deductSuccess, error: deductError } = await this.deductPoints(
             newCustomerId,
             pointsUsed,
@@ -369,8 +342,6 @@ export class SimpleReferralService {
           if (!deductSuccess) {
             console.error("Failed to deduct points:", deductError);
             // Don't fail the whole operation, but log the error
-          } else {
-            console.log(`Successfully deducted ${pointsUsed} points from customer ${newCustomerId}`);
           }
         } catch (error) {
           console.error("Error deducting points from customer:", error);
@@ -452,8 +423,7 @@ export class SimpleReferralService {
           created_at: new Date().toISOString()
         });
 
-      console.log(`Successfully deducted ${pointsToDeduct} points from customer ${customerId}. New balance: ${newBalance}`);
-
+  
       return { success: true, newBalance };
 
     } catch (error) {

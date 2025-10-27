@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Headers } from "@/components/MainComponent/Header";
-import { Search, Plus, Minus, History, Users } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { toast } from "sonner";
 
 interface CustomerPoints {
@@ -53,34 +53,42 @@ export default function CustomerPointsManagementPage() {
     description: ""
   });
 
-  useEffect(() => {
-    fetchCustomers();
-  }, [pagination.page, searchTerm]);
-
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
-        ...(searchTerm && { search: searchTerm })
+        limit: pagination.limit.toString()
       });
 
+      if (searchTerm) {
+        params.append("search", searchTerm);
+      }
+
       const response = await fetch(`/api/admin/referral/customers?${params}`);
+      const data = await response.json();
+
       if (response.ok) {
-        const data = await response.json();
         setCustomers(data.customers);
-        setPagination(data.pagination);
+        setPagination(prev => ({
+          ...prev,
+          total: data.total,
+          totalPages: Math.ceil(data.total / pagination.limit)
+        }));
       } else {
-        toast.error("Failed to fetch customer points");
+        toast.error(data.error || "Failed to fetch customer points");
       }
     } catch (error) {
-      console.error("Error fetching customers:", error);
+      console.error("Error fetching customer points:", error);
       toast.error("Failed to fetch customer points");
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.page, pagination.limit, searchTerm]);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [pagination.page, searchTerm, fetchCustomers]);
 
   const handleAdjustment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,13 +133,7 @@ export default function CustomerPointsManagementPage() {
     setPagination(prev => ({ ...prev, page }));
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR'
-    }).format(amount);
-  };
-
+  
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID');
   };

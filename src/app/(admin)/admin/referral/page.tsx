@@ -12,16 +12,6 @@ import { ReferralNavigation } from "@/components/referral-nav";
 import { Settings, Users, TrendingUp, Gift } from "lucide-react";
 import { toast } from "sonner";
 
-interface ReferralSettings {
-  id: number;
-  referral_discount_amount: number;
-  referrer_points_earned: number;
-  points_redemption_minimum: number;
-  points_redemption_value: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 interface AnalyticsData {
   summary: {
@@ -41,7 +31,6 @@ interface AnalyticsData {
 }
 
 export default function ReferralManagementPage() {
-  const [settings, setSettings] = useState<ReferralSettings | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -62,13 +51,10 @@ export default function ReferralManagementPage() {
 
   const fetchSettings = async () => {
     try {
-      console.log("Fetching referral settings...");
       const response = await fetch("/api/admin/referral/settings");
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Referral settings fetched:", data);
-        setSettings(data);
         setFormData({
           referral_discount_amount: data.referral_discount_amount,
           referrer_points_earned: data.referrer_points_earned,
@@ -116,8 +102,7 @@ export default function ReferralManagementPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setSettings(data);
+        await response.json();
         toast.success("Referral settings updated successfully");
       } else {
         const error = await response.json();
@@ -131,7 +116,7 @@ export default function ReferralManagementPage() {
     }
   };
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -353,7 +338,7 @@ export default function ReferralManagementPage() {
                       <div>
                         <p className="font-medium">{referrer.referrer_name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {referrer.referral_customer_id}
+                          {referrer.referrer_customer_id}
                         </p>
                       </div>
                     </div>

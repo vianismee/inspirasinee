@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { ReferralSettings } from "@/lib/referral/types";
 
 // GET referral settings
 export async function GET() {

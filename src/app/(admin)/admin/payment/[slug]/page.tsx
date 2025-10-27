@@ -61,7 +61,6 @@ export default function InvoicePaymentPage() {
           errorCorrectionLevel: "H",
         });
       } catch (error) {
-        console.log(error);
         toast.error("Gagal membuat QR Code.");
       }
     }

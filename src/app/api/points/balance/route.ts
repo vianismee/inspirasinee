@@ -15,8 +15,6 @@ export async function GET(request: NextRequest) {
 
     const customerPoints = await SimplePointsService.getCustomerPoints(customerId);
 
-    console.log("Fetched customer points:", { customerId, customerPoints });
-
     return NextResponse.json(customerPoints);
 
   } catch (error) {

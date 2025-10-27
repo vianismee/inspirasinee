@@ -43,7 +43,6 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       .maybeSingle();
 
     if (findError) {
-      console.log("Gagal mencari Customer", findError);
       toast.error("Gagal mencari customer.");
       return false;
     }

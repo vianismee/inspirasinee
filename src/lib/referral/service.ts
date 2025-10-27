@@ -19,7 +19,8 @@ export class ReferralService {
   }
 
   async getReferralSettings(): Promise<ReferralSettings | null> {
-    const { data, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { data, error } = await supabase
       .from("referral_settings")
       .select("*")
       .eq("is_active", true)
@@ -67,7 +68,8 @@ export class ReferralService {
       let newCustomer;
       let newCustomerError;
       try {
-        const result = await this.supabase
+        const supabase = await this.supabase;
+        const result = await supabase
           .from("customers")
           .select("customer_id")
           .eq("customer_id", newCustomerId)
@@ -76,7 +78,7 @@ export class ReferralService {
         newCustomerError = result.error;
       } catch (error) {
         console.error("Error checking new customer:", error);
-        newCustomerError = error as any;
+        newCustomerError = error as Error;
       }
 
       if (newCustomerError || !newCustomer) {
@@ -91,7 +93,8 @@ export class ReferralService {
       let referrer;
       let referrerError;
       try {
-        const result = await this.supabase
+        const supabase = await this.supabase;
+        const result = await supabase
           .from("customers")
           .select("customer_id, username, email")
           .eq("customer_id", referralCode)
@@ -100,7 +103,7 @@ export class ReferralService {
         referrerError = result.error;
       } catch (error) {
         console.error("Error checking referrer:", error);
-        referrerError = error as any;
+        referrerError = error as Error;
       }
 
       if (referrerError || !referrer) {
@@ -120,7 +123,8 @@ export class ReferralService {
       }
 
       // Check if this referral was already used by this customer
-      const { data: existingUsage, error: usageError } = await this.supabase
+      const supabase2 = await this.supabase;
+      const { data: existingUsage, error: usageError } = await supabase2
         .from("referral_usage")
         .select("*")
         .eq("referral_code", referralCode)
@@ -165,7 +169,8 @@ export class ReferralService {
   }
 
   async getCustomerPoints(customerId: string): Promise<CustomerPoints | null> {
-    const { data, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { data, error } = await supabase
       .from("customer_points")
       .select("*")
       .eq("customer_id", customerId)
@@ -239,7 +244,8 @@ export class ReferralService {
   }
 
   async createCustomerPoints(customerId: string): Promise<CustomerPoints | null> {
-    const { data, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { data, error } = await supabase
       .from("customer_points")
       .insert({
         customer_id: customerId,
@@ -277,8 +283,9 @@ export class ReferralService {
     pointsAwarded: number
   ): Promise<ReferralUsage | null> {
     try {
+      const supabase = await this.supabase;
       // Record referral usage
-      const { data: referralUsage, error: usageError } = await this.supabase
+      const { data: referralUsage, error: usageError } = await supabase
         .from("referral_usage")
         .insert({
           referral_code: referralCode,
@@ -345,7 +352,8 @@ export class ReferralService {
       const newTotalRedeemed = customerPoints.total_redeemed + Math.abs(Math.min(0, points));
 
       // Update customer points
-      const { error: updateError } = await this.supabase
+      const supabase2 = await this.supabase;
+      const { error: updateError } = await supabase2
         .from("customer_points")
         .update({
           current_balance: newBalance,
@@ -362,7 +370,8 @@ export class ReferralService {
 
       // Record transaction (non-blocking)
       try {
-        const { error: transactionError } = await this.supabase
+        const supabase3 = await this.supabase;
+        const { error: transactionError } = await supabase3
           .from("points_transactions")
           .insert({
             customer_id: customerId,

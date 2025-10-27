@@ -16,6 +16,14 @@ import { Logo } from "../Logo";
 import { MapPin, Phone, User } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Orders } from "@/types/index";
+
+// Extended interface for orders with referral properties
+interface OrderWithReferral extends Orders {
+  referral_code?: string;
+  referral_discount_amount?: number;
+  points_used?: number;
+  points_discount_amount?: number;
+}
 import { ContactCs, generateComplaintText } from "@/lib/invoiceUtils";
 
 // --- PERBAIKAN: Gunakan konstanta untuk nomor yang berulang ---
@@ -169,25 +177,25 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                   ))}
 
                   {/* Referral Discount Display */}
-                  {order?.referral_code && order?.referral_discount_amount > 0 && (
+                  {(order as OrderWithReferral)?.referral_code && ((order as OrderWithReferral)?.referral_discount_amount || 0) > 0 && (
                     <div className="flex justify-between text-sm">
                       <p className="text-muted-foreground">
-                        💰 Referral - {order.referral_code}
+                        💰 Referral - {(order as OrderWithReferral).referral_code}
                       </p>
                       <p className="font-mono text-green-600">
-                        -{formatedCurrency(order.referral_discount_amount)}
+                        -{formatedCurrency((order as OrderWithReferral).referral_discount_amount || 0)}
                       </p>
                     </div>
                   )}
 
                   {/* Points Redemption Display */}
-                  {order?.points_used > 0 && order?.points_discount_amount > 0 && (
+                  {((order as OrderWithReferral)?.points_used || 0) > 0 && ((order as OrderWithReferral)?.points_discount_amount || 0) > 0 && (
                     <div className="flex justify-between text-sm">
                       <p className="text-muted-foreground">
-                        🎯 Poin ({order.points_used} poin)
+                        🎯 Poin ({(order as OrderWithReferral).points_used || 0} poin)
                       </p>
                       <p className="font-mono text-green-600">
-                        -{formatedCurrency(order.points_discount_amount)}
+                        -{formatedCurrency((order as OrderWithReferral).points_discount_amount || 0)}
                       </p>
                     </div>
                   )}

@@ -10,16 +10,15 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
 
     // Build date filter
-    let dateFilter = {};
     if (startDate || endDate) {
-      const filters: any = {};
+      const filters: { gte?: string; lte?: string } = {};
       if (startDate) filters.gte = startDate;
       if (endDate) filters.lte = endDate;
-      dateFilter = { used_at: filters };
+      // Note: dateFilter would be used here if needed for future filtering
     }
 
     // Get referral usage statistics
-    const { data: referralStats, error: referralError } = await supabase
+    let referralQuery = supabase
       .from("referral_usage")
       .select(`
         *,
@@ -27,6 +26,14 @@ export async function GET(request: NextRequest) {
         referred:referred_customer_id(username, email)
       `)
       .order("used_at", { ascending: false });
+
+    // Apply date filter if provided
+    if (startDate || endDate) {
+      if (startDate) referralQuery = referralQuery.gte('used_at', startDate);
+      if (endDate) referralQuery = referralQuery.lte('used_at', endDate);
+    }
+
+    const { data: referralStats, error: referralError } = await referralQuery;
 
     if (referralError) {
       console.error("Error fetching referral stats:", referralError);
@@ -80,8 +87,15 @@ export async function GET(request: NextRequest) {
     const activeCustomersWithPoints = pointsStats?.filter(p => p.current_balance > 0).length || 0;
 
     // Get top referrers
-    const topReferrers = referralStats?.reduce((acc: any, referral) => {
-      const existing = acc.find((r: any) => r.referrer_customer_id === referral.referrer_customer_id);
+    interface TopReferrer {
+      referrer_customer_id: string;
+      referrer_name: string;
+      referralCount: number;
+      totalPointsEarned: number;
+    }
+
+    const topReferrers = referralStats?.reduce((acc: TopReferrer[], referral) => {
+      const existing = acc.find((r: TopReferrer) => r.referrer_customer_id === referral.referrer_customer_id);
       if (existing) {
         existing.referralCount += 1;
         existing.totalPointsEarned += referral.points_awarded;
@@ -94,7 +108,7 @@ export async function GET(request: NextRequest) {
         });
       }
       return acc;
-    }, []).sort((a: any, b: any) => b.referralCount - a.referralCount).slice(0, 10) || [];
+    }, []).sort((a: TopReferrer, b: TopReferrer) => b.referralCount - a.referralCount).slice(0, 10) || [];
 
     const analytics = {
       summary: {

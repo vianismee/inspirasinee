@@ -3,12 +3,8 @@ import { SimpleReferralService } from "@/lib/referral/simple-service";
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("=== POINTS DEDUCTION API CALLED ===");
-
     const body = await request.json();
     const { customerId, pointsToDeduct, orderId } = body;
-
-    console.log("Deducting points:", { customerId, pointsToDeduct, orderId });
 
     if (!customerId || !pointsToDeduct || !orderId) {
       return NextResponse.json(
@@ -26,8 +22,6 @@ export async function POST(request: NextRequest) {
 
     const referralService = SimpleReferralService.getInstance();
     const result = await referralService.deductPoints(customerId, pointsToDeduct, orderId);
-
-    console.log("Points deduction result:", result);
 
     return NextResponse.json(result);
 

@@ -18,7 +18,6 @@ export class SimplePointsService {
         .single();
 
       if (error) {
-        console.log("Customer points not found, returning defaults:", error.message);
         return {
           current_balance: 0,
           total_earned: 0,

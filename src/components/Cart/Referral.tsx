@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { X, Gift, CheckCircle, AlertCircle } from "lucide-react";
 import { formatedCurrency } from "@/lib/utils";
 import { toast } from "sonner";
@@ -40,22 +39,12 @@ export function Referral() {
       return;
     }
 
-    console.log("Validating referral code:", {
-      referralCode: referralCode.trim(),
-      customerId: activeCustomer.customer_id,
-      customerName: activeCustomer.username
-    });
-
     setIsValidating(true);
     try {
-      console.log("Sending request to /api/referral/validate");
-
       const requestBody = {
         referralCode: referralCode.trim(),
         customerId: activeCustomer.customer_id,
       };
-
-      console.log("Request body:", requestBody);
 
       const response = await fetch("/api/referral/validate", {
         method: "POST",
@@ -65,8 +54,6 @@ export function Referral() {
         body: JSON.stringify(requestBody),
       });
 
-      console.log("Response received:", response.status, response.statusText);
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error("API error:", response.status, errorText);
@@ -75,8 +62,6 @@ export function Referral() {
       }
 
       const data = await response.json();
-
-      console.log("Referral validation response:", data);
 
       if (data.valid) {
         setReferralData(data);
@@ -205,7 +190,7 @@ export function Referral() {
                       Referral Code Valid!
                     </p>
                     <p className="text-sm text-green-600">
-                      You'll save {formatedCurrency(referralData.discount_amount || 0)}
+                      You&apos;ll save {formatedCurrency(referralData.discount_amount || 0)}
                     </p>
                     {referralData.points_awarded && (
                       <p className="text-xs text-green-500">

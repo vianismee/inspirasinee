@@ -1,10 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 
 export async function GET() {
   try {
     const supabase = await createClient();
-    const health = {
+    const health: {
+      status: string;
+      tables: Record<string, string>;
+      issues: string[];
+    } = {
       status: "healthy",
       tables: {},
       issues: []
@@ -21,7 +25,7 @@ export async function GET() {
       if (settingsError) {
         health.issues.push("referral_settings table not found");
       }
-    } catch (error) {
+    } catch {
       health.tables.referral_settings = "error";
       health.issues.push("Error checking referral_settings table");
     }
@@ -37,7 +41,7 @@ export async function GET() {
       if (pointsError) {
         health.issues.push("customer_points table not found");
       }
-    } catch (error) {
+    } catch {
       health.tables.customer_points = "error";
       health.issues.push("Error checking customer_points table");
     }
@@ -53,7 +57,7 @@ export async function GET() {
       if (usageError) {
         health.issues.push("referral_usage table not found");
       }
-    } catch (error) {
+    } catch {
       health.tables.referral_usage = "error";
       health.issues.push("Error checking referral_usage table");
     }
@@ -69,7 +73,7 @@ export async function GET() {
       if (transactionsError) {
         health.issues.push("points_transactions table not found");
       }
-    } catch (error) {
+    } catch {
       health.tables.points_transactions = "error";
       health.issues.push("Error checking points_transactions table");
     }

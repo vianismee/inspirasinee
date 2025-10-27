@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { useServiceCatalogStore, Discount } from "./serviceCatalogStore";
+import { Discount } from "./serviceCatalogStore";
 import { createClient } from "@/utils/supabase/client";
 import { useCustomerStore } from "./customerStore";
 import { toast } from "sonner";
@@ -298,7 +298,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       if (activeCustomer.isNew) {
         // ... logika simpan customer baru tidak berubah ...
         toast.info("Menyimpan data pelanggan baru...");
-        const { isNew, ...customerToInsert } = activeCustomer;
+        const { isNew: _isNew, ...customerToInsert } = activeCustomer;
         const { data: newCustomer, error: customerInsertError } = await supabase
           .from("customers")
           .insert(customerToInsert)
@@ -360,14 +360,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       // Also handle points deduction if points were used
       if (referralCode && referralCode.trim()) {
         try {
-          console.log("Recording referral usage after successful order:", {
-            referralCode,
-            customerId: customerIdToUse,
-            invoice,
-            pointsUsed,
-            pointsDiscount
-          });
-
+          
           const response = await fetch("/api/referral/record", {
             method: "POST",
             headers: {
@@ -384,8 +377,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
           if (response.ok) {
             const result = await response.json();
-            console.log("Referral usage recorded successfully:", result);
-            let successMessage = "Referral bonus recorded successfully!";
+                        let successMessage = "Referral bonus recorded successfully!";
             if (pointsUsed && pointsUsed > 0) {
               successMessage += ` Points deducted: ${pointsUsed} points`;
             }
@@ -402,12 +394,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       } else if (pointsUsed && pointsUsed > 0) {
         // Handle points deduction even if no referral code was used
         try {
-          console.log("Deducting points after successful order (no referral):", {
-            customerId: customerIdToUse,
-            pointsUsed,
-            invoice
-          });
-
+          
           const response = await fetch("/api/points/deduct", {
             method: "POST",
             headers: {
@@ -422,8 +409,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
           if (response.ok) {
             const result = await response.json();
-            console.log("Points deducted successfully:", result);
-            toast.success(`Points deducted! You used ${pointsUsed} points`);
+                        toast.success(`Points deducted! You used ${pointsUsed} points`);
           } else {
             const errorText = await response.text();
             console.error("Failed to deduct points:", response.status, errorText);

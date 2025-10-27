@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useCartStore } from "@/stores/cartStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,29 +40,19 @@ export function PointsRedemption() {
     setPointsUsed,
     setPointsDiscount,
     clearPointsDiscount,
-    pointsUsed: appliedPoints,
-    totalPrice
+    pointsUsed: appliedPoints
   } = useCartStore();
 
-  useEffect(() => {
-    if (activeCustomer) {
-      fetchCustomerPoints();
-    }
-  }, [activeCustomer]);
-
-  const fetchCustomerPoints = async () => {
+  const fetchCustomerPoints = useCallback(async () => {
     if (!activeCustomer) return;
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `/api/points/balance?customerId=${activeCustomer.customer_id}`
-      );
+      const response = await fetch(`/api/referral/points/${activeCustomer.customer_id}`);
       if (response.ok) {
-        const data = await response.json();
-        setCustomerPoints(data);
+        const points = await response.json();
+        setCustomerPoints(points);
       } else {
-        // Handle case where customer doesn't have points yet
         if (response.status === 404) {
           // Customer has no points record, create default state
           const defaultPoints = {
@@ -71,8 +61,7 @@ export function PointsRedemption() {
             total_redeemed: 0
           };
           setCustomerPoints(defaultPoints);
-          console.log("Customer has no points record yet");
-        } else {
+                  } else {
           const errorText = await response.text();
           console.error("Failed to fetch customer points:", response.status, errorText);
         }
@@ -88,7 +77,13 @@ export function PointsRedemption() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeCustomer]);
+
+  useEffect(() => {
+    if (activeCustomer) {
+      fetchCustomerPoints();
+    }
+  }, [activeCustomer, fetchCustomerPoints]);
 
   const validatePointsRedemption = async () => {
     if (!pointsToRedeem || !activeCustomer) {
@@ -231,7 +226,7 @@ export function PointsRedemption() {
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              You don't have any points available for redemption. Earn points by referring friends!
+              You don&apos;t have any points available for redemption. Earn points by referring friends!
             </AlertDescription>
           </Alert>
         </CardContent>

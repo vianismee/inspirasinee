@@ -7,7 +7,7 @@ export interface OrderData {
   total_price: number;
   referral_code?: string;
   points_used?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface OrderProcessingResult {

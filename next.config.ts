@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const withPWA = require("next-pwa")({
   dest: "public",
@@ -25,7 +26,7 @@ const nextConfig: NextConfig = {
       buildDependencies: {
         config: [__filename],
       },
-      cacheDirectory: '.next/cache/webpack',
+      cacheDirectory: path.join(process.cwd(), '.next/cache/webpack'),
     };
 
     // Override output directory

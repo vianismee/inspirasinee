@@ -74,7 +74,7 @@ export const generateReceiptText = ({
   const subTotalText = `Subtotal: ${formatedCurrency(subTotal)}`;
 
   // Logika untuk memformat setiap diskon
-  let discountLines: string[] = [];
+  const discountLines: string[] = [];
 
   // Regular discounts
   if (discounts && discounts.length > 0) {

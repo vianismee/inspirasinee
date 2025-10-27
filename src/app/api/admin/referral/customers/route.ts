@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get paginated results
-    const { data: customers, error, count } = await query
+    const { data: customers, error } = await query
       .range(offset, offset + limit - 1);
 
     if (error) {
