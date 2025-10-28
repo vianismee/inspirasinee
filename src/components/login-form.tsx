@@ -13,60 +13,39 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/auth-context";
+import { useAuthOperation } from "@/hooks/use-async-operation";
 import { toast } from "sonner";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const router = useRouter();
+  const { signIn } = useAuth();
+
+  const { execute: handleLogin, loading } = useAuthOperation({
+    successMessage: "Login successful! Redirecting to admin dashboard...",
+    errorMessage: "Login failed. Please check your credentials.",
+    onSuccess: () => {
+      setTimeout(() => {
+        router.push("/admin");
+        router.refresh();
+      }, 1000);
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
 
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    console.log("Attempting login with:", { email, password: "***" });
-
-    try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      console.log("Response status:", response.status);
-      console.log("Response headers:", response.headers);
-
-      if (!response.ok) {
-        console.error("Response not OK:", response.statusText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log("Response data:", data);
-
-      if (response.ok) {
-        toast.success("Login successful! Redirecting...");
-        setTimeout(() => {
-          router.push("/admin");
-          router.refresh();
-        }, 1000);
-      } else {
-        toast.error(data.error || "Login failed");
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      toast.error(`Login error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsLoading(false);
+    if (!email || !password) {
+      toast.error("Please fill in all fields");
+      return;
     }
+
+    await handleLogin(() => signIn(email, password));
   };
 
   return (
@@ -84,11 +63,12 @@ export function LoginForm({
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
-                    name="email"
                     type="email"
                     placeholder="m@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
-                    disabled={isLoading}
+                    disabled={loading}
                   />
                 </div>
                 <div className="grid gap-3">
@@ -98,13 +78,14 @@ export function LoginForm({
                   <Input
                     id="password"
                     type="password"
-                    name="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
-                    disabled={isLoading}
+                    disabled={loading}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Logging in..." : "Login"}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Logging in..." : "Login"}
                 </Button>
               </div>
             </div>
