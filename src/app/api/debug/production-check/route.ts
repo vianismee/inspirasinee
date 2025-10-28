@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       'dashboard_sessions'
     ];
 
-    const tableResults = {};
+    const tableResults: Record<string, { exists: boolean; error: string | null }> = {};
     for (const table of tablesToCheck) {
       try {
         const { data, error } = await supabase
