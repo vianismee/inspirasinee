@@ -36,39 +36,33 @@ export function Referral() {
 
   const validateReferralCode = async () => {
     if (!referralCode.trim() || !activeCustomer) {
+      console.log('❌ Referral validation: Missing input', { referralCode: referralCode.trim(), activeCustomer });
       toast.error("Please enter a referral code");
       return;
     }
 
+    console.log('🚀 Starting referral validation', {
+      referralCode: referralCode.trim(),
+      customerId: activeCustomer.customer_id
+    });
+
     setIsValidating(true);
     try {
-      // For now, we'll simulate referral validation
-      // In a real implementation, you would query the database
-      // to check if the referral code exists and get referrer details
+      const data = await ReferralService.validateReferralCode(referralCode.trim(), activeCustomer.customer_id);
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Mock validation - in real implementation, use ReferralService
-      const isValid = referralCode.trim().length >= 3; // Simple validation
-
-      const data: ReferralData = {
-        valid: isValid,
-        referrer_customer_id: isValid ? "mock_referrer_id" : undefined,
-        discount_amount: isValid ? 10000 : 0, // Mock discount amount
-        points_awarded: isValid ? 50 : 0, // Mock points
-        error: isValid ? undefined : "Invalid referral code"
-      };
+      console.log('📊 Referral validation result:', data);
 
       if (data.valid) {
         setReferralDiscount(data.discount_amount || 0);
         setAppliedReferralCode(referralCode.trim());
         toast.success(`Referral code applied! You saved ${formatedCurrency(data.discount_amount || 0)}`);
+        console.log('✅ Referral code successfully applied');
       } else {
+        console.log('❌ Referral validation failed:', data.error);
         toast.error(data.error || "Invalid referral code");
       }
     } catch (error) {
-      console.error("Error validating referral code:", error);
+      console.error("💥 Referral validation error:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to validate referral code";
       toast.error(errorMessage);
     } finally {
