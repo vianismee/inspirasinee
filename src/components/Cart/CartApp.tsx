@@ -2,7 +2,7 @@
 
 import { useCustomerStore } from "@/stores/customerStore";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { InfoCustomer } from "./InfoCustomer";
@@ -15,6 +15,7 @@ import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { Payment } from "./Payment";
 import { Button } from "../ui/button";
+import { PointsService } from "@/lib/client-services";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
@@ -22,10 +23,31 @@ export function CartApp() {
   const { clearCustomer } = useCustomerStore();
   const { totalPrice, setInvoice, resetCart } = useCartStore();
   const router = useRouter();
+  const [customerPoints, setCustomerPoints] = useState<number>(0);
 
   // Check if customer is new or existing
   // A customer is considered "new" if they don't have any orders yet
   const isNewCustomer = !activeCustomer?.has_orders || activeCustomer?.total_orders === 0;
+
+  // Check if customer has points available
+  const hasPoints = customerPoints > 0;
+
+  // Fetch customer points
+  useEffect(() => {
+    const fetchPoints = async () => {
+      if (activeCustomer) {
+        try {
+          const points = await PointsService.getCustomerBalance(activeCustomer.customer_id);
+          setCustomerPoints(points?.current_balance || 0);
+        } catch (error) {
+          console.error("Error fetching customer points:", error);
+          setCustomerPoints(0);
+        }
+      }
+    };
+
+    fetchPoints();
+  }, [activeCustomer]);
 
   useEffect(() => {
     if (!activeCustomer) {
@@ -72,10 +94,21 @@ export function CartApp() {
         </Card>
         <Services />
         <Discount />
-        {/* Show Referral Redemption only for new customers */}
+
+        {/* Smart rendering logic for referral and points */}
+        {/* Always show Referral for new customers */}
         {isNewCustomer && <Referral />}
-        {/* Show Points Redemption only for existing customers */}
-        {!isNewCustomer && <PointsRedemption />}
+
+        {/* Show Points Redemption if customer has points (regardless of new/existing status) */}
+        {hasPoints && <PointsRedemption />}
+
+        {/* Show helpful message when both options are available */}
+        {isNewCustomer && hasPoints && (
+          <div className="text-sm text-muted-foreground text-center py-2 bg-blue-50 rounded-md p-3">
+            <p className="font-medium text-blue-800">💡 You have both options available!</p>
+            <p className="text-blue-600">Use a referral code for a one-time discount, or redeem your points for savings.</p>
+          </div>
+        )}
       </div>
       <div className="fixed md:sticky w-full bottom-0 flex-shrink-0 flex justify-between items-center px-5 py-3 bg-white border-t">
         <Button variant={"outline"} onClick={handleBatal}>
