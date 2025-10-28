@@ -359,22 +359,28 @@ export const useCartStore = create<CartState>((set, get) => ({
       // Also handle points deduction if points were used
       if (referralCode && referralCode.trim()) {
         try {
-          const referralData = {
-            referral_code: referralCode.trim(),
-            referrer_customer_id: "", // This would need to be fetched based on referral code
-            referred_customer_id: customerIdToUse,
-            order_invoice_id: invoice,
-            discount_applied: referralDiscount,
-            points_awarded: pointsUsed || 0,
-            used_at: new Date().toISOString()
-          };
+          const { ReferralService } = await import("@/lib/client-services");
 
-          // This would need to be implemented in ReferralService
-          console.log("Referral data to record:", referralData);
-          toast.success("Referral bonus recorded successfully!");
+          console.log("🎯 Recording referral usage for successful transaction");
+
+          // Record referral usage and award points to referrer
+          const referralResult = await ReferralService.recordReferralAndAwardPoints(
+            referralCode.trim(),
+            customerIdToUse,
+            invoice,
+            referralDiscount
+          );
+
+          if (referralResult.success) {
+            toast.success(`Referral bonus recorded! Referrer earned ${referralResult.pointsAwarded} points`);
+            console.log("✅ Referral recorded successfully:", referralResult);
+          } else {
+            console.error("❌ Referral recording failed:", referralResult.error);
+            toast.warning(`Order successful, but referral recording failed: ${referralResult.error}`);
+          }
 
           if (pointsUsed && pointsUsed > 0) {
-            // Handle points deduction
+            // Handle points deduction for the customer who used points
             const { PointsService } = await import("@/lib/client-services");
             await PointsService.deductPoints(
               customerIdToUse,
@@ -383,6 +389,7 @@ export const useCartStore = create<CartState>((set, get) => ({
               invoice,
               `Points used for order ${invoice}`
             );
+            toast.success(`Points deducted! You used ${pointsUsed} points`);
           }
         } catch (error) {
           console.error("Error recording referral usage:", error);

@@ -809,6 +809,106 @@ export const ReferralService = {
     }
   },
 
+  async getReferrerByCode(referralCode: string) {
+    try {
+      // Try to find referrer by customer_id or referral_code field
+      const { data: referrerData, error: referrerError } = await supabase
+        .from('customers')
+        .select('customer_id, name, email')
+        .or(`customer_id.eq.${referralCode},referral_code.eq.${referralCode}`)
+        .limit(1);
+
+      if (referrerError) throw referrerError;
+      if (!referrerData || referrerData.length === 0) {
+        return null;
+      }
+
+      return referrerData[0];
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to find referrer'
+      });
+      return null;
+    }
+  },
+
+  async recordReferralAndAwardPoints(referralCode: string, referredCustomerId: string, orderInvoiceId: string, discountAmount: number) {
+    try {
+      console.log('🎯 Recording referral and awarding points:', { referralCode, referredCustomerId, orderInvoiceId, discountAmount });
+
+      // Find referrer information
+      const referrer = await this.getReferrerByCode(referralCode);
+      if (!referrer) {
+        throw new Error('Referrer not found for referral code');
+      }
+
+      // Check if referral was already used
+      const { data: existingUsage } = await supabase
+        .from('referral_usage')
+        .select('*')
+        .eq('referred_customer_id', referredCustomerId)
+        .limit(1);
+
+      if (existingUsage && existingUsage.length > 0) {
+        console.log('⚠️ Referral already used for this customer');
+        return { success: false, error: 'Referral already used' };
+      }
+
+      // Record the referral usage
+      const referralUsageData = {
+        referral_code: referralCode,
+        referrer_customer_id: referrer.customer_id,
+        referred_customer_id: referredCustomerId,
+        order_invoice_id: orderInvoiceId,
+        discount_applied: discountAmount,
+        used_at: new Date().toISOString()
+      };
+
+      const referralRecord = await this.recordReferralUsage(referralUsageData);
+      if (!referralRecord) {
+        throw new Error('Failed to record referral usage');
+      }
+
+      // Award points to referrer (using default settings: 10 points)
+      const pointsAwarded = 10; // Default from server-side settings
+      const pointsResult = await PointsService.addPoints(
+        referrer.customer_id,
+        pointsAwarded,
+        'referral',
+        orderInvoiceId,
+        `Points awarded for referral: ${referralCode}`
+      );
+
+      if (!pointsResult) {
+        console.error('⚠️ Failed to award points to referrer');
+        // Don't fail the operation if points awarding fails
+      }
+
+      console.log('✅ Referral recorded and points awarded successfully:', {
+        referralRecord,
+        pointsAwarded: pointsResult || pointsAwarded,
+        referrer: referrer.customer_id
+      });
+
+      return {
+        success: true,
+        referralRecord,
+        pointsAwarded: pointsResult || pointsAwarded,
+        referrer: referrer.customer_id
+      };
+
+    } catch (error) {
+      console.error('❌ Error recording referral and awarding points:', error);
+      handleClientError(error, {
+        customMessage: 'Failed to record referral usage'
+      });
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to record referral'
+      };
+    }
+  },
+
   async getReferralCustomers() {
     try {
       const { data, error } = await supabase
