@@ -28,6 +28,8 @@ export type ICustomers = {
   email?: string;
   orders?: Orders[];
   totalSpent?: number;
+  has_orders?: boolean;
+  total_orders?: number;
 };
 
 export type IDiscount = {

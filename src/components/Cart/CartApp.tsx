@@ -9,6 +9,8 @@ import { InfoCustomer } from "./InfoCustomer";
 import { Services } from "./Services";
 import { useInvoiceID } from "@/hooks/useNanoID";
 import { Discount } from "./Discount";
+import { Referral } from "./Referral";
+import { PointsRedemption } from "./PointsRedemption";
 import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { Payment } from "./Payment";
@@ -20,6 +22,10 @@ export function CartApp() {
   const { clearCustomer } = useCustomerStore();
   const { totalPrice, setInvoice, resetCart } = useCartStore();
   const router = useRouter();
+
+  // Check if customer is new or existing
+  // A customer is considered "new" if they don't have any orders yet
+  const isNewCustomer = !activeCustomer?.has_orders || activeCustomer?.total_orders === 0;
 
   useEffect(() => {
     if (!activeCustomer) {
@@ -66,6 +72,10 @@ export function CartApp() {
         </Card>
         <Services />
         <Discount />
+        {/* Show Referral Redemption only for new customers */}
+        {isNewCustomer && <Referral />}
+        {/* Show Points Redemption only for existing customers */}
+        {!isNewCustomer && <PointsRedemption />}
       </div>
       <div className="fixed md:sticky w-full bottom-0 flex-shrink-0 flex justify-between items-center px-5 py-3 bg-white border-t">
         <Button variant={"outline"} onClick={handleBatal}>

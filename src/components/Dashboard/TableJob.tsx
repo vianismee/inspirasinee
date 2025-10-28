@@ -61,6 +61,14 @@ import {
 import { formatedCurrency } from "@/lib/utils";
 import { useOrderStore } from "@/stores/orderStore";
 import { Orders } from "@/types";
+
+// Extended interface for orders with referral properties
+interface OrderWithReferral extends Orders {
+  referral_code?: string;
+  referral_discount_amount?: number;
+  points_used?: number;
+  points_discount_amount?: number;
+}
 import { useRouter } from "next/navigation";
 
 export default function TableJob() {
@@ -249,6 +257,31 @@ export default function TableJob() {
                       </span>
                     </div>
                   ))}
+
+                  {/* Referral Discount Display */}
+                  {(order as OrderWithReferral).referral_code && (order as OrderWithReferral).referral_discount_amount! > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">
+                        💰 Referral - {(order as OrderWithReferral).referral_code}
+                      </span>
+                      <span className="font-mono text-green-600">
+                        -{formatedCurrency((order as OrderWithReferral).referral_discount_amount!)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Points Redemption Display */}
+                  {(order as OrderWithReferral).points_used! > 0 && (order as OrderWithReferral).points_discount_amount! > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">
+                        🎯 Poin ({(order as OrderWithReferral).points_used} poin)
+                      </span>
+                      <span className="font-mono text-green-600">
+                        -{formatedCurrency((order as OrderWithReferral).points_discount_amount!)}
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center text-md font-bold mt-2 pt-2 border-t">
                     <span>Total Pembayaran</span>
                     <span className="font-mono">
@@ -456,6 +489,10 @@ export default function TableJob() {
               totalPrice: order.total_price,
               payment: order.payment,
               discounts: formattedDiscounts,
+              referralCode: (order as OrderWithReferral).referral_code || undefined,
+              referralDiscount: (order as OrderWithReferral).referral_discount_amount || undefined,
+              pointsUsed: (order as OrderWithReferral).points_used || undefined,
+              pointsDiscount: (order as OrderWithReferral).points_discount_amount || undefined,
             });
             const encodedText = encodeURIComponent(receiptText);
             const whatsappURL = `https://wa.me/${order.customers.whatsapp}?text=${encodedText}`;

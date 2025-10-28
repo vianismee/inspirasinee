@@ -13,6 +13,10 @@ interface ReceiptData {
     label: string;
     amount: number;
   }[];
+  referralCode?: string;
+  referralDiscount?: number;
+  pointsUsed?: number;
+  pointsDiscount?: number;
 }
 
 export const generateReceiptText = ({
@@ -23,6 +27,10 @@ export const generateReceiptText = ({
   totalPrice,
   payment,
   discounts,
+  referralCode,
+  referralDiscount,
+  pointsUsed,
+  pointsDiscount,
 }: ReceiptData): string => {
   // Format tanggal menjadi D/M/YYYY
   const today = new Date();
@@ -66,13 +74,24 @@ export const generateReceiptText = ({
   const subTotalText = `Subtotal: ${formatedCurrency(subTotal)}`;
 
   // Logika untuk memformat setiap diskon
-  const discountsText =
-    discounts && discounts.length > 0
-      ? "\n" +
-        discounts
-          .map((d) => `- ${d.label}: -${formatedCurrency(d.amount)}`)
-          .join("\n")
-      : "";
+  const discountLines: string[] = [];
+
+  // Regular discounts
+  if (discounts && discounts.length > 0) {
+    discountLines.push(...discounts.map((d) => `- ${d.label}: -${formatedCurrency(d.amount)}`));
+  }
+
+  // Referral discount
+  if (referralCode && referralDiscount && referralDiscount > 0) {
+    discountLines.push(`- 💰 Referral (${referralCode}): -${formatedCurrency(referralDiscount)}`);
+  }
+
+  // Points redemption
+  if (pointsUsed && pointsUsed > 0 && pointsDiscount && pointsDiscount > 0) {
+    discountLines.push(`- 🎯 Poin (${pointsUsed} poin): -${formatedCurrency(pointsDiscount)}`);
+  }
+
+  const discountsText = discountLines.length > 0 ? "\n" + discountLines.join("\n") : "";
 
   const totalText = `\n*Total Pembayaran: ${formatedCurrency(totalPrice)}*`;
   const paymentMethod = `\nMetode Pembayaran: ${payment}`;

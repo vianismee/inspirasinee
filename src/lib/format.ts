@@ -12,7 +12,6 @@ export function formatDate(
       ...opts,
     }).format(new Date(date));
   } catch (_err) {
-    console.log(_err);
     return "";
   }
 }

@@ -16,6 +16,14 @@ import { Logo } from "../Logo";
 import { MapPin, Phone, User } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Orders } from "@/types/index";
+
+// Extended interface for orders with referral properties
+interface OrderWithReferral extends Orders {
+  referral_code?: string;
+  referral_discount_amount?: number;
+  points_used?: number;
+  points_discount_amount?: number;
+}
 import { ContactCs, generateComplaintText } from "@/lib/invoiceUtils";
 
 // --- PERBAIKAN: Gunakan konstanta untuk nomor yang berulang ---
@@ -167,6 +175,31 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                       </p>
                     </div>
                   ))}
+
+                  {/* Referral Discount Display */}
+                  {(order as OrderWithReferral)?.referral_code && ((order as OrderWithReferral)?.referral_discount_amount || 0) > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <p className="text-muted-foreground">
+                        💰 Referral - {(order as OrderWithReferral).referral_code}
+                      </p>
+                      <p className="font-mono text-green-600">
+                        -{formatedCurrency((order as OrderWithReferral).referral_discount_amount || 0)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Points Redemption Display */}
+                  {((order as OrderWithReferral)?.points_used || 0) > 0 && ((order as OrderWithReferral)?.points_discount_amount || 0) > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <p className="text-muted-foreground">
+                        🎯 Poin ({(order as OrderWithReferral).points_used || 0} poin)
+                      </p>
+                      <p className="font-mono text-green-600">
+                        -{formatedCurrency((order as OrderWithReferral).points_discount_amount || 0)}
+                      </p>
+                    </div>
+                  )}
+
                   <Separator className="my-2" />
                   <div className="flex justify-between items-center font-bold text-base">
                     <p>Total</p>

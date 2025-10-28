@@ -14,6 +14,14 @@ import { Logo } from "../Logo";
 import { MapPin, Phone, User } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Orders } from "@/types/index";
+
+// Extended interface for orders with referral properties
+interface OrderWithReferral extends Orders {
+  referral_code?: string;
+  referral_discount_amount?: number;
+  points_used?: number;
+  points_discount_amount?: number;
+}
 import { useMemo } from "react";
 import { ContactCs, generateComplaintText } from "@/lib/invoiceUtils";
 
@@ -23,7 +31,7 @@ interface TrackingMobileProps {
 }
 
 export function TrackingMobile({ order }: TrackingMobileProps) {
-  const customer = order.customers;
+  const _customer = order.customers;
   const { contactAdminUrl, complainChatUrl } = useMemo(() => {
     const contactMessage = ContactCs(order.invoice_id);
     const complaintMessage = generateComplaintText(order.invoice_id);
@@ -159,6 +167,31 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
                     </span>
                   </div>
                 ))}
+
+                {/* Referral Discount Display */}
+                {(order as OrderWithReferral)?.referral_code && ((order as OrderWithReferral)?.referral_discount_amount || 0) > 0 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">
+                      💰 Referral ({(order as OrderWithReferral).referral_code})
+                    </span>
+                    <span className="font-mono text-green-600">
+                      -{formatedCurrency((order as OrderWithReferral).referral_discount_amount || 0)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Points Redemption Display */}
+                {((order as OrderWithReferral)?.points_used || 0) > 0 && ((order as OrderWithReferral)?.points_discount_amount || 0) > 0 && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">
+                      🎯 Poin ({(order as OrderWithReferral).points_used || 0})
+                    </span>
+                    <span className="font-mono text-green-600">
+                      -{formatedCurrency((order as OrderWithReferral).points_discount_amount || 0)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center text-md font-bold pt-2 mt-2 border-t">
                   <span>Total</span>
                   <span className="font-mono">

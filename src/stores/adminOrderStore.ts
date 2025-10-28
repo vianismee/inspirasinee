@@ -44,7 +44,7 @@ interface adminOrderState {
 export const useAdminOrder = create<adminOrderState>((set) => ({
   orders: [],
   isLoading: false,
-  fetchOrder: async (invoice_id?: string) => {
+  fetchOrder: async (_invoice_id?: string) => {
     const supabase = createClient();
     const selectQuery = "*, orders ( *, order_item (*), order_discounts (*))";
     try {
@@ -53,13 +53,11 @@ export const useAdminOrder = create<adminOrderState>((set) => ({
         .from("customers")
         .select(selectQuery);
       if (orderError) {
-        console.log(orderError);
         return;
       }
       set({ orders: orderData || [] });
       return;
     } catch (error) {
-      console.log(error);
     } finally {
       set({ isLoading: false });
     }

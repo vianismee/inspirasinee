@@ -41,7 +41,7 @@ export default function QrisPaymentPage() {
     }
   }, [totalPrice, router]);
 
-  const downloadQR = () => {
+  const _downloadQR = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const link = document.createElement("a");
