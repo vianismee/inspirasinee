@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Headers } from "@/components/MainComponent/Header";
 import { Search, Users } from "lucide-react";
 import { toast } from "sonner";
+import { AdminReferralService } from "@/lib/client-services";
 
 interface CustomerPoints {
   id: number;
@@ -56,28 +57,19 @@ export default function CustomerPointsManagementPage() {
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString()
-      });
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit,
+        search: searchTerm || undefined
+      };
 
-      if (searchTerm) {
-        params.append("search", searchTerm);
-      }
-
-      const response = await fetch(`/api/admin/referral/customers?${params}`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setCustomers(data.customers);
-        setPagination(prev => ({
-          ...prev,
-          total: data.total,
-          totalPages: Math.ceil(data.total / pagination.limit)
-        }));
-      } else {
-        toast.error(data.error || "Failed to fetch customer points");
-      }
+      const data = await AdminReferralService.getCustomerPoints(params);
+      setCustomers(data.customers);
+      setPagination(prev => ({
+        ...prev,
+        total: data.pagination.total,
+        pages: data.pagination.pages
+      }));
     } catch (error) {
       console.error("Error fetching customer points:", error);
       toast.error("Failed to fetch customer points");
@@ -95,28 +87,20 @@ export default function CustomerPointsManagementPage() {
     if (!selectedCustomer) return;
 
     try {
-      const response = await fetch("/api/admin/referral/customers", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          customerId: selectedCustomer.customer_id,
-          pointsChange: adjustmentForm.pointsChange,
-          description: adjustmentForm.description
-        }),
-      });
+      const result = await AdminReferralService.adjustCustomerPoints(
+        selectedCustomer.customer_id,
+        adjustmentForm.pointsChange,
+        adjustmentForm.description
+      );
 
-      if (response.ok) {
-        const data = await response.json();
-        toast.success(data.message);
+      if (result.success) {
+        toast.success(result.message);
         setAdjustmentOpen(false);
         setAdjustmentForm({ pointsChange: 0, description: "" });
         setSelectedCustomer(null);
         fetchCustomers();
       } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to adjust points");
+        toast.error(result.message || "Failed to adjust points");
       }
     } catch (error) {
       console.error("Error adjusting points:", error);

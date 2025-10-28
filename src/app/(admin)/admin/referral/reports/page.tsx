@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Headers } from "@/components/MainComponent/Header";
 import { Download, Filter, TrendingUp, Users, Gift, Target } from "lucide-react";
 import { toast } from "sonner";
+import { AdminReferralService } from "@/lib/client-services";
 
 interface ReferralUsage {
   id: number;
@@ -71,17 +72,13 @@ export default function ReferralReportsPage() {
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (dateFilter.startDate) params.append("startDate", dateFilter.startDate);
-      if (dateFilter.endDate) params.append("endDate", dateFilter.endDate);
+      const filters = {
+        startDate: dateFilter.startDate || undefined,
+        endDate: dateFilter.endDate || undefined
+      };
 
-      const response = await fetch(`/api/admin/referral/analytics?${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        setAnalytics(data);
-      } else {
-        toast.error("Failed to fetch analytics");
-      }
+      const data = await AdminReferralService.getReferralAnalytics(filters);
+      setAnalytics(data);
     } catch (error) {
       console.error("Error fetching analytics:", error);
       toast.error("Failed to fetch analytics");

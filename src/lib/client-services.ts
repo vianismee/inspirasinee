@@ -1168,6 +1168,399 @@ export const DiscountService = {
   }
 };
 
+// === ADMIN REFERRAL SERVICES ===
+
+export const AdminReferralService = {
+  // Analytics Service
+  async getReferralAnalytics(filters?: { startDate?: string; endDate?: string }) {
+    try {
+      console.log("📊 Fetching referral analytics with filters:", filters);
+
+      // Build referral usage query
+      let referralQuery = supabase
+        .from('referral_usage')
+        .select(`
+          *,
+          referrer:referrer_customer_id(username, email),
+          referred:referred_customer_id(username, email)
+        `)
+        .order('used_at', { ascending: false });
+
+      // Apply date filters if provided
+      if (filters?.startDate) {
+        referralQuery = referralQuery.gte('used_at', filters.startDate);
+      }
+      if (filters?.endDate) {
+        referralQuery = referralQuery.lte('used_at', filters.endDate);
+      }
+
+      const { data: referralStats, error: referralError } = await referralQuery;
+
+      if (referralError) {
+        console.error("Error fetching referral stats:", referralError);
+        throw referralError;
+      }
+
+      // Get customer points statistics
+      const { data: pointsStats, error: pointsError } = await supabase
+        .from('customer_points')
+        .select(`
+          *,
+          customer:customer_id(username, email)
+        `)
+        .order('current_balance', { ascending: false });
+
+      if (pointsError) {
+        console.error("Error fetching points stats:", pointsError);
+        throw pointsError;
+      }
+
+      // Get points transaction history
+      const { data: transactions, error: transactionError } = await supabase
+        .from('points_transactions')
+        .select(`
+          *,
+          customer:customer_id(username, email)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (transactionError) {
+        console.error("Error fetching transactions:", transactionError);
+        throw transactionError;
+      }
+
+      // Calculate summary statistics
+      const totalReferrals = referralStats?.length || 0;
+      const totalReferralDiscount = referralStats?.reduce((sum, r) => sum + (r.discount_applied || 0), 0) || 0;
+      const totalPointsAwarded = referralStats?.reduce((sum, r) => sum + (r.points_awarded || 0), 0) || 0;
+      const totalPointsRedeemed = transactions?.filter(t => t.transaction_type === 'redeemed')
+        .reduce((sum, t) => sum + Math.abs(t.points_change), 0) || 0;
+      const activeCustomersWithPoints = pointsStats?.filter(p => p.current_balance > 0).length || 0;
+
+      // Get top referrers
+      interface TopReferrer {
+        referrer_customer_id: string;
+        referrer_name: string;
+        referralCount: number;
+        totalPointsEarned: number;
+      }
+
+      const topReferrers = referralStats?.reduce((acc: TopReferrer[], referral) => {
+        const existing = acc.find((r: TopReferrer) => r.referrer_customer_id === referral.referrer_customer_id);
+        if (existing) {
+          existing.referralCount += 1;
+          existing.totalPointsEarned += referral.points_awarded || 0;
+        } else {
+          acc.push({
+            referrer_customer_id: referral.referrer_customer_id,
+            referrer_name: referral.referrer?.username || referral.referrer?.email || 'Unknown',
+            referralCount: 1,
+            totalPointsEarned: referral.points_awarded || 0
+          });
+        }
+        return acc;
+      }, []).sort((a: TopReferrer, b: TopReferrer) => b.referralCount - a.referralCount).slice(0, 10) || [];
+
+      const analytics = {
+        summary: {
+          totalReferrals,
+          totalReferralDiscount,
+          totalPointsAwarded,
+          totalPointsRedeemed,
+          activeCustomersWithPoints,
+          totalCustomersWithPoints: pointsStats?.length || 0
+        },
+        topReferrers,
+        recentReferrals: referralStats?.slice(0, 20) || [],
+        pointsDistribution: pointsStats?.slice(0, 20) || [],
+        recentTransactions: transactions?.slice(0, 50) || []
+      };
+
+      console.log("✅ Referral analytics fetched successfully");
+      return analytics;
+
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch referral analytics'
+      });
+      return {
+        summary: { totalReferrals: 0, totalReferralDiscount: 0, totalPointsAwarded: 0, totalPointsRedeemed: 0, activeCustomersWithPoints: 0, totalCustomersWithPoints: 0 },
+        topReferrers: [],
+        recentReferrals: [],
+        pointsDistribution: [],
+        recentTransactions: []
+      };
+    }
+  },
+
+  // Customer Points Management
+  async getCustomerPoints(params?: { page?: number; limit?: number; search?: string }) {
+    try {
+      const page = params?.page || 1;
+      const limit = params?.limit || 10;
+      const search = params?.search || "";
+      const offset = (page - 1) * limit;
+
+      console.log("👥 Fetching customer points with params:", { page, limit, search });
+
+      let query = supabase
+        .from('customer_points')
+        .select(`
+          *,
+          customer:customer_id(username, email, whatsapp)
+        `)
+        .order('current_balance', { ascending: false });
+
+      // Apply search filter if provided
+      if (search) {
+        query = query.or(`customer.username.ilike.%${search}%,customer.email.ilike.%${search}%`);
+      }
+
+      // Get paginated results
+      const { data: customers, error } = await query
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        console.error("Error fetching customer points:", error);
+        throw error;
+      }
+
+      // Get total count for pagination
+      const { count: totalCount } = await supabase
+        .from('customer_points')
+        .select("*", { count: "exact", head: true });
+
+      const result = {
+        customers: customers || [],
+        pagination: {
+          page,
+          limit,
+          total: totalCount || 0,
+          pages: Math.ceil((totalCount || 0) / limit)
+        }
+      };
+
+      console.log("✅ Customer points fetched successfully");
+      return result;
+
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch customer points'
+      });
+      return {
+        customers: [],
+        pagination: { page: 1, limit: 10, total: 0, pages: 0 }
+      };
+    }
+  },
+
+  async adjustCustomerPoints(customerId: string, pointsChange: number, description?: string) {
+    try {
+      console.log("🎯 Adjusting customer points:", { customerId, pointsChange, description });
+
+      // Get current customer points
+      const { data: currentPoints, error: fetchError } = await supabase
+        .from('customer_points')
+        .select("*")
+        .eq("customer_id", customerId)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error("Error fetching customer points:", fetchError);
+        throw fetchError;
+      }
+
+      if (!currentPoints) {
+        throw new Error('Customer points not found');
+      }
+
+      // Calculate new balance
+      const newBalance = currentPoints.current_balance + pointsChange;
+
+      // Update customer points
+      const { error: updateError } = await supabase
+        .from('customer_points')
+        .update({
+          current_balance: newBalance,
+          total_earned: pointsChange > 0 ? currentPoints.total_earned + pointsChange : currentPoints.total_earned,
+          total_redeemed: pointsChange < 0 ? currentPoints.total_redeemed + Math.abs(pointsChange) : currentPoints.total_redeemed,
+          updated_at: new Date().toISOString()
+        })
+        .eq("customer_id", customerId);
+
+      if (updateError) {
+        console.error("Error updating customer points:", updateError);
+        throw updateError;
+      }
+
+      // Record transaction
+      const { error: transactionError } = await supabase
+        .from('points_transactions')
+        .insert({
+          customer_id: customerId,
+          transaction_type: pointsChange > 0 ? 'earned' : 'redeemed',
+          points_change: pointsChange,
+          balance_after: newBalance,
+          reference_type: 'manual_adjustment',
+          description: description || `Manual adjustment: ${pointsChange > 0 ? '+' : ''}${pointsChange} points`
+        });
+
+      if (transactionError) {
+        console.error("Error recording transaction:", transactionError);
+        throw transactionError;
+      }
+
+      const result = {
+        success: true,
+        newBalance,
+        message: `Points ${pointsChange > 0 ? 'added to' : 'deducted from'} customer successfully`
+      };
+
+      console.log("✅ Customer points adjusted successfully:", result);
+      return result;
+
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to adjust customer points'
+      });
+      return {
+        success: false,
+        newBalance: 0,
+        message: 'Failed to adjust points'
+      };
+    }
+  },
+
+  // Referral Settings Management
+  async getReferralSettings() {
+    try {
+      console.log("⚙️ Fetching referral settings");
+
+      const { data, error } = await supabase
+        .from("referral_settings")
+        .select("*")
+        .eq("is_active", true)
+        .single();
+
+      // Handle case where no settings exist yet
+      if (error && error.code === 'PGRST116') {
+        console.log("ℹ️ No referral settings found, returning defaults");
+        const defaultSettings = {
+          id: 0,
+          referral_discount_amount: 5000,
+          referrer_points_earned: 10,
+          points_redemption_minimum: 50,
+          points_redemption_value: 100,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        return defaultSettings;
+      }
+
+      if (error) {
+        console.error("Error fetching referral settings:", error);
+        throw error;
+      }
+
+      console.log("✅ Referral settings fetched successfully");
+      return data;
+
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch referral settings'
+      });
+      // Return default settings on error
+      return {
+        id: 0,
+        referral_discount_amount: 5000,
+        referrer_points_earned: 10,
+        points_redemption_minimum: 50,
+        points_redemption_value: 100,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    }
+  },
+
+  async updateReferralSettings(settings: {
+    referral_discount_amount?: number;
+    referrer_points_earned?: number;
+    points_redemption_minimum?: number;
+    points_redemption_value?: number;
+    is_active?: boolean;
+  }) {
+    try {
+      console.log("⚙️ Updating referral settings:", settings);
+
+      // Get current settings
+      const { data: currentSettings, error: fetchError } = await supabase
+        .from("referral_settings")
+        .select("*")
+        .eq("is_active", true)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error("Error fetching current settings:", fetchError);
+        throw fetchError;
+      }
+
+      let result;
+      if (currentSettings) {
+        // Update existing settings
+        const { data, error } = await supabase
+          .from("referral_settings")
+          .update({
+            ...settings,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", currentSettings.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error("Error updating referral settings:", error);
+          throw error;
+        }
+
+        result = data;
+        console.log("✅ Referral settings updated successfully");
+      } else {
+        // Create new settings
+        const { data, error } = await supabase
+          .from("referral_settings")
+          .insert({
+            referral_discount_amount: settings.referral_discount_amount || 5000,
+            referrer_points_earned: settings.referrer_points_earned || 10,
+            points_redemption_minimum: settings.points_redemption_minimum || 50,
+            points_redemption_value: settings.points_redemption_value || 100,
+            is_active: settings.is_active ?? true
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error("Error creating referral settings:", error);
+          throw error;
+        }
+
+        result = data;
+        console.log("✅ Referral settings created successfully");
+      }
+
+      return result;
+
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to update referral settings'
+      });
+      return null;
+    }
+  }
+};
+
 // === DATABASE HEALTH SERVICES ===
 
 export const DatabaseService = {

@@ -11,6 +11,7 @@ import { Headers } from "@/components/MainComponent/Header";
 import { ReferralNavigation } from "@/components/referral-nav";
 import { Settings, Users, TrendingUp, Gift } from "lucide-react";
 import { toast } from "sonner";
+import { AdminReferralService } from "@/lib/client-services";
 
 
 interface AnalyticsData {
@@ -51,22 +52,14 @@ export default function ReferralManagementPage() {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch("/api/admin/referral/settings");
-
-      if (response.ok) {
-        const data = await response.json();
-        setFormData({
-          referral_discount_amount: data.referral_discount_amount,
-          referrer_points_earned: data.referrer_points_earned,
-          points_redemption_minimum: data.points_redemption_minimum,
-          points_redemption_value: data.points_redemption_value,
-          is_active: data.is_active
-        });
-      } else {
-        const errorText = await response.text();
-        console.error("Failed to fetch settings:", response.status, errorText);
-        toast.error("Failed to fetch referral settings");
-      }
+      const data = await AdminReferralService.getReferralSettings();
+      setFormData({
+        referral_discount_amount: data.referral_discount_amount,
+        referrer_points_earned: data.referrer_points_earned,
+        points_redemption_minimum: data.points_redemption_minimum,
+        points_redemption_value: data.points_redemption_value,
+        is_active: data.is_active
+      });
     } catch (error) {
       console.error("Error fetching settings:", error);
       toast.error("Failed to fetch referral settings");
@@ -75,11 +68,8 @@ export default function ReferralManagementPage() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch("/api/admin/referral/analytics");
-      if (response.ok) {
-        const data = await response.json();
-        setAnalytics(data);
-      }
+      const data = await AdminReferralService.getReferralAnalytics();
+      setAnalytics(data);
     } catch (error) {
       console.error("Error fetching analytics:", error);
       toast.error("Failed to fetch analytics");
@@ -93,20 +83,11 @@ export default function ReferralManagementPage() {
     setSaving(true);
 
     try {
-      const response = await fetch("/api/admin/referral/settings", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        await response.json();
+      const result = await AdminReferralService.updateReferralSettings(formData);
+      if (result) {
         toast.success("Referral settings updated successfully");
       } else {
-        const error = await response.json();
-        toast.error(error.error || "Failed to update settings");
+        toast.error("Failed to update settings");
       }
     } catch (error) {
       console.error("Error updating settings:", error);
