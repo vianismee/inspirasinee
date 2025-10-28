@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Step 3: Test basic import and schema determination
-    let step3 = { status: "checking_imports", error: null };
+    let step3: { status: string; error: string | null; schema?: string } = { status: "checking_imports", error: null };
     try {
       const schema = process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
       step3 = {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 4: Test Supabase client creation
-    let step4 = { status: "checking_supabase_client", error: null };
+    let step4: { status: string; error: string | null } = { status: "checking_supabase_client", error: null };
     try {
       const { createClient } = await import("@/utils/supabase/server");
       const client = await createClient();
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 5: Test simple database query
-    let step5 = { status: "checking_database_connection", error: null, data: null };
+    let step5: { status: string; error: string | null; data: string | null } = { status: "checking_database_connection", error: null, data: null };
     try {
       const { createClient } = await import("@/utils/supabase/server");
       const client = await createClient();
