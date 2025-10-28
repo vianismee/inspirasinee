@@ -345,11 +345,27 @@ export const PointsService = {
         };
       }
 
-      // Check minimum redemption requirement (50 points)
-      if (pointsToRedeem < 50) {
+      // Get referral settings for proper values
+      let settings;
+      try {
+        settings = await AdminReferralService.getReferralSettings();
+      } catch (error) {
+        console.warn('⚠️ Could not fetch referral settings, using defaults:', error);
+        // Fallback to default settings
+        settings = {
+          points_redemption_minimum: 50,
+          points_redemption_value: 100
+        };
+      }
+
+      const minimumPoints = settings.points_redemption_minimum || 50;
+      const pointsValue = settings.points_redemption_value || 100;
+
+      // Check minimum redemption requirement
+      if (pointsToRedeem < minimumPoints) {
         return {
           valid: false,
-          error: "Minimum 50 points required for redemption"
+          error: `Minimum ${minimumPoints} points required for redemption`
         };
       }
 
@@ -361,8 +377,8 @@ export const PointsService = {
         };
       }
 
-      // Calculate discount (100 points = Rp 100)
-      const discountAmount = Math.floor(pointsToRedeem * 100);
+      // Calculate discount using actual settings
+      const discountAmount = Math.floor(pointsToRedeem * pointsValue);
       const newBalance = currentBalance.current_balance - pointsToRedeem;
 
       return {

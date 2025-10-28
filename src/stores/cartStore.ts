@@ -314,7 +314,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         payment: payment,
         referral_code: referralCode || null,
         referral_discount_amount: referralDiscount,
-        points_awarded: pointsUsed,
+        points_used: pointsUsed,
+        points_discount_amount: pointsDiscount,
       };
 
       const order = await OrderService.createOrder(orderData);

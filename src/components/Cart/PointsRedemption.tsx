@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Gift, CheckCircle, AlertCircle, Info } from "lucide-react";
 import { formatedCurrency } from "@/lib/utils";
 import { toast } from "sonner";
-import { PointsService } from "@/lib/client-services";
+import { PointsService, AdminReferralService } from "@/lib/client-services";
 
 interface CustomerPoints {
   current_balance: number;
@@ -28,12 +28,21 @@ interface PointsRedemptionResult {
   error?: string;
 }
 
+interface ReferralSettings {
+  points_redemption_minimum: number;
+  points_redemption_value: number;
+}
+
 export function PointsRedemption() {
   const [pointsToRedeem, setPointsToRedeem] = useState("");
   const [isValidating, setIsValidating] = useState(false);
   const [customerPoints, setCustomerPoints] = useState<CustomerPoints | null>(null);
   const [redemptionResult, setRedemptionResult] = useState<PointsRedemptionResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [referralSettings, setReferralSettings] = useState<ReferralSettings>({
+    points_redemption_minimum: 50,
+    points_redemption_value: 100
+  });
 
   const activeCustomer = useCustomerStore((state) => state.activeCustomer);
   const {
@@ -43,6 +52,19 @@ export function PointsRedemption() {
     clearPointsDiscount,
     pointsUsed: appliedPoints
   } = useCartStore();
+
+  const fetchReferralSettings = useCallback(async () => {
+    try {
+      const settings = await AdminReferralService.getReferralSettings();
+      setReferralSettings({
+        points_redemption_minimum: settings.points_redemption_minimum || 50,
+        points_redemption_value: settings.points_redemption_value || 100
+      });
+    } catch (error) {
+      console.error("Error fetching referral settings:", error);
+      // Keep default values on error
+    }
+  }, []);
 
   const fetchCustomerPoints = useCallback(async () => {
     if (!activeCustomer) return;
@@ -65,10 +87,13 @@ export function PointsRedemption() {
   }, [activeCustomer]);
 
   useEffect(() => {
+    // Fetch referral settings once on mount
+    fetchReferralSettings();
+
     if (activeCustomer) {
       fetchCustomerPoints();
     }
-  }, [activeCustomer, fetchCustomerPoints]);
+  }, [activeCustomer, fetchCustomerPoints, fetchReferralSettings]);
 
   const validatePointsRedemption = async () => {
     if (!pointsToRedeem || !activeCustomer) {
@@ -231,17 +256,17 @@ export function PointsRedemption() {
               </p>
             </div>
             <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-              {formatedCurrency(Math.floor(customerPoints.current_balance * 100))}*
+              {formatedCurrency(Math.floor(customerPoints.current_balance * referralSettings.points_redemption_value))}*
             </Badge>
           </div>
           <p className="text-xs text-blue-600 mt-2">
-            *Estimated value (100 points = Rp 100)
+            *Estimated value ({referralSettings.points_redemption_value} points = Rp {referralSettings.points_redemption_value})
           </p>
         </div>
 
         {/* Points Redemption Input */}
         <div className="space-y-2">
-          <Label htmlFor="pointsToRedeem">Redeem Points (Minimum 50)</Label>
+          <Label htmlFor="pointsToRedeem">Redeem Points (Minimum {referralSettings.points_redemption_minimum})</Label>
           <div className="flex gap-2">
             <Input
               id="pointsToRedeem"
@@ -251,7 +276,7 @@ export function PointsRedemption() {
               onChange={(e) => setPointsToRedeem(e.target.value)}
               onKeyPress={handleKeyPress}
               disabled={isValidating}
-              min={50}
+              min={referralSettings.points_redemption_minimum}
               max={customerPoints.current_balance}
             />
             <Button
@@ -322,7 +347,7 @@ export function PointsRedemption() {
           <Info className="h-4 w-4" />
           <AlertDescription>
             Points are earned through referrals and can be redeemed for discounts on future orders.
-            Minimum 50 points required for redemption.
+            Minimum {referralSettings.points_redemption_minimum} points required for redemption.
           </AlertDescription>
         </Alert>
       </CardContent>
