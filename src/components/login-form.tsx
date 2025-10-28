@@ -30,6 +30,8 @@ export function LoginForm({
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
+    console.log("Attempting login with:", { email, password: "***" });
+
     try {
       const response = await fetch("/api/login", {
         method: "POST",
@@ -39,7 +41,16 @@ export function LoginForm({
         body: JSON.stringify({ email, password }),
       });
 
+      console.log("Response status:", response.status);
+      console.log("Response headers:", response.headers);
+
+      if (!response.ok) {
+        console.error("Response not OK:", response.statusText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const data = await response.json();
+      console.log("Response data:", data);
 
       if (response.ok) {
         toast.success("Login successful! Redirecting...");
@@ -52,7 +63,7 @@ export function LoginForm({
       }
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("An unexpected error occurred");
+      toast.error(`Login error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
