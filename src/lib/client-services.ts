@@ -856,12 +856,12 @@ export const ReferralService = {
 
   async getReferrerByCode(referralCode: string) {
     try {
-      // Try to find referrer by customer_id or referral_code field
+      // Try to find referrer by customer_id only (since referral_code column doesn't exist)
       // Use only existing columns to avoid schema errors
       const { data: referrerData, error: referrerError } = await supabase
         .from('customers')
-        .select('customer_id, email') // Removed 'name' column as it doesn't exist
-        .or(`customer_id.eq.${referralCode},referral_code.eq.${referralCode}`)
+        .select('customer_id, email') // Only use existing columns
+        .eq('customer_id', referralCode) // Only search by customer_id
         .limit(1);
 
       // Handle RLS permission errors gracefully
@@ -957,6 +957,7 @@ export const ReferralService = {
         referred_customer_id: referredCustomerId,
         order_invoice_id: orderInvoiceId,
         discount_applied: discountAmount,
+        points_awarded: 10, // Add required points_awarded field
         used_at: new Date().toISOString()
       };
 
@@ -1009,13 +1010,14 @@ export const ReferralService = {
     try {
       console.log('🔄 Recording referral with fallback approach:', { referrer, referralCode, referredCustomerId });
 
-      // Create a fallback referral record without database constraints
+      // Create a fallback referral record with required fields
       const fallbackReferralData = {
         referral_code: referralCode,
         referrer_customer_id: referrer.customer_id,
         referred_customer_id: referredCustomerId,
         order_invoice_id: orderInvoiceId,
         discount_applied: discountAmount,
+        points_awarded: 10, // Add required points_awarded field
         used_at: new Date().toISOString()
       };
 
@@ -1088,14 +1090,15 @@ export const ReferralService = {
 
   async getReferralCustomers() {
     try {
+      // Use only existing columns to avoid schema errors
       const { data, error } = await supabase
         .from('customers')
-        .select('*')
-        .not('referral_code', 'is', null)
-        .order('created_at', { ascending: false });
+        .select('customer_id, email') // Only use existing columns
+        .limit(100) // Limit results to avoid large queries
+        .order('customer_id', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data || [];
     } catch (error) {
       handleClientError(error, {
         customMessage: 'Failed to fetch referral customers'
