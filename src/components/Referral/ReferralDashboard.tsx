@@ -379,7 +379,7 @@ export function ReferralDashboard({ data }: ReferralDashboardProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Nama Customer</span>
-                <span className="font-medium text-sm">{data.customerData.username || data.customerData.customer_name || 'Tidak tersedia'}</span>
+                <span className="font-medium text-sm">{data.customerData.name || 'Tidak tersedia'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Nomor Telepon</span>
@@ -421,14 +421,22 @@ export function ReferralDashboard({ data }: ReferralDashboardProps) {
                 {data.orderHistory.map((order, index) => (
                   <div
                     key={index}
-                    className="p-3 rounded-lg border border-gray-200 bg-gray-50"
+                    className="p-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors duration-200 hover:shadow-md"
+                    onClick={() => {
+                      const invoiceId = order.invoice_id || order.invoice_number || order.id;
+                      console.log("Navigating to tracking for invoice:", invoiceId);
+                      router.push(`/tracking/${invoiceId}`);
+                    }}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {/* Invoice Number */}
                         <div>
-                          <div className="font-medium text-sm text-gray-900">
+                          <div className="font-medium text-sm text-gray-900 hover:text-blue-600 transition-colors">
                             {order.invoice_id || order.invoice_number || `INV-${order.id}`}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Klik untuk melacak pesanan
                           </div>
                         </div>
 
@@ -450,6 +458,10 @@ export function ReferralDashboard({ data }: ReferralDashboardProps) {
                             order.subtotal ||
                             0
                           )}
+                        </div>
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <span>Lacak</span>
+                          <span className="hover:text-blue-600">→</span>
                         </div>
                       </div>
                     </div>

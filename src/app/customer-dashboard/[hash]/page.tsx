@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ReferralDashboard } from "@/components/Referral/ReferralDashboard";
 import { toast } from "sonner";
-import { ReferralDashboardService, PointsService } from "@/lib/client-services";
+import { extractPhoneFromHash } from "@/lib/customer-dashboard-hash";
+import { PointsService } from "@/lib/client-services";
+import { createClient } from "@/utils/supabase/client";
 
 interface DashboardData {
   success: boolean;
@@ -67,53 +69,123 @@ export default function CustomerDashboardHashPage() {
       const hash = params.hash as string;
 
       if (!hash) {
-        setError("Hash tidak valid");
+        setError("Link tidak valid");
         setIsLoading(false);
         return;
       }
 
       try {
-        // Validate dashboard access using client-side service
-        const accessResult = await ReferralDashboardService.validateDashboardAccess(hash);
+        // Extract phone number from hash without database dependency
+        const { phone, valid } = extractPhoneFromHash(hash);
 
-        if (accessResult.valid && accessResult.customer) {
-          console.log("✅ Dashboard access validated");
-
-          // Build dashboard data from validated customer and session
-          const dashboardData: DashboardData = {
-            success: true,
-            customerData: {
-              customer_id: accessResult.customer.customer_id,
-              name: accessResult.customer.email || `Customer ${accessResult.customer.customer_id}`, // Use email or fallback
-              phone: '', // Not available in current schema
-              whatsapp: '', // Not available in current schema
-              email: accessResult.customer.email || ''
-            },
-            // Fetch additional data using client-side services
-            pointsData: await PointsService.getCustomerBalance(accessResult.customer.customer_id) || {
-              current_balance: 0,
-              total_earned: 0,
-              total_redeemed: 0
-            },
-            referralCode: accessResult.customer.customer_id || '', // Use customer_id as referral code
-            referralStats: {
-              totalReferrals: 0, // TODO: Implement referral stats calculation
-              totalPointsEarned: 0 // TODO: Implement referral points calculation
-            },
-            transactionHistory: [], // TODO: Implement transaction history fetch
-            orderHistory: [] // TODO: Implement order history fetch
-          };
-
-          setDashboardData(dashboardData);
-        } else {
-          setError(accessResult.error || "Gagal mengakses dashboard");
-          toast.error(accessResult.error || "Link tidak valid atau telah kedaluwarsa");
-
-          // Redirect back to verification page after a delay
-          setTimeout(() => {
-            router.push("/customer-dashboard");
-          }, 3000);
+        if (!valid || !phone) {
+          setError("Nomor telepon tidak terdaftar atau pengguna tidak valid");
+          setIsLoading(false);
+          return;
         }
+
+        console.log("✅ Phone extracted from hash:", phone);
+
+        // Find customer by phone using client-side query
+        const supabase = createClient();
+        const { data: customerData, error: customerError } = await supabase
+          .from('customers')
+          .select('customer_id, username, email, whatsapp, alamat')
+          .eq('whatsapp', phone)
+          .single();
+
+        if (customerError || !customerData) {
+          console.error("Customer not found:", customerError);
+          setError("Pelanggan tidak ditemukan untuk nomor telepon ini");
+          setIsLoading(false);
+          return;
+        }
+
+        console.log("✅ Customer found:", customerData);
+        console.log("Customer data fields:", {
+          customer_id: customerData.customer_id,
+          username: customerData.username,
+          email: customerData.email,
+          whatsapp: customerData.whatsapp,
+          alamat: customerData.alamat
+        });
+
+        // Fetch customer points (handle case where customer might not have points record yet)
+        let pointsData = {
+          current_balance: 0,
+          total_earned: 0,
+          total_redeemed: 0
+        };
+
+        try {
+          const fetchedPoints = await PointsService.getCustomerBalance(customerData.customer_id);
+          if (fetchedPoints) {
+            pointsData = fetchedPoints;
+          } else {
+            console.log("Customer has no points record yet, using defaults");
+          }
+        } catch (pointsError) {
+          console.error("Error fetching customer points:", pointsError);
+          // Continue with default points values
+        }
+
+        // Fetch points transaction history
+        const { data: transactionsData, error: transactionsError } = await supabase
+          .from('points_transactions')
+          .select('*')
+          .eq('customer_id', customerData.customer_id)
+          .order('created_at', { ascending: false })
+          .limit(10); // Get last 10 transactions
+
+        if (transactionsError) {
+          console.error("Error fetching transactions:", transactionsError);
+        }
+
+        // Fetch customer orders with order items (simplified query to avoid syntax issues)
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('customer_id', customerData.customer_id)
+          .order('created_at', { ascending: false });
+
+        if (ordersError) {
+          console.error("Error fetching orders:", ordersError);
+        }
+
+        // Build customer name with proper fallback
+        const customerName = customerData.username ||
+                           customerData.email ||
+                           customerData.whatsapp ||
+                           `Customer ${customerData.customer_id}`;
+
+        console.log("Customer name calculation:", {
+          username: customerData.username,
+          email: customerData.email,
+          whatsapp: customerData.whatsapp,
+          finalName: customerName
+        });
+
+        // Build dashboard data
+        const dashboardData: DashboardData = {
+          success: true,
+          customerData: {
+            customer_id: customerData.customer_id,
+            name: customerName,
+            phone: customerData.whatsapp,
+            whatsapp: customerData.whatsapp,
+            email: customerData.email || ''
+          },
+          pointsData: pointsData,
+          referralCode: customerData.customer_id || '',
+          referralStats: {
+            totalReferrals: 0, // TODO: Implement referral stats calculation
+            totalPointsEarned: pointsData.total_earned || 0
+          },
+          transactionHistory: transactionsData || [],
+          orderHistory: ordersData || []
+        };
+
+        setDashboardData(dashboardData);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         setError("Terjadi kesalahan saat memuat dashboard");

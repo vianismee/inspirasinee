@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Logo } from "../Logo";
 import { PhoneInput } from "../ui/phone-input";
 import { toast } from "sonner";
-import { ReferralDashboardService } from "@/lib/client-services";
+import { createCustomerDashboardLink } from "@/lib/customer-dashboard-hash";
+import { createClient } from "@/utils/supabase/client";
 
 export function PhoneVerification() {
   const [phone, setPhone] = useState("");
@@ -33,15 +34,30 @@ export function PhoneVerification() {
     setIsLoading(true);
 
     try {
-      const result = await ReferralDashboardService.verifyPhoneForDashboard(phone);
+      // Clean phone number but keep the + prefix for database consistency
+      const cleanPhone = phone.startsWith('+') ? phone : '+' + phone.replace(/\D/g, '');
 
-      if (result.success && result.redirectTo) {
-        toast.success("Verifikasi berhasil! Mengarahkan ke dashboard...");
-        // Redirect to dashboard with hash
-        router.push(result.redirectTo);
-      } else {
-        toast.error(result.error || "Terjadi kesalahan saat verifikasi");
+      // Check if customer exists in database
+      const supabase = createClient();
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .select('customer_id, username, whatsapp')
+        .eq('whatsapp', cleanPhone)
+        .single();
+
+      if (customerError || !customerData) {
+        toast.error("Pelanggan tidak ditemukan untuk nomor telepon ini");
+        return;
       }
+
+      // Generate dashboard link with encoded phone number
+      const dashboardLink = createCustomerDashboardLink(cleanPhone);
+
+      console.log("✅ Customer verified, redirecting to:", dashboardLink);
+      toast.success("Verifikasi berhasil! Mengarahkan ke dashboard...");
+
+      // Redirect to dashboard with encoded phone
+      router.push(dashboardLink);
     } catch (error) {
       console.error("Error verifying phone:", error);
       toast.error("Terjadi kesalahan. Silakan coba lagi");

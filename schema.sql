@@ -147,3 +147,4 @@ CREATE TABLE public.service_category (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT service_category_pkey PRIMARY KEY (id)
 );
+
