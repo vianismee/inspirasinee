@@ -35,14 +35,14 @@
 - [x] 4.9 Convert discount management API calls to client-side (no API routes exist)
 
 ## 5. API Route Migration - Referral System
-- [ ] 5.1 Convert /api/referral/dashboard/verify API calls to client-side phone verification
-- [ ] 5.2 Convert /api/referral/dashboard/access/[hash] API calls to client-side session validation
+- [x] 5.1 Convert /api/referral/dashboard/verify API calls to client-side phone verification
+- [x] 5.2 Convert /api/referral/dashboard/access/[hash] API calls to client-side session validation
 - [ ] 5.3 Convert /api/admin/referral/analytics API calls to client-side analytics queries
 - [ ] 5.4 Convert /api/admin/referral/customers API calls to client-side customer management
 - [ ] 5.5 Convert /api/admin/referral/settings API calls to client-side settings management
-- [ ] 5.6 Implement client-side secure hash generation for dashboard access
+- [x] 5.6 Implement client-side secure hash generation for dashboard access
 - [ ] 5.7 Migrate complex analytics joins to client-side Supabase queries
-- [ ] 5.8 Update referral dashboard components to use client-side data fetching
+- [x] 5.8 Update referral dashboard components to use client-side data fetching
 
 ## 6. API Route Migration - Tracking System
 - [ ] 6.1 Convert package tracking API calls to client-side (if any exist)

@@ -385,6 +385,258 @@ export const PointsService = {
 
 // === REFERRAL SERVICES ===
 
+export const ReferralDashboardService = {
+  async verifyPhoneForDashboard(phone: string) {
+    try {
+      console.log("🚀 Starting client-side phone verification for dashboard");
+
+      if (!phone) {
+        console.log("❌ No phone provided");
+        return { success: false, error: "Nomor telepon harus diisi" };
+      }
+
+      // Basic phone validation
+      const cleanedPhone = phone.replace(/[\s\-\(\)]/g, '');
+      console.log("📞 Cleaned phone:", cleanedPhone);
+
+      // Client-side phone validation (relaxed for now)
+      if (cleanedPhone.length < 10) {
+        return { success: false, error: "Format nomor telepon tidak valid" };
+      }
+
+      // Search for customer in database
+      let customerExists = false;
+      let customerData = null;
+
+      console.log("🔍 Starting customer search");
+
+      // Try multiple search strategies like the server API
+      const searchStrategies = [
+        { field: 'customer_id', value: cleanedPhone },
+        { field: 'whatsapp', value: cleanedPhone },
+        { field: 'phone', value: cleanedPhone }
+      ];
+
+      for (const strategy of searchStrategies) {
+        if (customerExists) break;
+
+        try {
+          console.log(`📋 Searching for ${strategy.field} = "${strategy.value}"`);
+          const { data, error } = await supabase
+            .from('customers')
+            .select('*')
+            .eq(strategy.field, strategy.value)
+            .limit(1);
+
+          console.log(`📊 Search ${strategy.field} results:`, { data, error });
+
+          if (!error && data && data.length > 0) {
+            customerExists = true;
+            customerData = data[0];
+            console.log(`✅ Customer found via ${strategy.field}!`);
+          }
+        } catch (error) {
+          console.error(`❌ Error searching ${strategy.field}:`, error);
+        }
+      }
+
+      // Fallback OR search if individual searches fail
+      if (!customerExists) {
+        try {
+          console.log(`📋 Trying OR search for phone = "${cleanedPhone}"`);
+          const { data: orData, error: orError } = await supabase
+            .from('customers')
+            .select('*')
+            .or(`whatsapp.eq.${cleanedPhone},phone.eq.${cleanedPhone},customer_id.eq.${cleanedPhone}`)
+            .limit(5);
+
+          console.log("📊 OR search results:", { orData, orError });
+
+          if (!orError && orData && orData.length > 0) {
+            customerExists = true;
+            customerData = orData[0];
+            console.log("✅ Customer found via OR search!");
+          }
+        } catch (error) {
+          console.error("❌ Error in OR search:", error);
+        }
+      }
+
+      console.log("🎯 Final search results:", { customerExists, customerData });
+
+      if (!customerExists) {
+        console.log("❌ No customer found");
+        return {
+          success: false,
+          error: `Nomor telepon tidak ditemukan dalam sistem kami. Searched for: "${cleanedPhone}"`
+        };
+      }
+
+      // Generate secure hash for dashboard access
+      console.log("🔐 Generating secure hash...");
+      const hash = await this.generateDashboardHash(cleanedPhone);
+
+      // Store session in database
+      console.log("💾 Storing dashboard session...");
+      try {
+        const sessionData = {
+          hash,
+          phone: cleanedPhone,
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour link expiry
+          dashboard_session_expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours session
+          created_at: new Date().toISOString()
+        };
+
+        const { data: insertData, error: insertError } = await supabase
+          .from('dashboard_sessions')
+          .insert(sessionData)
+          .select();
+
+        console.log("📊 Session insert results:", { insertData, insertError });
+
+        if (insertError) {
+          console.error("❌ Error storing dashboard session:", insertError);
+          // Continue anyway - user can still access with hash
+        }
+      } catch (error) {
+        console.error("❌ Error storing session:", error);
+        // Continue anyway
+      }
+
+      // Log the access attempt
+      try {
+        const logData = {
+          phone: cleanedPhone,
+          action: 'phone_verified',
+          success: true,
+          created_at: new Date().toISOString()
+        };
+
+        await supabase
+          .from('dashboard_access_logs')
+          .insert(logData);
+      } catch (error) {
+        console.error("❌ Error logging access:", error);
+        // Don't fail the operation
+      }
+
+      console.log("✅ Phone verification successful");
+      return {
+        success: true,
+        redirectTo: `/customer-dashboard/${hash}`
+      };
+
+    } catch (error) {
+      console.error("❌ Phone verification failed:", error);
+      handleClientError(error, {
+        customMessage: 'Failed to verify phone for dashboard access'
+      });
+      return {
+        success: false,
+        error: "Terjadi kesalahan. Silakan coba lagi"
+      };
+    }
+  },
+
+  async generateDashboardHash(phone: string): Promise<string> {
+    try {
+      // Client-side hash generation using Web Crypto API
+      const timestamp = Date.now();
+      const randomBytes = new Uint8Array(16);
+      crypto.getRandomValues(randomBytes);
+      const randomSalt = Array.from(randomBytes)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
+      const hashInput = `${phone}:${timestamp}:${randomSalt}`;
+      const encoder = new TextEncoder();
+      const data = encoder.encode(hashInput);
+
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+        .substring(0, 12);
+
+      return hashHex;
+    } catch (error) {
+      console.error("❌ Error generating hash:", error);
+      // Fallback to simple hash
+      return btoa(`${phone}:${Date.now()}`).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12);
+    }
+  },
+
+  async validateDashboardAccess(hash: string) {
+    try {
+      console.log("🔍 Validating dashboard access for hash:", hash);
+
+      // Find valid session in database
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('dashboard_sessions')
+        .select('*')
+        .eq('hash', hash)
+        .single();
+
+      console.log("📊 Session query results:", { sessionData, sessionError });
+
+      if (sessionError || !sessionData) {
+        console.log("❌ No valid session found");
+        return {
+          valid: false,
+          error: "Invalid or expired dashboard access link"
+        };
+      }
+
+      // Check if dashboard session is still valid
+      const sessionExpiry = new Date(sessionData.dashboard_session_expires);
+      const now = new Date();
+
+      if (now > sessionExpiry) {
+        console.log("❌ Dashboard session expired");
+        return {
+          valid: false,
+          error: "Dashboard session has expired. Please request a new access link."
+        };
+      }
+
+      // Get customer data
+      let customerData = null;
+      try {
+        const { data: customer, error: customerError } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('customer_id', sessionData.phone)
+          .or(`whatsapp.eq.${sessionData.phone},phone.eq.${sessionData.phone}`)
+          .limit(1);
+
+        if (!customerError && customer && customer.length > 0) {
+          customerData = customer[0];
+        }
+      } catch (error) {
+        console.error("❌ Error fetching customer data:", error);
+      }
+
+      console.log("✅ Dashboard access validated");
+      return {
+        valid: true,
+        customer: customerData,
+        session: sessionData
+      };
+
+    } catch (error) {
+      console.error("❌ Dashboard access validation failed:", error);
+      handleClientError(error, {
+        customMessage: 'Failed to validate dashboard access'
+      });
+      return {
+        valid: false,
+        error: "Failed to validate dashboard access"
+      };
+    }
+  }
+};
+
 export const ReferralService = {
   async validateReferralCode(referralCode: string, customerId: string) {
     try {

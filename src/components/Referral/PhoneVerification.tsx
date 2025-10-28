@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Logo } from "../Logo";
 import { PhoneInput } from "../ui/phone-input";
 import { toast } from "sonner";
+import { ReferralDashboardService } from "@/lib/client-services";
 
 export function PhoneVerification() {
   const [phone, setPhone] = useState("");
@@ -32,22 +33,14 @@ export function PhoneVerification() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/referral/dashboard/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ phone }),
-      });
+      const result = await ReferralDashboardService.verifyPhoneForDashboard(phone);
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
+      if (result.success && result.redirectTo) {
         toast.success("Verifikasi berhasil! Mengarahkan ke dashboard...");
         // Redirect to dashboard with hash
-        router.push(data.redirectTo);
+        router.push(result.redirectTo);
       } else {
-        toast.error(data.error || "Terjadi kesalahan saat verifikasi");
+        toast.error(result.error || "Terjadi kesalahan saat verifikasi");
       }
     } catch (error) {
       console.error("Error verifying phone:", error);

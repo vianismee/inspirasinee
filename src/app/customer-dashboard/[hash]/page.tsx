@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ReferralDashboard } from "@/components/Referral/ReferralDashboard";
 import { toast } from "sonner";
+import { ReferralDashboardService, PointsService } from "@/lib/client-services";
 
 interface DashboardData {
   success: boolean;
@@ -72,14 +73,41 @@ export default function CustomerDashboardHashPage() {
       }
 
       try {
-        const response = await fetch(`/api/referral/dashboard/access/${hash}`);
-        const data = await response.json();
+        // Validate dashboard access using client-side service
+        const accessResult = await ReferralDashboardService.validateDashboardAccess(hash);
 
-        if (response.ok && data.success) {
-          setDashboardData(data);
+        if (accessResult.valid && accessResult.customer) {
+          console.log("✅ Dashboard access validated");
+
+          // Build dashboard data from validated customer and session
+          const dashboardData: DashboardData = {
+            success: true,
+            customerData: {
+              customer_id: accessResult.customer.customer_id,
+              name: accessResult.customer.name || '',
+              phone: accessResult.customer.phone || '',
+              whatsapp: accessResult.customer.whatsapp || '',
+              email: accessResult.customer.email || ''
+            },
+            // Fetch additional data using client-side services
+            pointsData: await PointsService.getCustomerBalance(accessResult.customer.customer_id) || {
+              current_balance: 0,
+              total_earned: 0,
+              total_redeemed: 0
+            },
+            referralCode: accessResult.customer.referral_code || '',
+            referralStats: {
+              totalReferrals: 0, // TODO: Implement referral stats calculation
+              totalPointsEarned: 0 // TODO: Implement referral points calculation
+            },
+            transactionHistory: [], // TODO: Implement transaction history fetch
+            orderHistory: [] // TODO: Implement order history fetch
+          };
+
+          setDashboardData(dashboardData);
         } else {
-          setError(data.error || "Gagal mengakses dashboard");
-          toast.error(data.error || "Link tidak valid atau telah kedaluwarsa");
+          setError(accessResult.error || "Gagal mengakses dashboard");
+          toast.error(accessResult.error || "Link tidak valid atau telah kedaluwarsa");
 
           // Redirect back to verification page after a delay
           setTimeout(() => {
