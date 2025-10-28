@@ -46,7 +46,7 @@ export type Orders = {
   order_item: GroupedOrderItem[];
   subtotal: number;
   order_discounts?: IDiscount[];
-  total_price: number;
+  total_amount: number;
   payment: string;
   created_at: string;
 };

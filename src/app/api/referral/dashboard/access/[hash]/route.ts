@@ -41,7 +41,7 @@ interface OrderHistory {
     product_name: string;
     quantity: number;
     price: number;
-    total_price: number;
+    total_amount: number;
   }[];
   [key: string]: unknown;
 }
@@ -339,7 +339,7 @@ export async function GET(
                 product_name,
                 quantity,
                 price,
-                total_price
+                total_amount
               )
             `)
             .eq("customer_id", customerId)

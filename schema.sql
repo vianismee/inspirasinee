@@ -1,6 +1,13 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.admin_users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email text NOT NULL UNIQUE,
+  role text DEFAULT 'admin'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT admin_users_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.customer_points (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   customer_id text NOT NULL UNIQUE,
@@ -77,13 +84,14 @@ CREATE TABLE public.orders (
   invoice_id text UNIQUE,
   customer_id text,
   subtotal integer,
-  total_price integer,
+  total_amount integer,
   payment text,
   created_at timestamp with time zone DEFAULT (now() AT TIME ZONE 'utc'::text),
   status text,
   referral_code character varying,
   referral_discount_amount numeric DEFAULT 0,
   points_awarded integer DEFAULT 0,
+  points_used integer DEFAULT 0,
   CONSTRAINT orders_pkey PRIMARY KEY (id),
   CONSTRAINT orders_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(customer_id)
 );

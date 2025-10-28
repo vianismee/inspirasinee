@@ -20,7 +20,7 @@ interface Orders {
   order_item: OrderItem[];
   subtotal: number;
   order_discounts?: Discount[];
-  total_price: number;
+  total_amount: number;
   payment: string;
   created_at: string;
 }

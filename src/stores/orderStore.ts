@@ -65,7 +65,7 @@ interface Orders {
   order_item: GroupedOrderItem[]; // Tipe data diubah menjadi hasil grouping
   subtotal: number;
   order_discounts?: Discount[];
-  total_price: number;
+  total_amount: number;
   payment: string;
   created_at: string;
 }

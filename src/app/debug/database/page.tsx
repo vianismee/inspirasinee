@@ -95,7 +95,7 @@ export default function DebugDatabase() {
             product_name,
             quantity,
             price,
-            total_price
+            total_amount
           )
         `)
         .limit(10);

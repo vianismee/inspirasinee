@@ -29,9 +29,6 @@ export function CartApp() {
   // A customer is considered "new" if they don't have any orders yet
   const isNewCustomer = !activeCustomer?.has_orders || activeCustomer?.total_orders === 0;
 
-  // Check if customer has points available
-  const hasPoints = customerPoints > 0;
-
   // Fetch customer points
   useEffect(() => {
     const fetchPoints = async () => {
@@ -95,19 +92,11 @@ export function CartApp() {
         <Services />
         <Discount />
 
-        {/* Smart rendering logic for referral and points */}
-        {/* Always show Referral for new customers */}
-        {isNewCustomer && <Referral />}
-
-        {/* Show Points Redemption if customer has points (regardless of new/existing status) */}
-        {hasPoints && <PointsRedemption />}
-
-        {/* Show helpful message when both options are available */}
-        {isNewCustomer && hasPoints && (
-          <div className="text-sm text-muted-foreground text-center py-2 bg-blue-50 rounded-md p-3">
-            <p className="font-medium text-blue-800">💡 You have both options available!</p>
-            <p className="text-blue-600">Use a referral code for a one-time discount, or redeem your points for savings.</p>
-          </div>
+        {/* Simple conditional redemption logic */}
+        {isNewCustomer ? (
+          <Referral />
+        ) : (
+          <PointsRedemption />
         )}
       </div>
       <div className="fixed md:sticky w-full bottom-0 flex-shrink-0 flex justify-between items-center px-5 py-3 bg-white border-t">

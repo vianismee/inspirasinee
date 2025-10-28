@@ -4,7 +4,7 @@ export interface OrderData {
   invoice_id: string;
   customer_id: string;
   subtotal: number;
-  total_price: number;
+  total_amount: number;
   referral_code?: string;
   points_used?: number;
   [key: string]: unknown;
@@ -80,8 +80,8 @@ export class OrderReferralIntegration {
       }
 
       // Step 3: Calculate final total
-      const finalTotal = Math.max(0, orderData.total_price - totalDiscount);
-      result.orderData.total_price = finalTotal;
+      const finalTotal = Math.max(0, orderData.total_amount - totalDiscount);
+      result.orderData.total_amount = finalTotal;
 
       // Step 4: Record referral usage and award points (if referral was used)
       if (referralCode && referralDiscount > 0) {

@@ -181,13 +181,13 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
                 )}
 
                 {/* Points Redemption Display */}
-                {((order as OrderWithReferral)?.points_used || 0) > 0 && ((order as OrderWithReferral)?.points_discount_amount || 0) > 0 && (
+                {(order as OrderWithReferral)?.points_used && ((order as OrderWithReferral).points_used ?? 0) > 0 && (
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">
-                      🎯 Poin ({(order as OrderWithReferral).points_used || 0})
+                      🎯 Poin ({(order as OrderWithReferral).points_used})
                     </span>
                     <span className="font-mono text-green-600">
-                      -{formatedCurrency((order as OrderWithReferral).points_discount_amount || 0)}
+                      Points redeemed
                     </span>
                   </div>
                 )}
@@ -195,7 +195,7 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
                 <div className="flex justify-between items-center text-md font-bold pt-2 mt-2 border-t">
                   <span>Total</span>
                   <span className="font-mono">
-                    {formatedCurrency(order?.total_price || 0)}
+                    {formatedCurrency(order?.total_amount || 0)}
                   </span>
                 </div>
               </div>

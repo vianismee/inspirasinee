@@ -189,13 +189,13 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                   )}
 
                   {/* Points Redemption Display */}
-                  {((order as OrderWithReferral)?.points_used || 0) > 0 && ((order as OrderWithReferral)?.points_discount_amount || 0) > 0 && (
+                  {(order as OrderWithReferral)?.points_used && ((order as OrderWithReferral).points_used ?? 0) > 0 && (
                     <div className="flex justify-between text-sm">
                       <p className="text-muted-foreground">
-                        🎯 Poin ({(order as OrderWithReferral).points_used || 0} poin)
+                        🎯 Poin ({(order as OrderWithReferral).points_used} poin)
                       </p>
                       <p className="font-mono text-green-600">
-                        -{formatedCurrency((order as OrderWithReferral).points_discount_amount || 0)}
+                        Points redeemed
                       </p>
                     </div>
                   )}
@@ -204,7 +204,7 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                   <div className="flex justify-between items-center font-bold text-base">
                     <p>Total</p>
                     <p className="font-mono text-lg">
-                      {formatedCurrency(order?.total_price || 0)}
+                      {formatedCurrency(order?.total_amount || 0)}
                     </p>
                   </div>
                 </div>

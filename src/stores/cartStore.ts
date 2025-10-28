@@ -277,6 +277,15 @@ export const useCartStore = create<CartState>((set, get) => ({
       pointsUsed,
       pointsDiscount
     } = get();
+
+    // Debug: Log current state
+    console.log("🛒 Cart state before submit:", {
+      cartItems: cart.length,
+      subTotal,
+      totalPrice,
+      invoice,
+      payment
+    });
     const { activeCustomer } = useCustomerStore.getState();
 
     if (!activeCustomer) {
@@ -288,6 +297,13 @@ export const useCartStore = create<CartState>((set, get) => ({
       toast.error(
         "Harap lengkapi semua detail item (nama sepatu dan minimal satu layanan)."
       );
+      return false;
+    }
+
+    // Validasi subtotal
+    if (!subTotal || subTotal <= 0) {
+      toast.error("Subtotal tidak valid. Pastikan ada layanan yang dipilih.");
+      console.error("❌ Invalid subtotal:", subTotal);
       return false;
     }
 
@@ -310,13 +326,16 @@ export const useCartStore = create<CartState>((set, get) => ({
         status: "ongoing",
         customer_id: customerIdToUse,
         subtotal: subTotal,
-        total_price: totalPrice,
+        total_amount: totalPrice, // Use actual field name
         payment: payment,
         referral_code: referralCode || null,
         referral_discount_amount: referralDiscount,
         points_used: pointsUsed,
-        points_discount_amount: pointsDiscount,
+        // points_discount_amount field doesn't exist, so we can't save it
       };
+
+      // Debug: Log order data
+      console.log("📋 Order data to be saved:", orderData);
 
       const order = await OrderService.createOrder(orderData);
       if (!order) {

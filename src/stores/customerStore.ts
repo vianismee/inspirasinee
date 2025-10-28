@@ -38,7 +38,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
     const { data: existingCustomer, error: findError } = await supabase
       .from("customers")
-      .select("*")
+      .select("*, orders(*)")
       .eq("whatsapp", whatsapp)
       .maybeSingle();
 
@@ -48,7 +48,15 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     }
 
     if (existingCustomer) {
-      set({ activeCustomer: { ...existingCustomer, isNew: false } });
+      // Calculate order-related fields
+      const orders = existingCustomer.orders || [];
+      const customerWithOrderData = {
+        ...existingCustomer,
+        has_orders: orders.length > 0,
+        total_orders: orders.length,
+        isNew: false,
+      };
+      set({ activeCustomer: customerWithOrderData });
       return true;
     }
 
@@ -74,7 +82,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
         const totalSpent =
           data.orders?.reduce(
-            (sum: number, order: Orders) => sum + order.total_price,
+            (sum: number, order: Orders) => sum + order.total_amount,
             0
           ) || 0;
 
@@ -92,7 +100,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
           ...customer,
           totalSpent:
             customer.orders?.reduce(
-              (sum: number, order: Orders) => sum + order.total_price,
+              (sum: number, order: Orders) => sum + order.total_amount,
               0
             ) || 0,
         }));
