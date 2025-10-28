@@ -312,6 +312,15 @@ CREATE POLICY "Users can view own points" ON public.customer_points
 */
 
 -- =====================================================
+-- Additional Migrations Required
+-- =====================================================
+
+-- NOTE: This migration covers core business and referral system tables.
+-- For complete migration, also run:
+-- 1. migrations/002_customer_dashboard_enhancements.sql - Dashboard views and functions
+-- 2. migrations/003_dashboard_sessions_schema.sql - Dashboard session management tables
+
+-- =====================================================
 -- Migration Complete
 -- =====================================================
 
@@ -321,3 +330,4 @@ CREATE POLICY "Users can view own points" ON public.customer_points
 -- 3. Test all functionality to ensure data integrity
 -- 4. Consider backing up your dev schema data before migration
 -- 5. Uncomment the data migration section if you need to migrate existing data
+-- 6. Run additional migrations for dashboard sessions and customer dashboard functionality
