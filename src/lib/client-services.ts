@@ -687,24 +687,30 @@ export const ReferralService = {
     try {
       console.log('🔍 Referral Validation Debug:', { referralCode, customerId });
 
-      // Get default settings (matching server-side logic)
-      const settings = {
-        referral_discount_amount: 5000, // Default from server-side code
-        referrer_points_earned: 10,
-        points_redemption_minimum: 50,
-        points_redemption_value: 100,
-        is_active: true
-      };
+      // Get current referral settings from the database
+      let settings;
+      try {
+        settings = await AdminReferralService.getReferralSettings();
+      } catch (error) {
+        console.warn('⚠️ Could not fetch referral settings, using defaults:', error);
+        // Fallback to default settings
+        settings = {
+          referral_discount_amount: 5000,
+          referrer_points_earned: 10,
+          points_redemption_minimum: 50,
+          points_redemption_value: 100,
+          is_active: true
+        };
+      }
 
       let referrerExists = false;
       let referrerData = null;
 
-      // Try to find referrer by customer_id (original logic) or referral_code
-      // First try by customer_id (since referral codes are often customer IDs)
+      // Try to find referrer by customer_id (since referral codes are often customer IDs)
       try {
         const { data: referrerById, error: errorById } = await supabase
           .from('customers')
-          .select('customer_id, name, email')
+          .select('customer_id, email') // Only use existing columns
           .eq('customer_id', referralCode)
           .limit(1);
 
@@ -716,26 +722,6 @@ export const ReferralService = {
         }
       } catch (error) {
         console.error('❌ Error checking referrer by ID:', error);
-      }
-
-      // If not found by ID, try by referral_code field
-      if (!referrerExists) {
-        try {
-          const { data: referrerByCode, error: errorByCode } = await supabase
-            .from('customers')
-            .select('customer_id, name, email')
-            .eq('referral_code', referralCode)
-            .limit(1);
-
-          console.log('🔍 Referrer by Code Result:', { referrerByCode, errorByCode });
-
-          if (!errorByCode && referrerByCode && referrerByCode.length > 0) {
-            referrerExists = true;
-            referrerData = referrerByCode[0];
-          }
-        } catch (error) {
-          console.error('❌ Error checking referrer by code:', error);
-        }
       }
 
       // Handle permission errors gracefully
