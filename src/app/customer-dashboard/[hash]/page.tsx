@@ -84,9 +84,9 @@ export default function CustomerDashboardHashPage() {
             success: true,
             customerData: {
               customer_id: accessResult.customer.customer_id,
-              name: accessResult.customer.name || '',
-              phone: accessResult.customer.phone || '',
-              whatsapp: accessResult.customer.whatsapp || '',
+              name: accessResult.customer.email || `Customer ${accessResult.customer.customer_id}`, // Use email or fallback
+              phone: '', // Not available in current schema
+              whatsapp: '', // Not available in current schema
               email: accessResult.customer.email || ''
             },
             // Fetch additional data using client-side services
@@ -95,7 +95,7 @@ export default function CustomerDashboardHashPage() {
               total_earned: 0,
               total_redeemed: 0
             },
-            referralCode: accessResult.customer.referral_code || '',
+            referralCode: accessResult.customer.customer_id || '', // Use customer_id as referral code
             referralStats: {
               totalReferrals: 0, // TODO: Implement referral stats calculation
               totalPointsEarned: 0 // TODO: Implement referral points calculation

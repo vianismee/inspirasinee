@@ -375,8 +375,11 @@ export const useCartStore = create<CartState>((set, get) => ({
             toast.success(`Referral bonus recorded! Referrer earned ${referralResult.pointsAwarded} points`);
             console.log("✅ Referral recorded successfully:", referralResult);
           } else {
-            console.error("❌ Referral recording failed:", referralResult.error);
-            toast.warning(`Order successful, but referral recording failed: ${referralResult.error}`);
+            const errorMsg = (referralResult as { error?: string; message?: string }).error ||
+                           (referralResult as { error?: string; message?: string }).message ||
+                           'Unknown error';
+            console.error("❌ Referral recording failed:", errorMsg);
+            toast.warning(`Order successful, but referral recording failed: ${errorMsg}`);
           }
 
           if (pointsUsed && pointsUsed > 0) {
