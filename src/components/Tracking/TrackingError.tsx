@@ -11,9 +11,10 @@ import { Button } from "../ui/button";
 
 interface TrackingErrorProps {
   params: string;
+  error?: string | null;
 }
 
-export function TrackingError({ params }: TrackingErrorProps) {
+export function TrackingError({ params, error }: TrackingErrorProps) {
   return (
     <div className="min-h-screen w-full bg-white relative flex items-center justify-center">
       <div
