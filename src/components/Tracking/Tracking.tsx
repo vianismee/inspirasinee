@@ -4,8 +4,8 @@ import { useOrderStore } from "@/stores/orderStore";
 import { useEffect } from "react";
 import { TrackingError } from "./TrackingError";
 import { useIsMobile } from "@/hooks/use-mobile"; // <<< UBAH: Impor hook baru
-import { TrackingDesktop } from "./TrackingDesktop";
-import { TrackingMobile } from "./TrackingMobile";
+// import { TrackingDesktop } from "./TrackingDesktop";
+// import { TrackingMobile } from "./TrackingMobile";
 
 interface TrackingPageProps {
   params: string;
@@ -38,8 +38,10 @@ export function TrackingApp({ params }: TrackingPageProps) {
 
   // <<< UBAH: Sesuaikan logika render dengan hasil dari useIsMobile
   return isMobile ? (
-    <TrackingMobile order={singleOrders} />
+    <pre>{JSON.stringify(singleOrders)}</pre>
   ) : (
-    <TrackingDesktop order={singleOrders} />
+    <div>
+      <pre>{JSON.stringify(singleOrders)}</pre>
+    </div>
   );
 }
