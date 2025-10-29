@@ -195,7 +195,7 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
                 <div className="flex justify-between items-center text-md font-bold pt-2 mt-2 border-t">
                   <span>Total</span>
                   <span className="font-mono">
-                    {formatedCurrency(order?.total_amount || 0)}
+                    {formatedCurrency(order?.total_price || 0)}
                   </span>
                 </div>
               </div>

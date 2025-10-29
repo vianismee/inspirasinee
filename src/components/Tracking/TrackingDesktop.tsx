@@ -204,7 +204,7 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                   <div className="flex justify-between items-center font-bold text-base">
                     <p>Total</p>
                     <p className="font-mono text-lg">
-                      {formatedCurrency(order?.total_amount || 0)}
+                      {formatedCurrency(order?.total_price || 0)}
                     </p>
                   </div>
                 </div>

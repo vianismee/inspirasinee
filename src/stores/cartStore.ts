@@ -327,7 +327,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         status: "ongoing",
         customer_id: customerIdToUse,
         subtotal: subTotal,
-        total_amount: totalPrice, // Use actual field name
+        total_price: totalPrice, // Use actual field name
         payment: payment,
         referral_code: referralCode || null,
         referral_discount_amount: referralDiscount,

@@ -151,7 +151,7 @@ export function CustomerCard({ customer }: CustomerCardProps) {
                         </p>
                         <p>
                           <strong>Total:</strong>{" "}
-                          {formatedCurrency(order.total_amount)}
+                          {formatedCurrency(order.total_price)}
                         </p>
                       </div>
                     </AccordionContent>

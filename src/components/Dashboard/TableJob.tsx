@@ -285,7 +285,7 @@ export default function TableJob() {
                   <div className="flex justify-between items-center text-md font-bold mt-2 pt-2 border-t">
                     <span>Total Pembayaran</span>
                     <span className="font-mono">
-                      {formatedCurrency(order.total_amount)}
+                      {formatedCurrency(order.total_price)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-sm mt-2 pt-2 border-t">
@@ -486,7 +486,7 @@ export default function TableJob() {
                 }))
               ),
               subTotal: order.subtotal,
-              totalPrice: order.total_amount,
+              totalPrice: order.total_price,
               payment: order.payment,
               discounts: formattedDiscounts,
               referralCode: (order as OrderWithReferral).referral_code || undefined,

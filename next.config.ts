@@ -18,13 +18,7 @@ const nextConfig: NextConfig = {
   // Disable experimental features that might cause issues
   experimental: {
     // Keep minimal experimental features
-    optimizeCss: false,
-    optimizePackageImports: [],
   },
-
-  // Skip generation of static pages for dynamic routes
-  trailingSlash: false,
-  skipTrailingSlashRedirect: true,
 
   // Simple webpack config to avoid path issues
   webpack: (config, { dev, isServer }) => {

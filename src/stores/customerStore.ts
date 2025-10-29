@@ -83,7 +83,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
         const totalSpent =
           data.orders?.reduce(
-            (sum: number, order: Orders) => sum + order.total_amount,
+            (sum: number, order: Orders) => sum + order.total_price,
             0
           ) || 0;
 
@@ -101,7 +101,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
           ...customer,
           totalSpent:
             customer.orders?.reduce(
-              (sum: number, order: Orders) => sum + order.total_amount,
+              (sum: number, order: Orders) => sum + order.total_price,
               0
             ) || 0,
         }));

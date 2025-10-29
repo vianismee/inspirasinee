@@ -41,7 +41,7 @@ interface DashboardData {
     customer_name: string;
     customer_email: string;
     customer_phone: string;
-    total_amount: number;
+    total_price: number;
     status: string;
     created_at: string;
     updated_at: string;
@@ -50,7 +50,7 @@ interface DashboardData {
       product_name: string;
       quantity: number;
       price: number;
-      total_amount: number;
+      total_price: number;
     }>;
   }>;
 }

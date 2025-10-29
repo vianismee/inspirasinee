@@ -61,7 +61,7 @@ export interface Database {
           customer_id: string;
           service_id: string;
           status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-          total_amount: number;
+          total_price: number;
           notes?: string;
           created_at: string;
           updated_at: string;
@@ -71,7 +71,7 @@ export interface Database {
           customer_id: string;
           service_id: string;
           status?: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-          total_amount: number;
+          total_price: number;
           notes?: string;
           created_at?: string;
           updated_at?: string;

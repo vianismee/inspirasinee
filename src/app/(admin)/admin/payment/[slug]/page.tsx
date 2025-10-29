@@ -53,7 +53,7 @@ export default function InvoicePaymentPage() {
       try {
         const dynamicQrisData = generateQRIS(
           staticQrisCode,
-          singleOrders.total_amount
+          singleOrders.total_price
         );
         QRCode.toCanvas(canvasRef.current, dynamicQrisData, {
           width: 300,
@@ -100,7 +100,7 @@ export default function InvoicePaymentPage() {
             <div className="mb-4">
               <p className="text-lg">Total Tagihan:</p>
               <p className="text-3xl font-bold text-blue-600 font-mono">
-                {formatedCurrency(singleOrders.total_amount)}
+                {formatedCurrency(singleOrders.total_price)}
               </p>
             </div>
 

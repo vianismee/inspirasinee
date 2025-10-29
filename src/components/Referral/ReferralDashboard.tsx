@@ -50,7 +50,7 @@ interface ReferralDashboardProps {
       customer_name: string;
       customer_email: string;
       customer_phone: string;
-      total_amount: number;
+      total_price: number;
       amount?: number;
       total?: number;
       order_total?: number;
@@ -66,7 +66,7 @@ interface ReferralDashboardProps {
         product_name: string;
         quantity: number;
         price: number;
-        total_amount: number;
+        total_price: number;
       }>;
     }>;
   };
@@ -448,7 +448,7 @@ export function ReferralDashboard({ data }: ReferralDashboardProps) {
                       <div className="text-right">
                         <div className="font-bold text-sm text-gray-900">
                           {formatPoints(
-                            order.total_amount ||
+                            order.total_price ||
                             order.amount ||
                             order.total ||
                             order.order_total ||
