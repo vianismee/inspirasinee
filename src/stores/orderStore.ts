@@ -217,9 +217,9 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         // Continue with order deletion even if referral deletion fails
       }
 
-      // Also delete related order_items records
+      // Also delete related order_item records
       const { error: itemsError } = await supabase
-        .from("order_items")
+        .from("order_item")
         .delete()
         .eq("invoice_id", invoice_id);
 
