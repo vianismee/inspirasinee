@@ -1,5 +1,6 @@
 import { supabase } from "@/utils/supabase/client";
 import { handleClientError } from "@/utils/client-error-handler";
+import { logger } from "@/utils/client/logger";
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 
@@ -350,7 +351,7 @@ export const PointsService = {
       try {
         settings = await AdminReferralService.getReferralSettings();
       } catch (error) {
-        console.warn('⚠️ Could not fetch referral settings, using defaults:', error);
+        logger.warn('Could not fetch referral settings, using defaults', { error }, 'PointsService');
         // Fallback to default settings
         settings = {
           points_redemption_minimum: 50,
@@ -404,16 +405,16 @@ export const PointsService = {
 export const ReferralDashboardService = {
   async verifyPhoneForDashboard(phone: string) {
     try {
-      console.log("🚀 Starting client-side phone verification for dashboard");
+      logger.debug("Starting client-side phone verification for dashboard", { phone }, "ReferralDashboard");
 
       if (!phone) {
-        console.log("❌ No phone provided");
+        logger.warn("No phone provided for verification", {}, "ReferralDashboard");
         return { success: false, error: "Nomor telepon harus diisi" };
       }
 
       // Basic phone validation
       const cleanedPhone = phone.replace(/[\s\-\(\)]/g, '');
-      console.log("📞 Cleaned phone:", cleanedPhone);
+      logger.debug("Phone number cleaned", { original: phone, cleaned: cleanedPhone }, "ReferralDashboard");
 
       // Client-side phone validation (relaxed for now)
       if (cleanedPhone.length < 10) {
@@ -424,7 +425,7 @@ export const ReferralDashboardService = {
       let customerExists = false;
       let customerData = null;
 
-      console.log("🔍 Starting customer search");
+      logger.debug("Starting customer search", { phone: cleanedPhone }, "ReferralDashboard");
 
       // Try multiple search strategies like the server API
       const searchStrategies = [
@@ -437,32 +438,32 @@ export const ReferralDashboardService = {
         if (customerExists) break;
 
         try {
-          console.log(`📋 Searching for ${strategy.field} = "${strategy.value}"`);
+          logger.debug(`Searching for customer`, { field: strategy.field, value: strategy.value }, "ReferralDashboard");
           const { data, error } = await supabase
             .from('customers')
             .select('customer_id, email') // Only use existing columns
             .eq(strategy.field, strategy.value)
             .limit(1);
 
-          console.log(`📊 Search ${strategy.field} results:`, { data, error });
+          logger.debug(`Search results`, { field: strategy.field, data, error }, "ReferralDashboard");
 
           if (!error && data && data.length > 0) {
             customerExists = true;
             customerData = data[0];
-            console.log(`✅ Customer found via ${strategy.field}!`);
+            logger.info(`Customer found via ${strategy.field}`, { customerData }, "ReferralDashboard");
           } else if (error && error.code === 'PGRST301') {
-            console.log('⚠️ RLS policy prevents customer search - using fallback validation');
+            logger.warn('RLS policy prevents customer search - using fallback validation', { error: error.message }, "ReferralDashboard");
             // Use fallback validation if RLS blocks access
             customerExists = true;
             customerData = {
               customer_id: cleanedPhone,
               email: null
             };
-            console.log("✅ Using fallback customer validation");
+            logger.info("Using fallback customer validation", { customerData }, "ReferralDashboard");
             break;
           }
         } catch (error) {
-          console.error(`❌ Error searching ${strategy.field}:`, error);
+          logger.error(`Error searching ${strategy.field}`, { error, field: strategy.field }, "ReferralDashboard");
           if (error instanceof Error && error.message.includes('permission')) {
             // Use fallback validation for permission errors
             customerExists = true;
@@ -470,7 +471,7 @@ export const ReferralDashboardService = {
               customer_id: cleanedPhone,
               email: null
             };
-            console.log("✅ Using fallback customer validation due to permission error");
+            logger.info("Using fallback customer validation due to permission error", { customerData }, "ReferralDashboard");
             break;
           }
         }
@@ -479,21 +480,21 @@ export const ReferralDashboardService = {
       // Fallback OR search if individual searches fail
       if (!customerExists) {
         try {
-          console.log(`📋 Trying OR search for phone = "${cleanedPhone}"`);
+          logger.debug(`Trying OR search for phone`, { phone: cleanedPhone }, "ReferralDashboard");
           const { data: orData, error: orError } = await supabase
             .from('customers')
             .select('customer_id, email') // Only use existing columns
             .or(`whatsapp.eq.${cleanedPhone},phone.eq.${cleanedPhone},customer_id.eq.${cleanedPhone}`)
             .limit(5);
 
-          console.log("📊 OR search results:", { orData, orError });
+          logger.debug("OR search results", { orData, orError }, "ReferralDashboard");
 
           if (!orError && orData && orData.length > 0) {
             customerExists = true;
             customerData = orData[0];
-            console.log("✅ Customer found via OR search!");
+            logger.info("Customer found via OR search", { customerData }, "ReferralDashboard");
           } else if (orError && orError.code === 'PGRST301') {
-            console.log("⚠️ RLS policy prevents OR search - using fallback validation");
+            logger.warn("RLS policy prevents OR search - using fallback validation", { error: orError.message }, "ReferralDashboard");
             customerExists = true;
             customerData = {
               customer_id: cleanedPhone,
@@ -501,7 +502,7 @@ export const ReferralDashboardService = {
             };
           }
         } catch (error) {
-          console.error("❌ Error in OR search:", error);
+          logger.error("Error in OR search", { error }, "ReferralDashboard");
           if (error instanceof Error && error.message.includes('permission')) {
             customerExists = true;
             customerData = {
@@ -512,10 +513,10 @@ export const ReferralDashboardService = {
         }
       }
 
-      console.log("🎯 Final search results:", { customerExists, customerData });
+      logger.debug("Final search results", { customerExists, customerData }, "ReferralDashboard");
 
       if (!customerExists) {
-        console.log("❌ No customer found");
+        logger.warn("No customer found", { phone: cleanedPhone }, "ReferralDashboard");
         return {
           success: false,
           error: `Nomor telepon tidak ditemukan dalam sistem kami. Searched for: "${cleanedPhone}"`
@@ -523,11 +524,11 @@ export const ReferralDashboardService = {
       }
 
       // Generate secure hash for dashboard access
-      console.log("🔐 Generating secure hash...");
+      logger.debug("Generating secure hash for dashboard access", { phone: cleanedPhone }, "ReferralDashboard");
       const hash = await this.generateDashboardHash(cleanedPhone);
 
       // Store session in database
-      console.log("💾 Storing dashboard session...");
+      logger.debug("Storing dashboard session", { hash, phone: cleanedPhone }, "ReferralDashboard");
       try {
         const sessionData = {
           hash,
@@ -542,14 +543,14 @@ export const ReferralDashboardService = {
           .insert(sessionData)
           .select();
 
-        console.log("📊 Session insert results:", { insertData, insertError });
+        logger.debug("Session insert results", { insertData, insertError }, "ReferralDashboard");
 
         if (insertError) {
-          console.error("❌ Error storing dashboard session:", insertError);
+          logger.error("Error storing dashboard session", { error: insertError }, "ReferralDashboard");
           // Continue anyway - user can still access with hash
         }
       } catch (error) {
-        console.error("❌ Error storing session:", error);
+        logger.error("Error storing session", { error }, "ReferralDashboard");
         // Continue anyway
       }
 
@@ -566,18 +567,18 @@ export const ReferralDashboardService = {
           .from('dashboard_access_logs')
           .insert(logData);
       } catch (error) {
-        console.error("❌ Error logging access:", error);
+        logger.error("Error logging access", { error }, "ReferralDashboard");
         // Don't fail the operation
       }
 
-      console.log("✅ Phone verification successful");
+      logger.info("Phone verification successful", { hash, phone: cleanedPhone }, "ReferralDashboard");
       return {
         success: true,
         redirectTo: `/customer-dashboard/${hash}`
       };
 
     } catch (error) {
-      console.error("❌ Phone verification failed:", error);
+      logger.error("Phone verification failed", { error, phone }, "ReferralDashboard");
       handleClientError(error, {
         customMessage: 'Failed to verify phone for dashboard access'
       });
@@ -611,7 +612,7 @@ export const ReferralDashboardService = {
 
       return hashHex;
     } catch (error) {
-      console.error("❌ Error generating hash:", error);
+      logger.error("Error generating hash", { error, phone }, "ReferralDashboard");
       // Fallback to simple hash
       return btoa(`${phone}:${Date.now()}`).replace(/[^a-zA-Z0-9]/g, '').substring(0, 12);
     }
@@ -619,7 +620,7 @@ export const ReferralDashboardService = {
 
   async validateDashboardAccess(hash: string) {
     try {
-      console.log("🔍 Validating dashboard access for hash:", hash);
+      logger.debug("Validating dashboard access for hash", { hash }, "ReferralDashboard");
 
       // Find valid session in database
       const { data: sessionData, error: sessionError } = await supabase
@@ -628,10 +629,10 @@ export const ReferralDashboardService = {
         .eq('hash', hash)
         .single();
 
-      console.log("📊 Session query results:", { sessionData, sessionError });
+      logger.debug("Session query results", { sessionData, sessionError }, "ReferralDashboard");
 
       if (sessionError || !sessionData) {
-        console.log("❌ No valid session found");
+        logger.warn("No valid session found", { hash }, "ReferralDashboard");
         return {
           valid: false,
           error: "Invalid or expired dashboard access link"
@@ -643,7 +644,7 @@ export const ReferralDashboardService = {
       const now = new Date();
 
       if (now > sessionExpiry) {
-        console.log("❌ Dashboard session expired");
+        logger.warn("Dashboard session expired", { hash, sessionExpiry }, "ReferralDashboard");
         return {
           valid: false,
           error: "Dashboard session has expired. Please request a new access link."
@@ -661,7 +662,7 @@ export const ReferralDashboardService = {
           .limit(1);
 
         if (customerError && customerError.code === 'PGRST301') {
-          console.log('⚠️ RLS policy prevents customer data access - using session data');
+          logger.warn('RLS policy prevents customer data access - using session data', { error: customerError }, "ReferralDashboard");
           customerData = {
             customer_id: sessionData.phone,
             email: null
@@ -670,7 +671,7 @@ export const ReferralDashboardService = {
           customerData = customer[0];
         }
       } catch (error) {
-        console.error("❌ Error fetching customer data:", error);
+        logger.error("Error fetching customer data", { error }, "ReferralDashboard");
         // Fallback to session data
         customerData = {
           customer_id: sessionData.phone,
@@ -678,7 +679,7 @@ export const ReferralDashboardService = {
         };
       }
 
-      console.log("✅ Dashboard access validated");
+      logger.info("Dashboard access validated", { hash, customerData }, "ReferralDashboard");
       return {
         valid: true,
         customer: customerData,
@@ -686,7 +687,7 @@ export const ReferralDashboardService = {
       };
 
     } catch (error) {
-      console.error("❌ Dashboard access validation failed:", error);
+      logger.error("Dashboard access validation failed", { error, hash }, "ReferralDashboard");
       handleClientError(error, {
         customMessage: 'Failed to validate dashboard access'
       });
@@ -701,14 +702,14 @@ export const ReferralDashboardService = {
 export const ReferralService = {
   async validateReferralCode(referralCode: string, customerId: string) {
     try {
-      console.log('🔍 Referral Validation Debug:', { referralCode, customerId });
+      logger.debug('Referral Validation Debug', { referralCode, customerId }, "ReferralService");
 
       // Get current referral settings from the database
       let settings;
       try {
         settings = await AdminReferralService.getReferralSettings();
       } catch (error) {
-        console.warn('⚠️ Could not fetch referral settings, using defaults:', error);
+        logger.warn('Could not fetch referral settings, using defaults', { error }, "ReferralService");
         // Fallback to default settings
         settings = {
           referral_discount_amount: 5000,
@@ -730,26 +731,26 @@ export const ReferralService = {
           .eq('customer_id', referralCode)
           .limit(1);
 
-        console.log('🔍 Referrer by ID Result:', { referrerById, errorById });
+        logger.debug('Referrer by ID Result', { referrerById, errorById }, "ReferralService");
 
         if (!errorById && referrerById && referrerById.length > 0) {
           referrerExists = true;
           referrerData = referrerById[0];
         }
       } catch (error) {
-        console.error('❌ Error checking referrer by ID:', error);
+        logger.error('Error checking referrer by ID', { error }, "ReferralService");
       }
 
       // Handle permission errors gracefully
       if (!referrerExists) {
         // Check if it's a permission error
         if (referrerExists === false) {
-          console.log('❌ Permission error or table access issue, using fallback validation');
+          logger.warn('Permission error or table access issue, using fallback validation', {}, "ReferralService");
 
           // Fallback: Allow the referral if it looks reasonable (basic validation)
           // This is a temporary solution until RLS policies are implemented
           if (referralCode.length >= 3 && referralCode !== customerId) {
-            console.log('✅ Using fallback validation for referral code');
+            logger.info('Using fallback validation for referral code', { referralCode }, "ReferralService");
             return {
               valid: true,
               referrer_customer_id: referralCode,
@@ -760,7 +761,7 @@ export const ReferralService = {
           }
         }
 
-        console.log('❌ No referrer found for code:', referralCode);
+        logger.warn('No referrer found for code', { referralCode }, "ReferralService");
         return {
           valid: false,
           error: "Invalid referral code"
@@ -769,7 +770,7 @@ export const ReferralService = {
 
       // Check if customer is trying to refer themselves
       if (referrerData && referrerData.customer_id === customerId) {
-        console.log('❌ Self-referral attempted');
+        logger.warn('Self-referral attempted', { referralCode, customerId }, "ReferralService");
         return {
           valid: false,
           error: "Cannot use your own referral code"
@@ -785,25 +786,25 @@ export const ReferralService = {
           .eq('customer_id', customerId)
           .limit(1);
 
-        console.log('🔍 Usage Query Result:', { existingUsage, usageError });
+        logger.debug('Usage Query Result', { existingUsage, usageError }, "ReferralService");
 
         if (!usageError && existingUsage && existingUsage.length > 0) {
           hasExistingUsage = true;
         }
       } catch (error) {
-        console.error('❌ Error checking referral usage:', error);
+        logger.error('Error checking referral usage', { error }, "ReferralService");
         // Don't fail validation if we can't check usage table
       }
 
       if (hasExistingUsage) {
-        console.log('❌ Customer already used referral');
+        logger.warn('Customer already used referral', { customerId }, "ReferralService");
         return {
           valid: false,
           error: "You have already used a referral code"
         };
       }
 
-      console.log('✅ Referral validation successful:', referrerData);
+      logger.info('Referral validation successful', { referrerData }, "ReferralService");
 
       return {
         valid: true,
@@ -813,7 +814,7 @@ export const ReferralService = {
         error: undefined
       };
     } catch (error) {
-      console.error('❌ Referral validation failed:', error);
+      logger.error('Referral validation failed', { error }, "ReferralService");
 
       // Provide more specific error messages
       let errorMessage = "Failed to validate referral code";
@@ -1176,7 +1177,7 @@ export const AdminReferralService = {
   // Analytics Service
   async getReferralAnalytics(filters?: { startDate?: string; endDate?: string }) {
     try {
-      console.log("📊 Fetching referral analytics with filters:", filters);
+      logger.debug("Fetching referral analytics with filters", { filters }, "AdminReferralService");
 
       // Build referral usage query
       let referralQuery = supabase

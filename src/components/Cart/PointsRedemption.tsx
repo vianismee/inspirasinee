@@ -13,6 +13,7 @@ import { Gift, CheckCircle, AlertCircle, Info } from "lucide-react";
 import { formatedCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 import { PointsService, AdminReferralService } from "@/lib/client-services";
+import { logger } from "@/utils/client/logger";
 
 interface CustomerPoints {
   current_balance: number;
@@ -61,7 +62,7 @@ export function PointsRedemption() {
         points_redemption_value: settings.points_redemption_value || 100
       });
     } catch (error) {
-      console.error("Error fetching referral settings:", error);
+      logger.error("Error fetching referral settings", { error }, "PointsRedemption");
       // Keep default values on error
     }
   }, []);
@@ -74,7 +75,7 @@ export function PointsRedemption() {
       const points = await PointsService.getCustomerBalance(activeCustomer.customer_id);
       setCustomerPoints(points);
     } catch (error) {
-      console.error("Error fetching customer points:", error);
+      logger.error("Error fetching customer points", { error, customerId: activeCustomer?.customer_id }, "PointsRedemption");
       // Set default points on error to avoid breaking the UI
       setCustomerPoints({
         current_balance: 0,
@@ -123,7 +124,7 @@ export function PointsRedemption() {
         toast.error(result.error || "Cannot redeem points");
       }
     } catch (error) {
-      console.error("Error redeeming points:", error);
+      logger.error("Error redeeming points", { error, pointsToRedeem, customerId: activeCustomer?.customer_id }, "PointsRedemption");
       toast.error("Failed to redeem points");
     } finally {
       setIsValidating(false);

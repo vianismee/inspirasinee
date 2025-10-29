@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/client";
 import { create } from "zustand";
 import { toast } from "sonner";
 import { ICustomers, Orders } from "@/types";
+import { logger } from "@/utils/client/logger";
 
 // Interface for customer data used when creating an order
 interface CustomerData extends ICustomers {
@@ -109,7 +110,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Terjadi kesalahan";
-      console.error("Gagal memuat data pelanggan:", errorMessage);
+      logger.error("Gagal memuat data pelanggan", { error, errorMessage }, "CustomerStore");
       toast.error(`Gagal memuat data pelanggan: ${errorMessage}`);
     } finally {
       set({ isLoading: false });
@@ -127,7 +128,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       if (error) throw error;
       toast.success("Pelanggan berhasil dihapus.");
     } catch (error) {
-      console.error("Gagal menghapus pelanggan:", error);
+      logger.error("Gagal menghapus pelanggan", { error, customerId }, "CustomerStore");
       toast.error("Gagal menghapus pelanggan.");
     }
   },
@@ -172,7 +173,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         `Data pelanggan "${updatedCustomer.username}" berhasil diperbarui.`
       );
     } catch (error) {
-      console.error("Gagal memperbarui data pelanggan:", error);
+      logger.error("Gagal memperbarui data pelanggan", { error, customerId, customerData }, "CustomerStore");
       toast.error("Gagal memperbarui data pelanggan.");
       throw error;
     }

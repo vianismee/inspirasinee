@@ -3,6 +3,7 @@ import { Discount } from "./serviceCatalogStore";
 import { OrderService, OrderItemService, CustomerService, DiscountService } from "@/lib/client-services";
 import { useCustomerStore } from "./customerStore";
 import { toast } from "sonner";
+import { logger } from "@/utils/client/logger";
 
 // BARU: Tipe data untuk satu layanan dalam item
 export interface ServiceItem {
@@ -279,13 +280,13 @@ export const useCartStore = create<CartState>((set, get) => ({
     } = get();
 
     // Debug: Log current state
-    console.log("🛒 Cart state before submit:", {
+    logger.debug("Cart state before submit", {
       cartItems: cart.length,
       subTotal,
       totalPrice,
       invoice,
       payment
-    });
+    }, "CartStore");
     const { activeCustomer } = useCustomerStore.getState();
 
     if (!activeCustomer) {
@@ -303,7 +304,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     // Validasi subtotal
     if (!subTotal || subTotal <= 0) {
       toast.error("Subtotal tidak valid. Pastikan ada layanan yang dipilih.");
-      console.error("❌ Invalid subtotal:", subTotal);
+      logger.error("Invalid subtotal", { subTotal }, "CartStore");
       return false;
     }
 
@@ -335,7 +336,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       };
 
       // Debug: Log order data
-      console.log("📋 Order data to be saved:", orderData);
+      logger.debug("Order data to be saved", { orderData }, "CartStore");
 
       const order = await OrderService.createOrder(orderData);
       if (!order) {
@@ -355,7 +356,7 @@ export const useCartStore = create<CartState>((set, get) => ({
           };
         });
         // Note: order_discounts table may need separate handling
-        console.log("Order discounts to insert:", discountsToInsert);
+        logger.debug("Order discounts to insert", { discountsToInsert }, "CartStore");
       }
 
       // UBAH: Logika untuk menyimpan item ke tabel order_item
@@ -381,7 +382,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         try {
           const { ReferralService } = await import("@/lib/client-services");
 
-          console.log("🎯 Recording referral usage for successful transaction");
+          logger.info("Recording referral usage for successful transaction", { referralCode, invoice }, "CartStore");
 
           // Record referral usage and award points to referrer
           const referralResult = await ReferralService.recordReferralAndAwardPoints(
@@ -393,12 +394,12 @@ export const useCartStore = create<CartState>((set, get) => ({
 
           if (referralResult.success) {
             toast.success(`Referral bonus recorded! Referrer earned ${referralResult.pointsAwarded} points`);
-            console.log("✅ Referral recorded successfully:", referralResult);
+            logger.info("Referral recorded successfully", { referralResult }, "CartStore");
           } else {
             const errorMsg = (referralResult as { error?: string; message?: string }).error ||
                            (referralResult as { error?: string; message?: string }).message ||
                            'Unknown error';
-            console.error("❌ Referral recording failed:", errorMsg);
+            logger.error("Referral recording failed", { errorMsg, referralResult }, "CartStore");
             toast.warning(`Order successful, but referral recording failed: ${errorMsg}`);
           }
 
@@ -415,7 +416,7 @@ export const useCartStore = create<CartState>((set, get) => ({
             toast.success(`Points deducted! You used ${pointsUsed} points`);
           }
         } catch (error) {
-          console.error("Error recording referral usage:", error);
+          logger.error("Error recording referral usage", { error, referralCode, invoice }, "CartStore");
           toast.warning("Order successful, but referral recording failed");
         }
       } else if (pointsUsed && pointsUsed > 0) {
@@ -431,7 +432,7 @@ export const useCartStore = create<CartState>((set, get) => ({
           );
           toast.success(`Points deducted! You used ${pointsUsed} points`);
         } catch (error) {
-          console.error("Error deducting points:", error);
+          logger.error("Error deducting points", { error, pointsUsed, invoice }, "CartStore");
           toast.warning("Order successful, but points deduction failed");
         }
       }
@@ -440,7 +441,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     } catch (error) {
       const errorMessage = (error as Error).message;
       toast.error(errorMessage);
-      console.error("Error saat submit:", errorMessage);
+      logger.error("Error saat submit", { error, errorMessage }, "CartStore");
       return false;
     }
   },

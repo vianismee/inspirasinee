@@ -5,6 +5,7 @@ import { supabase } from "@/utils/supabase/client";
 import type { User, AuthError } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { logger } from "@/utils/client/logger";
 
 interface AuthContextType {
   user: User | null;
@@ -30,12 +31,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.error("Error getting initial session:", error);
+          logger.error("Error getting initial session", { error }, "Auth");
         } else {
           setUser(session?.user ?? null);
         }
       } catch (error) {
-        console.error("Unexpected error getting session:", error);
+        logger.error("Unexpected error getting session", { error }, "Auth");
       } finally {
         setLoading(false);
       }
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.email);
+        logger.debug("Auth state changed", { event, email: session?.user?.email }, "Auth");
 
         setUser(session?.user ?? null);
         setLoading(false);
@@ -58,9 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           toast.success("Successfully signed out!");
           router.refresh();
         } else if (event === 'TOKEN_REFRESHED') {
-          console.log("Token refreshed successfully");
+          logger.debug("Token refreshed successfully", {}, "Auth");
         } else if (event === 'USER_UPDATED') {
-          console.log("User updated");
+          logger.debug("User updated", { userId: session?.user?.id }, "Auth");
         }
       }
     );

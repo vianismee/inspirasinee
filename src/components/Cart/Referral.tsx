@@ -11,6 +11,7 @@ import { X, Gift, CheckCircle, AlertCircle } from "lucide-react";
 import { formatedCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 import { ReferralService } from "@/lib/client-services";
+import { logger } from "@/utils/client/logger";
 
 interface ReferralData {
   valid: boolean;
@@ -36,33 +37,33 @@ export function Referral() {
 
   const validateReferralCode = async () => {
     if (!referralCode.trim() || !activeCustomer) {
-      console.log('❌ Referral validation: Missing input', { referralCode: referralCode.trim(), activeCustomer });
+      logger.warn('Referral validation: Missing input', { referralCode: referralCode.trim(), hasCustomer: !!activeCustomer }, "Referral");
       toast.error("Please enter a referral code");
       return;
     }
 
-    console.log('🚀 Starting referral validation', {
+    logger.debug('Starting referral validation', {
       referralCode: referralCode.trim(),
       customerId: activeCustomer.customer_id
-    });
+    }, "Referral");
 
     setIsValidating(true);
     try {
       const data = await ReferralService.validateReferralCode(referralCode.trim(), activeCustomer.customer_id);
 
-      console.log('📊 Referral validation result:', data);
+      logger.debug('Referral validation result', { data }, "Referral");
 
       if (data.valid) {
         setReferralDiscount(data.discount_amount || 0);
         setAppliedReferralCode(referralCode.trim());
         toast.success(`Referral code applied! You saved ${formatedCurrency(data.discount_amount || 0)}`);
-        console.log('✅ Referral code successfully applied');
+        logger.info('Referral code successfully applied', { referralCode: referralCode.trim(), discountAmount: data.discount_amount }, "Referral");
       } else {
-        console.log('❌ Referral validation failed:', data.error);
+        logger.warn('Referral validation failed', { error: data.error, referralCode: referralCode.trim() }, "Referral");
         toast.error(data.error || "Invalid referral code");
       }
     } catch (error) {
-      console.error("💥 Referral validation error:", error);
+      logger.error("Referral validation error", { error, referralCode: referralCode.trim(), customerId: activeCustomer?.customer_id }, "Referral");
       const errorMessage = error instanceof Error ? error.message : "Failed to validate referral code";
       toast.error(errorMessage);
     } finally {

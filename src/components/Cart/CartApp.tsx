@@ -16,6 +16,7 @@ import { useCartStore } from "@/stores/cartStore";
 import { Payment } from "./Payment";
 import { Button } from "../ui/button";
 import { PointsService } from "@/lib/client-services";
+import { logger } from "@/utils/client/logger";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
@@ -37,7 +38,7 @@ export function CartApp() {
           const points = await PointsService.getCustomerBalance(activeCustomer.customer_id);
           setCustomerPoints(points?.current_balance || 0);
         } catch (error) {
-          console.error("Error fetching customer points:", error);
+          logger.error("Error fetching customer points", { error, customerId: activeCustomer.customer_id }, "CartApp");
           setCustomerPoints(0);
         }
       }

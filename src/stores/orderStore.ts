@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { create } from "zustand";
+import { logger } from "@/utils/client/logger";
 
 // 1. Definisikan tipe data baru untuk hasil grouping
 interface ServiceDetail {
@@ -107,7 +108,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
           .single();
 
         if (errorData) {
-          console.error("Gagal memuat data order tunggal:", errorData);
+          logger.error("Gagal memuat data order tunggal", { error: errorData, invoice }, "OrderStore");
           set({ singleOrders: null });
           return false;
         }
@@ -132,7 +133,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Gagal memuat data orders:", error);
+        logger.error("Gagal memuat data orders", { error, page, searchQuery }, "OrderStore");
         set({ orders: [], count: 0 });
         return false;
       }
@@ -146,7 +147,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       set({ orders: processedData as Orders[], count: count || 0 });
       return true;
     } catch (error) {
-      console.error("Terjadi kesalahan pada fetchOrder:", error);
+      logger.error("Terjadi kesalahan pada fetchOrder", { error, page, searchQuery }, "OrderStore");
       return false;
     } finally {
       set({ isLoading: false });
@@ -170,7 +171,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     } catch (error) {
       const errorMessage = (error as Error).message;
       toast.error(`Gagal mengubah status: ${errorMessage}`);
-      console.error("Terjadi kesalahan saat mencoba mengubah status:", error);
+      logger.error("Terjadi kesalahan saat mencoba mengubah status", { error, invoice_id, newStatus }, "OrderStore");
     }
   },
 
@@ -212,7 +213,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         .eq("order_invoice_id", invoice_id);
 
       if (referralError) {
-        console.warn("Warning: Could not delete referral usage records:", referralError);
+        logger.warn("Could not delete referral usage records", { error: referralError, invoice_id }, "OrderStore");
         // Continue with order deletion even if referral deletion fails
       }
 
@@ -223,7 +224,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         .eq("invoice_id", invoice_id);
 
       if (itemsError) {
-        console.warn("Warning: Could not delete order items:", itemsError);
+        logger.warn("Could not delete order items", { error: itemsError, invoice_id }, "OrderStore");
         // Continue with order deletion even if items deletion fails
       }
 
@@ -234,14 +235,14 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         .eq("invoice_id", invoice_id);
 
       if (error) {
-        console.error(error);
+        logger.error("Failed to delete order from database", { error, invoice_id }, "OrderStore");
         toast.error("Gagal Menghapus data");
         return;
       }
 
       toast.success(`Berhasil menghapus Invoice ${invoice_id}`);
     } catch (error) {
-      console.error("Error deleting invoice:", error);
+      logger.error("Error deleting invoice", { error, invoice_id }, "OrderStore");
       toast.error("Terjadi kesalahan saat menghapus data");
     }
   },
