@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { extractPhoneFromHash } from "@/lib/customer-dashboard-hash";
 import { PointsService } from "@/lib/client-services";
 import { createClient } from "@/utils/supabase/client";
+import { logger } from "@/utils/client/logger";
 
 interface DashboardData {
   success: boolean;
@@ -84,7 +85,7 @@ export default function CustomerDashboardHashPage() {
           return;
         }
 
-        console.log("✅ Phone extracted from hash:", phone);
+        logger.debug("Phone extracted from hash", { hash, phone }, "CustomerDashboard");
 
         // Find customer by phone using client-side query
         const supabase = createClient();
@@ -95,20 +96,20 @@ export default function CustomerDashboardHashPage() {
           .single();
 
         if (customerError || !customerData) {
-          console.error("Customer not found:", customerError);
+          logger.error("Customer not found", { error: customerError, phone }, "CustomerDashboard");
           setError("Pelanggan tidak ditemukan untuk nomor telepon ini");
           setIsLoading(false);
           return;
         }
 
-        console.log("✅ Customer found:", customerData);
-        console.log("Customer data fields:", {
+        logger.debug("Customer found", { customerData }, "CustomerDashboard");
+        logger.debug("Customer data fields", {
           customer_id: customerData.customer_id,
           username: customerData.username,
           email: customerData.email,
           whatsapp: customerData.whatsapp,
           alamat: customerData.alamat
-        });
+        }, "CustomerDashboard");
 
         // Fetch customer points (handle case where customer might not have points record yet)
         let pointsData = {
@@ -122,10 +123,10 @@ export default function CustomerDashboardHashPage() {
           if (fetchedPoints) {
             pointsData = fetchedPoints;
           } else {
-            console.log("Customer has no points record yet, using defaults");
+            logger.info("Customer has no points record yet, using defaults", { customerId: customerData.customer_id }, "CustomerDashboard");
           }
         } catch (pointsError) {
-          console.error("Error fetching customer points:", pointsError);
+          logger.error("Error fetching customer points", { error: pointsError, customerId: customerData.customer_id }, "CustomerDashboard");
           // Continue with default points values
         }
 
@@ -138,7 +139,7 @@ export default function CustomerDashboardHashPage() {
           .limit(10); // Get last 10 transactions
 
         if (transactionsError) {
-          console.error("Error fetching transactions:", transactionsError);
+          logger.error("Error fetching transactions", { error: transactionsError, customerId: customerData.customer_id }, "CustomerDashboard");
         }
 
         // Fetch customer orders with order items (simplified query to avoid syntax issues)
@@ -149,7 +150,7 @@ export default function CustomerDashboardHashPage() {
           .order('created_at', { ascending: false });
 
         if (ordersError) {
-          console.error("Error fetching orders:", ordersError);
+          logger.error("Error fetching orders", { error: ordersError, customerId: customerData.customer_id }, "CustomerDashboard");
         }
 
         // Build customer name with proper fallback
@@ -158,12 +159,12 @@ export default function CustomerDashboardHashPage() {
                            customerData.whatsapp ||
                            `Customer ${customerData.customer_id}`;
 
-        console.log("Customer name calculation:", {
+        logger.debug("Customer name calculation", {
           username: customerData.username,
           email: customerData.email,
           whatsapp: customerData.whatsapp,
           finalName: customerName
-        });
+        }, "CustomerDashboard");
 
         // Build dashboard data
         const dashboardData: DashboardData = {
@@ -187,7 +188,7 @@ export default function CustomerDashboardHashPage() {
 
         setDashboardData(dashboardData);
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        logger.error("Error fetching dashboard data", { error, hash }, "CustomerDashboard");
         setError("Terjadi kesalahan saat memuat dashboard");
         toast.error("Terjadi kesalahan. Silakan coba lagi");
 
