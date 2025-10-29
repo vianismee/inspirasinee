@@ -97,7 +97,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     set({ isLoading: true });
     const { invoice, page = 1, pageSize = 10 } = options;
     const supabase = createClient();
-    const selectQuery = "*, order_item(*), order_discounts(*), customers(*)";
+    const selectQuery = "*, order_item (*), order_discounts(*), customers(*)";
 
     try {
       if (invoice) {
@@ -204,64 +204,16 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
 
   deleteInvoice: async (invoice_id) => {
     const supabase = createClient();
-
-    try {
-      // First delete related referral_usage records (if any)
-      const { error: referralError } = await supabase
-        .from("referral_usage")
-        .delete()
-        .eq("order_invoice_id", invoice_id);
-
-      if (referralError) {
-        logger.warn("Could not delete referral usage records", { error: referralError, invoice_id }, "OrderStore");
-        // Continue with order deletion even if referral deletion fails
-      }
-
-      // Also delete related order_item records
-      let itemsError = null;
-      try {
-        // Try different possible foreign key columns
-        const possibleColumns = ["order_id", "invoice_id", "id"];
-
-        for (const column of possibleColumns) {
-          const { error: err } = await supabase
-            .from("order_item")
-            .delete()
-            .eq(column, invoice_id);
-
-          if (!err) {
-            // Found the correct column, deletion successful
-            break;
-          }
-
-          itemsError = err; // Store last error to check if all attempts fail
-        }
-      } catch (error) {
-        itemsError = error;
-      }
-
-      if (itemsError) {
-        logger.warn("Could not delete order items", { error: itemsError, invoice_id }, "OrderStore");
-        // Continue with order deletion even if items deletion fails
-      }
-
-      // Now delete the order
-      const { error } = await supabase
-        .from("orders")
-        .delete()
-        .eq("invoice_id", invoice_id);
-
-      if (error) {
-        logger.error("Failed to delete order from database", { error, invoice_id }, "OrderStore");
-        toast.error("Gagal Menghapus data");
-        return;
-      }
-
-      toast.success(`Berhasil menghapus Invoice ${invoice_id}`);
-    } catch (error) {
-      logger.error("Error deleting invoice", { error, invoice_id }, "OrderStore");
-      toast.error("Terjadi kesalahan saat menghapus data");
+    const { error } = await supabase
+      .from("orders")
+      .delete()
+      .eq("invoice_id", invoice_id);
+    if (error) {
+      logger.error("Failed to delete order from database", { error, invoice_id }, "OrderStore");
+      toast.error("Gagal Menghapus data");
+      return;
     }
+    toast.success(`Berhasil menghapus Invoice ${invoice_id}`);
   },
 
   updatePayment: async (invoice_id, newPayment) => {

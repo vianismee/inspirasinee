@@ -1,0 +1,82 @@
+Request URL
+https://inspirasinee-h3icbvycb-vianismees-projects.vercel.app/_next/data/Bgfq8XVcZv8n7jdFXWqRD/tracking/NH9H98N.json
+Request Method
+HEAD
+Status Code
+500 Internal Server Error
+Remote Address
+216.198.79.195:443
+Referrer Policy
+strict-origin-when-cross-origin
+accept-ranges
+bytes
+access-control-allow-origin
+
+- age
+  20
+  cache-control
+  public, max-age=0, must-revalidate
+  content-disposition
+  inline; filename="500"
+  content-encoding
+  br
+  content-length
+  941
+  content-type
+  text/html; charset=utf-8
+  date
+  Wed, 29 Oct 2025 03:56:48 GMT
+  etag
+  "d248f1505ace7fd7a3f8e56a710e6fdb"
+  last-modified
+  Wed, 29 Oct 2025 03:56:28 GMT
+  server
+  Vercel
+  strict-transport-security
+  max-age=63072000; includeSubDomains; preload
+  x-matched-path
+  /500
+  x-robots-tag
+  noindex
+  x-vercel-cache
+  MISS
+  x-vercel-id
+  sin1::zmfhr-1761710207950-2abb6a7a2f38
+  :authority
+  inspirasinee-h3icbvycb-vianismees-projects.vercel.app
+  :method
+  HEAD
+  :path
+  /\_next/data/Bgfq8XVcZv8n7jdFXWqRD/tracking/NH9H98N.json
+  :scheme
+  https
+  accept
+  _/_
+  accept-encoding
+  gzip, deflate, br, zstd
+  accept-language
+  id,en-US;q=0.9,en;q=0.8
+  cookie
+  \_vercel_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InZpYW5pc21lZSIsIm93bmVySWQiOiJ0ZWFtXzFEVDZIdVRGemt0enJaNWNrQWNDaFplSiIsInN1YiI6InNzby1wcm90ZWN0aW9uIiwiaWF0IjoxNzYxNzEwMTQ1LCJhdWQiOiJpbnNwaXJhc2luZWUtaDNpY2J2eWNiLXZpYW5pc21lZXMtcHJvamVjdHMudmVyY2VsLmFwcCIsInVzZXJJZCI6ImNETGJFNWppZUNrOTl3UEpWUUk2a1RSWiJ9.1ATrmGM2165x_S7kwRZic26A8Ojz2jemeXtVIiLHtM4; sb-yrknpwyindvfevhkionn-auth-token=base64-eyJhY2Nlc3NfdG9rZW4iOiJleUpoYkdjaU9pSklVekkxTmlJc0ltdHBaQ0k2SWtKRU5XNUhUVGR3ZVhSR05EbFdURTRpTENKMGVYQWlPaUpLVjFRaWZRLmV5SnBjM01pT2lKb2RIUndjem92TDNseWEyNXdkM2xwYm1SMlptVjJhR3RwYjI1dUxuTjFjR0ZpWVhObExtTnZMMkYxZEdndmRqRWlMQ0p6ZFdJaU9pSXlNakZtWm1WbE5DMWlZV1U1TFRReE9UY3RZV0V6T0Mwd016VmtNRGMzT0RVeE1UTWlMQ0poZFdRaU9pSmhkWFJvWlc1MGFXTmhkR1ZrSWl3aVpYaHdJam94TnpZeE56RXpOelkyTENKcFlYUWlPakUzTmpFM01UQXhOallzSW1WdFlXbHNJam9pWTJobGRtbGhibUp6UUdkdFlXbHNMbU52YlNJc0luQm9iMjVsSWpvaUlpd2lZWEJ3WDIxbGRHRmtZWFJoSWpwN0luQnliM1pwWkdWeUlqb2laVzFoYVd3aUxDSndjbTkyYVdSbGNuTWlPbHNpWlcxaGFXd2lYWDBzSW5WelpYSmZiV1YwWVdSaGRHRWlPbnNpWlcxaGFXeGZkbVZ5YVdacFpXUWlPblJ5ZFdWOUxDSnliMnhsSWpvaVlYVjBhR1Z1ZEdsallYUmxaQ0lzSW1GaGJDSTZJbUZoYkRFaUxDSmhiWElpT2x0N0ltMWxkR2h2WkNJNkluQmhjM04zYjNKa0lpd2lkR2x0WlhOMFlXMXdJam94TnpZeE56RXdNVFkyZlYwc0luTmxjM05wYjI1ZmFXUWlPaUkwTUdJNFlUY3lOQzFqT1dSbUxUUmtPR010WVdWalppMDBZVFE1WVdNMFlqWTBabU1pTENKcGMxOWhibTl1ZVcxdmRYTWlPbVpoYkhObGZRLkpPSVphcG9jYWV4OHBMczh1MEFzM1VXWFdiSnAxaEk5MlJha1ZtV2VYNm8iLCJ0b2tlbl90eXBlIjoiYmVhcmVyIiwiZXhwaXJlc19pbiI6MzYwMCwiZXhwaXJlc19hdCI6MTc2MTcxMzc2NiwicmVmcmVzaF90b2tlbiI6InZhdXhmczdjcHVleCIsInVzZXIiOnsiaWQiOiIyMjFmZmVlNC1iYWU5LTQxOTctYWEzOC0wMzVkMDc3ODUxMTMiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJlbWFpbCI6ImNoZXZpYW5ic0BnbWFpbC5jb20iLCJlbWFpbF9jb25maXJtZWRfYXQiOiIyMDI1LTA4LTI2VDExOjU2OjAxLjIxOTUzNloiLCJwaG9uZSI6IiIsImNvbmZpcm1lZF9hdCI6IjIwMjUtMDgtMjZUMTE6NTY6MDEuMjE5NTM2WiIsImxhc3Rfc2lnbl9pbl9hdCI6IjIwMjUtMTAtMjlUMDM6NTY6MDYuNzU3MzA1OTMyWiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsX3ZlcmlmaWVkIjp0cnVlfSwiaWRlbnRpdGllcyI6W3siaWRlbnRpdHlfaWQiOiI4N2Y1YjQ5ZC01YTI3LTQ5YjUtYjUzYS1hMDRjYzkwYjA1OTkiLCJpZCI6IjIyMWZmZWU0LWJhZTktNDE5Ny1hYTM4LTAzNWQwNzc4NTExMyIsInVzZXJfaWQiOiIyMjFmZmVlNC1iYWU5LTQxOTctYWEzOC0wMzVkMDc3ODUxMTMiLCJpZGVudGl0eV9kYXRhIjp7ImVtYWlsIjoiY2hldmlhbmJzQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwicGhvbmVfdmVyaWZpZWQiOmZhbHNlLCJzdWIiOiIyMjFmZmVlNC1iYWU5LTQxOTctYWEzOC0wMzVkMDc3ODUxMTMifSwicHJvdmlkZXIiOiJlbWFpbCIsImxhc3Rfc2lnbl9pbl9hdCI6IjIwMjUtMDgtMjZUMTE6NTY6MDEuMjAwNjAyWiIsImNyZWF0ZWRfYXQiOiIyMDI1LTA4LTI2VDExOjU2OjAxLjIwMTc3OVoiLCJ1cGRhdGVkX2F0IjoiMjAyNS0wOC0yNlQxMTo1NjowMS4yMDE3NzlaIiwiZW1haWwiOiJjaGV2aWFuYnNAZ21haWwuY29tIn1dLCJjcmVhdGVkX2F0IjoiMjAyNS0wOC0yNlQxMTo1NjowMS4xODM4ODhaIiwidXBkYXRlZF9hdCI6IjIwMjUtMTAtMjlUMDM6NTY6MDYuNzU5ODNaIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0sIndlYWtfcGFzc3dvcmQiOm51bGx9
+  dnt
+  1
+  priority
+  u=1, i
+  referer
+  https://inspirasinee-h3icbvycb-vianismees-projects.vercel.app/tracking/NH9H98N
+  sec-ch-ua
+  "Chromium";v="141", "Not?A_Brand";v="8"
+  sec-ch-ua-mobile
+  ?1
+  sec-ch-ua-platform
+  "Android"
+  sec-fetch-dest
+  empty
+  sec-fetch-mode
+  cors
+  sec-fetch-site
+  same-origin
+  user-agent
+  Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36
+  x-nextjs-data
+  1
