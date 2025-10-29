@@ -15,11 +15,6 @@ const nextConfig: NextConfig = {
   // Workaround for exclamation mark in project path
   distDir: '.next',
 
-  // Disable experimental features that might cause issues
-  experimental: {
-    // Keep minimal experimental features
-  },
-
   // Simple webpack config to avoid path issues
   webpack: (config, { dev, isServer }) => {
     // Override webpack configuration to handle exclamation mark
@@ -79,6 +74,11 @@ const nextConfig: NextConfig = {
     return config;
   },
 
+  // Keep minimal experimental features to prevent 500 errors
+  experimental: {
+    // Minimal experimental configuration
+  },
+
   // Handle special characters in paths
   outputFileTracingExcludes: {
     '*': [
@@ -87,6 +87,19 @@ const nextConfig: NextConfig = {
       '**/*.log',
     ],
   },
+
+  // Configure routes to prevent server-side processing issues
+  async rewrites() {
+    return [
+      {
+        source: '/tracking/:slug*',
+        destination: '/tracking/:slug*',
+      },
+    ];
+  },
+
+  // Force dynamic rendering to prevent caching issues
+  generateEtags: false,
 
   };
 
