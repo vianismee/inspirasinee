@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/contexts/auth-context";
+import { DebugPanel } from "@/components/DebugPanel";
 
 export const metadata: Metadata = {
   title: "INSPIRASINEE",
@@ -23,6 +24,7 @@ export default function RootLayout({
         <AuthProvider>
           <main>{children}</main>
           <Toaster />
+          <DebugPanel />
         </AuthProvider>
       </body>
     </html>

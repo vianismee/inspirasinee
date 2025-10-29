@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ReferralDashboardService } from "@/lib/client-services";
 import { toast } from "sonner";
 
 interface TestResult {
@@ -46,38 +47,25 @@ export default function TestDashboardAccessPage() {
     try {
       addLog(`📞 Testing phone: ${phone}`);
 
-      const response = await fetch("/api/referral/dashboard/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ phone }),
-      });
-
-      addLog(`📡 Response status: ${response.status}`);
-
-      const data = await response.json();
+      const data = await ReferralDashboardService.verifyPhoneForDashboard(phone);
       addLog(`📦 Response data: ${JSON.stringify(data, null, 2)}`);
 
-      if (response.ok && data.success) {
+      if (data.success) {
         addLog("✅ Phone validation successful!");
         setResult(data);
         toast.success("Phone validation successful!");
 
         // Test dashboard access
         if (data.redirectTo) {
-          addLog(`🔗 Redirect URL: ${data.redirectTo}`);
-          const hash = data.redirectTo.split('/').pop();
+          addLog(`🔗 Generated redirect URL: ${data.redirectTo}`);
+          const hash = data.redirectTo.split('/').pop() || '';
           addLog(`🔐 Testing dashboard access with hash: ${hash}`);
 
           try {
-            const dashboardResponse = await fetch(`/api/referral/dashboard/access/${hash}`);
-            addLog(`📡 Dashboard response status: ${dashboardResponse.status}`);
-
-            const dashboardData = await dashboardResponse.json();
+            const dashboardData = await ReferralDashboardService.validateDashboardAccess(hash);
             addLog(`📦 Dashboard response data: ${JSON.stringify(dashboardData, null, 2)}`);
 
-            if (dashboardResponse.ok && dashboardData.success) {
+            if (dashboardData.valid) {
               addLog("✅ Dashboard access successful!");
               setResult(prev => ({ ...prev, success: true, dashboardData }));
             } else {
@@ -114,19 +102,29 @@ export default function TestDashboardAccessPage() {
     try {
       addLog(`📞 Testing phone: ${phone}`);
 
-      const response = await fetch(`/api/referral/dashboard/access/${phone}`);
-      addLog(`📡 Response status: ${response.status}`);
+      // First generate a hash for the phone
+      const validationResult = await ReferralDashboardService.verifyPhoneForDashboard(phone);
+      addLog(`📦 Hash generation result: ${JSON.stringify(validationResult, null, 2)}`);
 
-      const data = await response.json();
-      addLog(`📦 Response data: ${JSON.stringify(data, null, 2)}`);
+      if (validationResult.success && validationResult.redirectTo) {
+        const hash = validationResult.redirectTo.split('/').pop() || '';
+        addLog(`🔐 Generated hash: ${hash}`);
 
-      if (response.ok && data.success) {
-        addLog("✅ Direct dashboard access successful!");
-        setResult({ success: true, directAccess: data });
-        toast.success("Direct dashboard access successful!");
+        // Then test dashboard access with the hash
+        const dashboardData = await ReferralDashboardService.validateDashboardAccess(hash);
+        addLog(`📦 Dashboard access result: ${JSON.stringify(dashboardData, null, 2)}`);
+
+        if (dashboardData.valid) {
+          addLog("✅ Direct dashboard access successful!");
+          setResult({ success: true, directAccess: dashboardData });
+          toast.success("Direct dashboard access successful!");
+        } else {
+          addLog(`❌ Direct dashboard access failed: ${dashboardData.error}`);
+          toast.error(dashboardData.error || "Direct access failed");
+        }
       } else {
-        addLog(`❌ Direct dashboard access failed: ${data.error}`);
-        toast.error(data.error || "Direct access failed");
+        addLog(`❌ Hash generation failed: ${validationResult.error}`);
+        toast.error(validationResult.error || "Hash generation failed");
       }
     } catch (error) {
       addLog(`❌ Network error: ${error instanceof Error ? error.message : String(error)}`);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ReferralDashboard } from "@/components/Referral/ReferralDashboard";
+import { ReferralDashboardService } from "@/lib/client-services";
 import { toast } from "sonner";
 
 interface DashboardData {
@@ -72,11 +73,32 @@ export default function ReferralDashboardHashPage() {
       }
 
       try {
-        const response = await fetch(`/api/referral/dashboard/access/${hash}`);
-        const data = await response.json();
+        const data = await ReferralDashboardService.validateDashboardAccess(hash);
 
-        if (response.ok && data.success) {
-          setDashboardData(data);
+        if (data.valid) {
+          setDashboardData({
+            success: true,
+            customerData: data.customer ? {
+              customer_id: data.customer.customer_id,
+              name: data.customer.email || 'Customer', // Use email as name fallback
+              email: data.customer.email
+            } : {
+              customer_id: 'unknown',
+              name: 'Unknown Customer'
+            },
+            pointsData: {
+              current_balance: 0,
+              total_earned: 0,
+              total_redeemed: 0
+            },
+            referralCode: '',
+            referralStats: {
+              totalReferrals: 0,
+              totalPointsEarned: 0,
+            },
+            transactionHistory: [],
+            orderHistory: []
+          });
         } else {
           setError(data.error || "Gagal mengakses dashboard");
           toast.error(data.error || "Link tidak valid atau telah kedaluwarsa");
