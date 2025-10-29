@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
 
         if (event === 'SIGNED_IN') {
-          toast.success("Successfully signed in!");
+          // Toast handled by login form to avoid duplicate notifications
           router.refresh();
         } else if (event === 'SIGNED_OUT') {
           toast.success("Successfully signed out!");
@@ -79,9 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error("Sign in error:", error);
         toast.error(error.message);
-      } else {
-        toast.success("Signing in...");
       }
+      // Success toast handled by useAuthOperation to avoid duplicate notifications
 
       return { error };
     } catch (error) {

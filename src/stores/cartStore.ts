@@ -332,7 +332,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         referral_code: referralCode || null,
         referral_discount_amount: referralDiscount,
         points_used: pointsUsed,
-        // points_discount_amount field doesn't exist, so we can't save it
+        points_discount_amount: pointsDiscount, // Now save the points discount amount
       };
 
       // Debug: Log order data

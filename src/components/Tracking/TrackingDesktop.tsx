@@ -195,7 +195,7 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                         🎯 Poin ({(order as OrderWithReferral).points_used} poin)
                       </p>
                       <p className="font-mono text-green-600">
-                        Points redeemed
+                        -{formatedCurrency((order as OrderWithReferral).points_discount_amount || 0)}
                       </p>
                     </div>
                   )}

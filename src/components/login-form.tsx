@@ -30,10 +30,9 @@ export function LoginForm({
     successMessage: "Login successful! Redirecting to admin dashboard...",
     errorMessage: "Login failed. Please check your credentials.",
     onSuccess: () => {
-      setTimeout(() => {
-        router.push("/admin");
-        router.refresh();
-      }, 1000);
+      // Immediate redirect to admin dashboard
+      router.push("/admin");
+      router.refresh();
     },
   });
 

@@ -84,7 +84,6 @@ CREATE TABLE public.orders (
   invoice_id text UNIQUE,
   customer_id text,
   subtotal integer,
-  total_amount integer,
   payment text,
   created_at timestamp with time zone DEFAULT (now() AT TIME ZONE 'utc'::text),
   status text,
@@ -92,6 +91,8 @@ CREATE TABLE public.orders (
   referral_discount_amount numeric DEFAULT 0,
   points_awarded integer DEFAULT 0,
   points_used integer DEFAULT 0,
+  points_discount_amount numeric DEFAULT 0,
+  total_price integer,
   CONSTRAINT orders_pkey PRIMARY KEY (id),
   CONSTRAINT orders_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(customer_id)
 );
@@ -146,5 +147,4 @@ CREATE TABLE public.service_category (
   name text NOT NULL UNIQUE,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT service_category_pkey PRIMARY KEY (id)
-);
-
+); 

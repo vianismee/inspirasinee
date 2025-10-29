@@ -187,7 +187,7 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
                       🎯 Poin ({(order as OrderWithReferral).points_used})
                     </span>
                     <span className="font-mono text-green-600">
-                      Points redeemed
+                      -{formatedCurrency((order as OrderWithReferral).points_discount_amount || 0)}
                     </span>
                   </div>
                 )}
