@@ -97,8 +97,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     set({ isLoading: true });
     const { invoice, page = 1, pageSize = 10 } = options;
     const supabase = createClient();
-    // Use safer query without relationships first, then fetch relationships separately
-const selectQuery = "*, order_discounts(*), customers(*)";
+    const selectQuery = "*, order_item(*), order_discounts(*), customers(*)";
 
     try {
       if (invoice) {
@@ -114,24 +113,10 @@ const selectQuery = "*, order_discounts(*), customers(*)";
           return false;
         }
 
-        // 3. Fetch order items separately and group them
-        let orderItems = [];
-        try {
-          const { data: itemsData, error: itemsError } = await supabase
-            .from("order_item")
-            .select("*")
-            .eq("invoice_id", invoice); // Assuming invoice_id is the foreign key
-
-          if (!itemsError && itemsData) {
-            orderItems = itemsData;
-          } else {
-            logger.warn("Could not fetch order items", { error: itemsError, invoice }, "OrderStore");
-          }
-        } catch (error) {
-          logger.error("Error fetching order items", { error, invoice }, "OrderStore");
-        }
-
-        const groupedItems = groupOrderItems(orderItems as OrderItem[]);
+        // 3. Lakukan grouping SEBELUM menyimpan ke state
+        const groupedItems = groupOrderItems(
+          singleData.order_item as OrderItem[]
+        );
         const processedData = { ...singleData, order_item: groupedItems };
 
         set({ singleOrders: processedData });
@@ -156,7 +141,7 @@ const selectQuery = "*, order_discounts(*), customers(*)";
       // 3. Lakukan grouping untuk setiap order SEBELUM menyimpan ke state
       const processedData = (data || []).map((order) => ({
         ...order,
-        order_item: groupOrderItems([]), // For now, empty array until we fix order_item fetching
+        order_item: groupOrderItems(order.order_item as OrderItem[]),
       }));
 
       set({ orders: processedData as Orders[], count: count || 0 });
@@ -233,10 +218,27 @@ const selectQuery = "*, order_discounts(*), customers(*)";
       }
 
       // Also delete related order_item records
-      const { error: itemsError } = await supabase
-        .from("order_item")
-        .delete()
-        .eq("invoice_id", invoice_id);
+      let itemsError = null;
+      try {
+        // Try different possible foreign key columns
+        const possibleColumns = ["order_id", "invoice_id", "id"];
+
+        for (const column of possibleColumns) {
+          const { error: err } = await supabase
+            .from("order_item")
+            .delete()
+            .eq(column, invoice_id);
+
+          if (!err) {
+            // Found the correct column, deletion successful
+            break;
+          }
+
+          itemsError = err; // Store last error to check if all attempts fail
+        }
+      } catch (error) {
+        itemsError = error;
+      }
 
       if (itemsError) {
         logger.warn("Could not delete order items", { error: itemsError, invoice_id }, "OrderStore");
