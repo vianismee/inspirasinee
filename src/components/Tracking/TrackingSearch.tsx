@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { Search } from "lucide-react";
+import { Search, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Logo } from "../Logo";
@@ -26,7 +26,15 @@ export function TrackingSearch() {
       />
       {/* 2. Hapus `bg-white` dan tambahkan `relative` agar `z-10` berfungsi */}
       <div className="flex flex-col gap-10 relative z-10 w-full max-w-md p-4">
-        <Logo size={15} className="scale-120" />
+        <div className="flex items-center justify-between">
+          <Link href="/">
+            <Button variant="ghost" size="icon" className="hover:bg-gray-100">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          </Link>
+          <Logo size={15} className="scale-120" />
+          <div className="w-9 h-9" /> {/* Spacer for centering */}
+        </div>
         <Card className="w-full">
           <CardHeader>
             <CardTitle className="text-center text-2xl">
