@@ -1,9 +1,8 @@
 "use client";
 
-import { useOrderStore } from "@/stores/orderStore";
-import { useEffect } from "react";
-import { TrackingError } from "./TrackingError";
-import { useIsMobile } from "@/hooks/use-mobile"; // <<< UBAH: Impor hook baru
+import { createClient } from "@/utils/supabase/client";
+import { useEffect, useState } from "react";
+
 // import { TrackingDesktop } from "./TrackingDesktop";
 // import { TrackingMobile } from "./TrackingMobile";
 
@@ -11,37 +10,38 @@ interface TrackingPageProps {
   params: string;
 }
 
+type Order = {
+  id: number;
+  created_at: string;
+  invoice_id: string;
+  status: string;
+};
+
 export function TrackingApp({ params }: TrackingPageProps) {
-  const { fetchOrder, subscribeToOrders, singleOrders, isLoading } =
-    useOrderStore();
-
-  // <<< UBAH: Gunakan hook useIsMobile
-  const isMobile = useIsMobile();
-
+  const [data, setData] = useState<Order | null>(null);
   useEffect(() => {
-    fetchOrder({ invoice: params });
-    const unsubscribe = subscribeToOrders(params);
-    return () => unsubscribe();
-  }, [fetchOrder, subscribeToOrders, params]);
+    const fetchData = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("invoice_id", params)
+          .single();
+        if (error) {
+          throw error;
+        }
+        setData(data);
+      } catch (error) {
+        console.error("Error fetching data: ", error);
+      }
+    };
+    fetchData();
+  }, [params]);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        Loading...
-      </div>
-    );
-  }
-
-  if (!singleOrders) {
-    return <TrackingError params={params} />;
-  }
-
-  // <<< UBAH: Sesuaikan logika render dengan hasil dari useIsMobile
-  return isMobile ? (
-    <pre>{JSON.stringify(singleOrders)}</pre>
-  ) : (
+  return (
     <div>
-      <pre>{JSON.stringify(singleOrders)}</pre>
+      <pre>{JSON.stringify(data)}</pre>
     </div>
   );
 }
