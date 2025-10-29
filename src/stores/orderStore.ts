@@ -205,16 +205,38 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
 
   deleteInvoice: async (invoice_id) => {
     const supabase = createClient();
-    const { error } = await supabase
-      .from("orders")
-      .delete()
-      .eq("invoice_id", invoice_id);
-    if (error) {
-      // logger.error("Failed to delete order from database", { error, invoice_id }, "OrderStore");
-      toast.error("Gagal Menghapus data");
-      return;
+
+    try {
+      // First, delete related referral_usage records
+      const { error: referralError } = await supabase
+        .from("referral_usage")
+        .delete()
+        .eq("order_invoice_id", invoice_id);
+
+      if (referralError) {
+        console.warn("Warning: Could not delete referral usage records:", referralError);
+        // Continue with order deletion even if referral usage deletion fails
+        // The main goal is to delete the order
+      }
+
+      // Then delete the order
+      const { error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("invoice_id", invoice_id);
+
+      if (error) {
+        // logger.error("Failed to delete order from database", { error, invoice_id }, "OrderStore");
+        toast.error(`Gagal menghapus invoice: ${error.message}`);
+        return;
+      }
+
+      toast.success(`Berhasil menghapus Invoice ${invoice_id}`);
+    } catch (error) {
+      const errorMessage = (error as Error).message;
+      // logger.error("Unexpected error during invoice deletion", { error, invoice_id }, "OrderStore");
+      toast.error(`Terjadi kesalahan: ${errorMessage}`);
     }
-    toast.success(`Berhasil menghapus Invoice ${invoice_id}`);
   },
 
   updatePayment: async (invoice_id, newPayment) => {

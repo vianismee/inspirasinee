@@ -554,7 +554,11 @@ export default function TableJob() {
 
                   <DropdownMenuItem
                     className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
-                    onSelect={() => deleteInvoice(order.invoice_id)}
+                    onSelect={() => {
+                      if (window.confirm(`Apakah Anda yakin ingin menghapus invoice ${order.invoice_id}? Tindakan ini tidak dapat dibatalkan.`)) {
+                        deleteInvoice(order.invoice_id);
+                      }
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
