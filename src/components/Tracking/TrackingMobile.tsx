@@ -11,9 +11,10 @@ import { Button } from "../ui/button";
 import TimelineProgress from "../time-line-progress";
 import { formatedCurrency, formatPhoneNumber } from "@/lib/utils";
 import { Logo } from "../Logo";
-import { MapPin, Phone, User } from "lucide-react";
+import { MapPin, Phone, User, UserCircle } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Orders } from "@/types/index";
+import { createCustomerDashboardLink } from "@/lib/customer-dashboard-hash";
 
 // Extended interface for orders with referral properties
 interface OrderWithReferral extends Orders {
@@ -43,6 +44,13 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
       complainChatUrl: `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedComplain}`,
     };
   }, [order.invoice_id]);
+
+  const handleDashboardAccess = () => {
+    if (_customer?.whatsapp) {
+      const dashboardLink = createCustomerDashboardLink(_customer.whatsapp);
+      window.location.href = dashboardLink;
+    }
+  };
   return (
     <main className="w-full bg-white max-w-2xl mx-auto">
       {/* ... bagian atas tidak berubah ... */}
@@ -224,6 +232,14 @@ export function TrackingMobile({ order }: TrackingMobileProps) {
             </CardHeader>
           </Card>
           <div className="w-full flex flex-col gap-3">
+            <Button
+              onClick={handleDashboardAccess}
+              size={"lg"}
+              className="w-full py-6 text-base font-bold bg-green-600 hover:bg-green-700 text-white"
+            >
+              <UserCircle className="w-5 h-5 mr-2" />
+              Dashboard Pelanggan
+            </Button>
             <a
               href={contactAdminUrl}
               target="_blank"
