@@ -39,6 +39,15 @@ const nextConfig: NextConfig = {
       config.output.path = config.output.path.replace(/!/g, '');
     }
 
+    // Fix source-map dependency issue
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push({
+        'source-map': 'commonjs source-map',
+        'source-map-support': 'commonjs source-map-support'
+      });
+    }
+
     // Fix module rules that reference the context
     if (config.module && config.module.rules) {
       config.module.rules.forEach((rule: any) => {
