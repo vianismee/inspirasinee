@@ -173,7 +173,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         `Data pelanggan "${updatedCustomer.username}" berhasil diperbarui.`
       );
     } catch (error) {
-      logger.error("Gagal memperbarui data pelanggan", { error, customerId, customerData }, "CustomerStore");
+      logger.error("Gagal memperbarui data pelanggan", { error, customerId, dataToUpdate }, "CustomerStore");
       toast.error("Gagal memperbarui data pelanggan.");
       throw error;
     }

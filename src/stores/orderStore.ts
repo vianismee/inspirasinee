@@ -133,7 +133,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         .order("created_at", { ascending: false });
 
       if (error) {
-        logger.error("Gagal memuat data orders", { error, page, searchQuery }, "OrderStore");
+        logger.error("Gagal memuat data orders", { error, page }, "OrderStore");
         set({ orders: [], count: 0 });
         return false;
       }
@@ -147,7 +147,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       set({ orders: processedData as Orders[], count: count || 0 });
       return true;
     } catch (error) {
-      logger.error("Terjadi kesalahan pada fetchOrder", { error, page, searchQuery }, "OrderStore");
+      logger.error("Terjadi kesalahan pada fetchOrder", { error, page }, "OrderStore");
       return false;
     } finally {
       set({ isLoading: false });
@@ -171,7 +171,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     } catch (error) {
       const errorMessage = (error as Error).message;
       toast.error(`Gagal mengubah status: ${errorMessage}`);
-      logger.error("Terjadi kesalahan saat mencoba mengubah status", { error, invoice_id, newStatus }, "OrderStore");
+      logger.error("Terjadi kesalahan saat mencoba mengubah status", { error, invoice_id, newStep }, "OrderStore");
     }
   },
 
