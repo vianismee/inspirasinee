@@ -24,6 +24,8 @@ export function TrackingApp({ params }: TrackingPageProps) {
     return () => unsubscribe();
   }, [fetchOrder, subscribeToOrders, params]);
 
+  console.log(singleOrders);
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
