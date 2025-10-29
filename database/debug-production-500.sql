@@ -76,19 +76,26 @@ SELECT 'Customers with NULL whatsapp: ' || COUNT(*) as result
 FROM customers
 WHERE whatsapp IS NULL;
 
-SELECT 'Order Items with NULL order_id: ' || COUNT(*) as result
-FROM order_item
-WHERE order_id IS NULL;
+-- Skip order_item NULL check until we understand table structure
+-- SELECT 'Order Items with NULL order_id: ' || COUNT(*) as result
+-- FROM order_item
+-- WHERE order_id IS NULL;
 
 -- Step 5: Test the specific queries that are most likely failing
 SELECT '=== HIGH-RISK QUERY TESTS ===' as debug_step;
 
 -- Test complex joins that client-side code might be doing
--- This simulates the orderStore.fetchOrder with relationships
+-- This simulates the orderStore.fetchOrder with basic relationships
 SELECT 'Complex order query test: ' || COUNT(*) as result
 FROM orders o
 LEFT JOIN customers c ON o.customer_id = c.customer_id
 WHERE o.invoice_id IS NOT NULL
+LIMIT 5;
+
+-- Test the basic order query without relationships first
+SELECT 'Basic order query test: ' || COUNT(*) as result
+FROM orders
+WHERE invoice_id IS NOT NULL
 LIMIT 5;
 
 -- Test the points balance query
@@ -138,7 +145,7 @@ SELECT '=== PERFORMANCE CHECK ===' as debug_step;
 -- Check table sizes (might be causing timeouts)
 SELECT
     schemaname,
-    tablename,
+    relname as tablename,
     n_tup_ins as total_inserts,
     n_tup_upd as total_updates,
     n_tup_del as total_deletes,
@@ -149,7 +156,7 @@ SELECT
     last_analyze,
     last_autoanalyze
 FROM pg_stat_user_tables
-WHERE tablename IN ('orders', 'customers', 'order_item', 'points_transactions', 'referral_usage')
+WHERE relname IN ('orders', 'customers', 'order_item', 'points_transactions', 'referral_usage')
 ORDER BY live_rows DESC;
 
 SELECT '=== DEBUG COMPLETE ===' as debug_step;

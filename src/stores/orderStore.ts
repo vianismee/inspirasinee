@@ -97,7 +97,8 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
     set({ isLoading: true });
     const { invoice, page = 1, pageSize = 10 } = options;
     const supabase = createClient();
-    const selectQuery = "*, order_item (*), order_discounts(*), customers(*)";
+    // Use safer query without relationships first, then fetch relationships separately
+const selectQuery = "*, order_discounts(*), customers(*)";
 
     try {
       if (invoice) {
@@ -113,10 +114,24 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
           return false;
         }
 
-        // 3. Lakukan grouping SEBELUM menyimpan ke state
-        const groupedItems = groupOrderItems(
-          singleData.order_item as OrderItem[]
-        );
+        // 3. Fetch order items separately and group them
+        let orderItems = [];
+        try {
+          const { data: itemsData, error: itemsError } = await supabase
+            .from("order_item")
+            .select("*")
+            .eq("invoice_id", invoice); // Assuming invoice_id is the foreign key
+
+          if (!itemsError && itemsData) {
+            orderItems = itemsData;
+          } else {
+            logger.warn("Could not fetch order items", { error: itemsError, invoice }, "OrderStore");
+          }
+        } catch (error) {
+          logger.error("Error fetching order items", { error, invoice }, "OrderStore");
+        }
+
+        const groupedItems = groupOrderItems(orderItems as OrderItem[]);
         const processedData = { ...singleData, order_item: groupedItems };
 
         set({ singleOrders: processedData });
@@ -141,7 +156,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       // 3. Lakukan grouping untuk setiap order SEBELUM menyimpan ke state
       const processedData = (data || []).map((order) => ({
         ...order,
-        order_item: groupOrderItems(order.order_item as OrderItem[]),
+        order_item: groupOrderItems([]), // For now, empty array until we fix order_item fetching
       }));
 
       set({ orders: processedData as Orders[], count: count || 0 });

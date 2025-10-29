@@ -1,0 +1,11 @@
+| table_name          | exists |
+| ------------------- | ------ |
+| orders              | true   |
+| customers           | true   |
+| order_items         | false  |
+| order_item          | true   |
+| points_transactions | true   |
+| points              | false  |
+| referral_usage      | true   |
+| discounts           | false  |
+| services            | false  |
