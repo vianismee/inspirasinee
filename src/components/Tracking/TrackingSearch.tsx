@@ -40,7 +40,7 @@ export function TrackingSearch() {
                 className="border-zinc-300"
                 onChange={(e) => setIsInvoice(e.target.value)}
               />
-              <Link href={`/tracking/${isInvoice}`}>
+              <Link href={`/new-tracking/${isInvoice}`}>
                 <Button size={"icon"}>
                   <Search />
                 </Button>
