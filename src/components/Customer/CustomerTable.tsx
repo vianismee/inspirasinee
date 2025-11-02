@@ -9,6 +9,7 @@ import { useDataTable } from "@/hooks/use-data-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { useQueryState, parseAsInteger } from "nuqs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,13 +35,18 @@ export function CustomerTable({ onEdit, onView }: CustomerTableProps) {
     fetchCustomers,
     deleteCustomer,
     subscribeToCustomerChanges,
+    totalCount,
   } = useCustomerStore();
 
+  // Get pagination state from URL
+  const [page] = useQueryState("page", parseAsInteger.withDefault(1));
+  const [perPage] = useQueryState("perPage", parseAsInteger.withDefault(10));
+
   useEffect(() => {
-    fetchCustomers();
+    fetchCustomers({ page, pageSize: perPage });
     const unsubscribe = subscribeToCustomerChanges();
     return () => unsubscribe();
-  }, [fetchCustomers, subscribeToCustomerChanges]);
+  }, [fetchCustomers, subscribeToCustomerChanges, page, perPage]);
 
   const handleSendMessage = (customer: ICustomers) => {
     const message = generateChatCustomer(customer);
@@ -135,12 +141,19 @@ export function CustomerTable({ onEdit, onView }: CustomerTableProps) {
     [deleteCustomer, onEdit, onView]
   );
 
+  // Calculate page count based on total count and page size
+  const pageCount = Math.ceil(totalCount / perPage);
+
   const { table } = useDataTable({
     data: customers,
     columns,
-    pageCount: -1,
+    pageCount,
     initialState: {
       sorting: [{ id: "username", desc: false }],
+      pagination: {
+        pageSize: perPage,
+        pageIndex: page - 1, // zero-based index
+      },
     },
   });
 

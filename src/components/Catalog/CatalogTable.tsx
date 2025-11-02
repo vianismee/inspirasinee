@@ -1,10 +1,10 @@
 "use client";
 
 import { useServiceCatalogStore, Category } from "@/stores/serviceCatalogStore";
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import { DataTable } from "../data-table/data-table";
 import { DataTableToolbar } from "../data-table/data-table-toolbar";
-import { parseAsArrayOf, parseAsString, useQueryState } from "nuqs";
+import { parseAsArrayOf, parseAsString, useQueryState, parseAsInteger } from "nuqs";
 import { ColumnDef } from "@tanstack/react-table";
 import { useDataTable } from "@/hooks/use-data-table";
 import { formatedCurrency } from "@/lib/utils";
@@ -41,9 +41,18 @@ export function CatalogTable({ onEdit }: CatalogTableProps) {
     parseAsArrayOf(parseAsString).withDefault([])
   );
 
+  // Get pagination state from URL
+  const [page] = useQueryState("page", parseAsInteger.withDefault(1));
+  const [perPage] = useQueryState("perPage", parseAsInteger.withDefault(10));
+
   // Mengambil data dan fungsi dari Zustand store
-  const { serviceCatalog, serviceCategory, deleteService } =
+  const { serviceCatalog, serviceCategory, deleteService, totalCount, fetchCatalog } =
     useServiceCatalogStore();
+
+  // Fetch data when pagination changes
+  useEffect(() => {
+    fetchCatalog({ page, pageSize: perPage });
+  }, [fetchCatalog, page, perPage]);
 
   // Filter data service berdasarkan query dari URL
   const filteredService = useMemo(() => {
@@ -145,12 +154,21 @@ export function CatalogTable({ onEdit }: CatalogTableProps) {
     [deleteService, serviceCategory, onEdit] // Menambahkan onEdit sebagai dependency
   );
 
+  // Calculate page count based on total count and page size
+  const pageCount = Math.ceil(totalCount / perPage);
+
   // Inisialisasi table menggunakan custom hook
   const { table } = useDataTable({
     data: filteredService,
     columns,
-    pageCount: -1, // Diasumsikan tidak ada pagination sisi client
-    initialState: { columnPinning: { right: ["actions"] } },
+    pageCount,
+    initialState: {
+      columnPinning: { right: ["actions"] },
+      pagination: {
+        pageSize: perPage,
+        pageIndex: page - 1, // zero-based index
+      },
+    },
     getRowId: (row) => String(row.id),
   });
 

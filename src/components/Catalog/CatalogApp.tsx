@@ -41,10 +41,11 @@ export function CatalogApp() {
     serviceCategory,
     updateCategory,
     deleteCategory,
+    totalCount,
   } = useServiceCatalogStore();
 
   useEffect(() => {
-    fetchCatalog();
+    fetchCatalog(); // Fetch initial page with default pagination
     const unsubscribe = subscribeToChanges();
     return () => unsubscribe();
   }, [fetchCatalog, subscribeToChanges]);
