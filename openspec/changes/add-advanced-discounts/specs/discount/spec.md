@@ -37,6 +37,32 @@ The system SHALL support optional discount codes that customers must enter to ap
 - **THEN** the discount can be applied directly without code entry
 - **AND** appears in available discounts list
 
+### Requirement: Maximum Discount Amount Caps
+The system SHALL support maximum discount amount limits for percentage-based discounts.
+
+#### Scenario: Percentage discount with maximum cap
+- **WHEN** a percentage discount has max_discount_amount specified
+- **THEN** the discount calculation is capped at the maximum amount
+- **AND** customer receives the lesser of percentage calculation or maximum amount
+- **AND** display shows both percentage and capped amount for transparency
+
+#### Scenario: Cap calculation example
+- **WHEN** 10% discount is applied to Rp. 50,000 cart with max Rp. 2,000 cap
+- **THEN** calculated percentage discount would be Rp. 5,000
+- **AND** applied discount is capped at Rp. 2,000
+- **AND** customer pays Rp. 48,000 instead of Rp. 45,000
+
+#### Scenario: Maximum cap not reached
+- **WHEN** percentage discount calculation is below the maximum cap
+- **THEN** full percentage discount is applied without capping
+- **AND** system continues to next discount calculation
+
+#### Scenario: Admin configuration of maximum caps
+- **WHEN** creating percentage discounts
+- **THEN** admin can optionally specify maximum discount amount
+- **AND** maximum cap field is only relevant when discount type is percentage
+- **AND** validation ensures maximum amount is positive when specified
+
 ### Requirement: Quantity-Based Tiered Pricing
 The system SHALL support quantity-based pricing with multiple tiers for the same discount.
 

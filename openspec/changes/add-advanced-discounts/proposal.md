@@ -8,6 +8,7 @@ The current discount system only supports simple fixed amount and percentage dis
 - **New Discount Types**: Introduce quantity-based, expirable, and combination discount types
 - **Enhanced Admin Interface**: Add comprehensive discount management with new features
 - **Advanced Calculation Logic**: Implement complex discount stacking and validation rules
+- **Maximum Discount Caps**: Add maximum discount amount limits for percentage-based discounts
 - **Client-Side Architecture**: All logic implemented client-side using existing Zustand stores and Supabase
 
 **BREAKING**: Database schema changes required for new discount fields and relationships
@@ -30,5 +31,6 @@ The current discount system only supports simple fixed amount and percentage dis
 2. **Quantity-Based Pricing**: Tiered pricing based on item quantity (e.g., "3 pairs for 85k", "5 pairs for 40k")
 3. **Discount Codes**: Optional codes for specific discounts
 4. **Combination Rules**: Control which discounts can be combined
-5. **Advanced Validation**: Prevent invalid discount combinations
-6. **Real-time Updates**: Live calculation and validation using existing Supabase subscriptions
+5. **Maximum Discount Caps**: Percentage discounts with maximum amount limits (e.g., "10% off, max Rp. 2000")
+6. **Advanced Validation**: Prevent invalid discount combinations
+7. **Real-time Updates**: Live calculation and validation using existing Supabase subscriptions

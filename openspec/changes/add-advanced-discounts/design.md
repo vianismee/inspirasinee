@@ -39,6 +39,7 @@ ALTER TABLE discount ADD COLUMN expires_at timestamp;
 ALTER TABLE discount ADD COLUMN is_combinable boolean DEFAULT true;
 ALTER TABLE discount ADD COLUMN max_uses integer;
 ALTER TABLE discount ADD COLUMN usage_count integer DEFAULT 0;
+ALTER TABLE discount ADD COLUMN max_discount_amount integer;
 
 -- New discount_tiers table for quantity-based pricing
 CREATE TABLE discount_tiers (
@@ -78,6 +79,7 @@ interface Discount {
   is_combinable: boolean;
   max_uses?: number;
   usage_count: number;
+  max_discount_amount?: number;
   tiers?: DiscountTier[];
   incompatible_discounts?: number[];
 }
@@ -99,8 +101,16 @@ interface DiscountTier {
 1. **Validation Layer**: Check expiration, usage limits, combination rules
 2. **Quantity-based Discounts**: Applied first to eligible items
 3. **Cart-level Discounts**: Applied to remaining subtotal
-4. **Fixed Amount Discounts**: Applied after percentage discounts
-5. **Final Validation**: Ensure minimum cart requirements met
+4. **Percentage Discounts**: Applied with maximum amount caps if specified
+5. **Fixed Amount Discounts**: Applied after percentage discounts
+6. **Final Validation**: Ensure minimum cart requirements met
+
+**Maximum Discount Calculation:**
+- When percentage discount has `max_discount_amount` set
+- Calculate percentage discount normally
+- Apply cap: `discountValue = Math.min(percentageDiscount, max_discount_amount)`
+- Display both calculated percentage and capped amount to customers
+- Example: 10% of Rp. 50,000 = Rp. 5,000, but with max Rp. 2,000 cap = Rp. 2,000
 
 ### UI/UX Design
 **Decision**: Extend existing Shadcn/ui components with new forms and displays
