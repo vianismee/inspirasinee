@@ -38,7 +38,8 @@ interface ServiceCatalogState {
   discountOptions: Discount[];
   serviceCategory: Category[];
   isLoading: boolean;
-  fetchCatalog: () => Promise<void>;
+  totalCount: number;
+  fetchCatalog: (options?: { page?: number; pageSize?: number }) => Promise<void>;
   addService: (data: NewServiceData) => Promise<void>;
   updateService: (serviceId: number, data: NewServiceData) => Promise<void>;
   deleteService: (serviceId: number) => Promise<void>;
@@ -56,35 +57,47 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
     discountOptions: [],
     serviceCategory: [],
     isLoading: false,
+    totalCount: 0,
 
-    fetchCatalog: async () => {
+    fetchCatalog: async (options = {}) => {
+      const { page = 1, pageSize = 10 } = options;
       set({ isLoading: true });
       const supabase = createClient();
       try {
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
         const [
           { data: serviceData, error: serviceError },
           { data: discountData, error: discountError },
           { data: categoryData, error: categoryError },
+          { count: totalCount, error: countError },
         ] = await Promise.all([
           supabase
             .from("service_catalog")
             .select("*, service_category(*)")
-            .order("name", { ascending: true }),
+            .order("name", { ascending: true })
+            .range(from, to),
           supabase.from("discount").select("*"),
           supabase
             .from("service_category")
             .select("*")
             .order("name", { ascending: true }),
+          supabase
+            .from("service_catalog")
+            .select("*", { count: "exact", head: true })
         ]);
 
         if (serviceError) throw serviceError;
         if (discountError) throw discountError;
         if (categoryError) throw categoryError;
+        if (countError) console.warn("Could not get total count", { error: countError });
 
         set({
           serviceCatalog: serviceData || [],
           discountOptions: discountData || [],
           serviceCategory: categoryData || [],
+          totalCount: totalCount || 0,
         });
       } catch (error) {
         console.error("Gagal memuat data katalog:", error);

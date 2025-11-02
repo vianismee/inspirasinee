@@ -18,7 +18,8 @@ interface CustomerState {
   customers: ICustomers[];
   singleCustomer: ICustomers | null;
   isLoading: boolean;
-  fetchCustomers: (customerId?: string) => Promise<void>;
+  totalCount: number;
+  fetchCustomers: (options?: { customerId?: string; page?: number; pageSize?: number }) => Promise<void>;
   deleteCustomer: (customerId: string) => Promise<void>;
   subscribeToCustomerChanges: () => () => void;
   updateCustomer: (
@@ -32,6 +33,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   customers: [],
   singleCustomer: null,
   isLoading: false,
+  totalCount: 0,
 
   prepareCustomer: async (customerData) => {
     const { whatsapp } = customerData;
@@ -67,7 +69,8 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
   clearCustomer: () => set({ activeCustomer: null }),
 
-  fetchCustomers: async (customerId?: string) => {
+  fetchCustomers: async (options = {}) => {
+    const { customerId, page = 1, pageSize = 10 } = options;
     set({ isLoading: true });
     const supabase = createClient();
     try {
@@ -89,13 +92,24 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
         set({ singleCustomer: data ? { ...data, totalSpent } : null });
       } else {
-        // Fetch all customers with their orders
-        const { data, error } = await supabase
-          .from("customers")
-          .select("*, orders(*)")
-          .order("username", { ascending: true });
+        // Fetch customers with pagination
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        // Get paginated data and total count
+        const [{ data, error }, { count: totalCount, error: countError }] = await Promise.all([
+          supabase
+            .from("customers")
+            .select("*, orders(*)")
+            .order("username", { ascending: true })
+            .range(from, to),
+          supabase
+            .from("customers")
+            .select("*", { count: "exact", head: true })
+        ]);
 
         if (error) throw error;
+        if (countError) logger.warn("Could not get total count", { error: countError }, "CustomerStore");
 
         const customersWithTotalSpent = (data || []).map((customer) => ({
           ...customer,
@@ -105,7 +119,11 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
               0
             ) || 0,
         }));
-        set({ customers: customersWithTotalSpent });
+
+        set({
+          customers: customersWithTotalSpent,
+          totalCount: totalCount || 0
+        });
       }
     } catch (error) {
       const errorMessage =

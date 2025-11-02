@@ -4,6 +4,7 @@ import { OrderService, OrderItemService, CustomerService, DiscountService } from
 import { useCustomerStore } from "./customerStore";
 import { toast } from "sonner";
 import { logger } from "@/utils/client/logger";
+import { createClient } from "@/utils/supabase/client";
 
 // BARU: Tipe data untuk satu layanan dalam item
 export interface ServiceItem {
@@ -309,6 +310,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
 
     try {
+      const supabase = createClient();
       let customerIdToUse = activeCustomer.customer_id;
 
       if (activeCustomer.isNew) {
@@ -355,8 +357,23 @@ export const useCartStore = create<CartState>((set, get) => ({
             discounted_amount: appliedAmount,
           };
         });
-        // Note: order_discounts table may need separate handling
-        logger.debug("Order discounts to insert", { discountsToInsert }, "CartStore");
+
+        // Save discounts to order_discounts table
+        try {
+          const { error: discountsError } = await supabase
+            .from('order_discounts')
+            .insert(discountsToInsert);
+
+          if (discountsError) {
+            logger.error("Failed to save order discounts", { error: discountsError, discountsToInsert }, "CartStore");
+            // Continue with order creation even if discounts fail to save
+          } else {
+            logger.info("Order discounts saved successfully", { count: discountsToInsert.length }, "CartStore");
+          }
+        } catch (error) {
+          logger.error("Exception saving order discounts", { error, discountsToInsert }, "CartStore");
+          // Continue with order creation even if discounts fail to save
+        }
       }
 
       // UBAH: Logika untuk menyimpan item ke tabel order_item
