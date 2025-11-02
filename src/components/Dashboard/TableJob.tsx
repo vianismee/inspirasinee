@@ -244,19 +244,21 @@ export default function TableJob() {
                       {formatedCurrency(order.subtotal)}
                     </span>
                   </div>
-                  {order.order_discounts?.map((discount, index) => (
-                    <div
-                      key={discount.discount_code + index}
-                      className="flex justify-between items-center text-sm"
-                    >
-                      <span className="text-muted-foreground">
-                        Diskon ({discount.discount_code})
-                      </span>
-                      <span className="font-mono text-green-600">
-                        -{formatedCurrency(discount.discounted_amount)}
-                      </span>
-                    </div>
-                  ))}
+                  {order.order_discounts && order.order_discounts.length > 0 &&
+                    order.order_discounts.map((discount, index) => (
+                      <div
+                        key={(discount.discount_code || 'discount') + index}
+                        className="flex justify-between items-center text-sm"
+                      >
+                        <span className="text-muted-foreground">
+                          Diskon ({discount.discount_code || 'Unknown'})
+                        </span>
+                        <span className="font-mono text-green-600">
+                          -{formatedCurrency(discount.discounted_amount || 0)}
+                        </span>
+                      </div>
+                    ))
+                  }
 
                   {/* Referral Discount Display */}
                   {(order as OrderWithReferral).referral_code && (order as OrderWithReferral).referral_discount_amount! > 0 && (

@@ -173,16 +173,18 @@ export function TrackingDesktop({ order }: TrackingDesktopProps) {
                       {formatedCurrency(order?.subtotal || 0)}
                     </p>
                   </div>
-                  {order?.order_discounts?.map((d, i) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <p className="text-muted-foreground">
-                        Diskon - {d.discount_code}
-                      </p>
-                      <p className="font-mono text-green-600">
-                        -{formatedCurrency(d.discounted_amount)}
-                      </p>
-                    </div>
-                  ))}
+                  {order?.order_discounts && order.order_discounts.length > 0 &&
+                    order.order_discounts.map((d, i) => (
+                      <div key={i} className="flex justify-between text-sm">
+                        <p className="text-muted-foreground">
+                          Diskon - {d.discount_code || 'Unknown'}
+                        </p>
+                        <p className="font-mono text-green-600">
+                          -{formatedCurrency(d.discounted_amount || 0)}
+                        </p>
+                      </div>
+                    ))
+                  }
 
                   {/* Referral Discount Display */}
                   {(order as OrderWithReferral)?.referral_code && ((order as OrderWithReferral)?.referral_discount_amount || 0) > 0 && (
