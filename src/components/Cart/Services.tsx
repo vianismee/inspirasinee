@@ -32,6 +32,11 @@ import {
 import { ScrollArea } from "../ui/scroll-area";
 import { Badge } from "../ui/badge"; // BARU: Impor Badge
 
+// Helper function to format price in the requested format
+const formatPrice = (amount: number) => {
+  return `Rp. ${amount.toLocaleString("id-ID")}`;
+};
+
 export function Services() {
   // UBAH: Ambil aksi baru, hapus 'updateItem' karena sudah dipecah
   const {
@@ -44,22 +49,22 @@ export function Services() {
     subTotal,
     resetCart,
   } = useCartStore();
-  const { serviceCatalog } = useServiceCatalogStore();
+  const { allServicesCatalog } = useServiceCatalogStore();
 
   const groupedServices = React.useMemo(() => {
     // ... logika ini tidak berubah
-    return serviceCatalog.reduce((acc, service) => {
+    return allServicesCatalog.reduce((acc, service) => {
       const categoryName = service.service_category?.name || "Lainnya";
       if (!acc[categoryName]) {
         acc[categoryName] = [];
       }
       acc[categoryName].push(service);
       return acc;
-    }, {} as Record<string, typeof serviceCatalog>);
-  }, [serviceCatalog]);
+    }, {} as Record<string, typeof allServicesCatalog>);
+  }, [allServicesCatalog]);
 
   const handleServiceSelect = (itemId: number, serviceName: string) => {
-    const service = serviceCatalog.find((s) => s.name === serviceName);
+    const service = allServicesCatalog.find((s) => s.name === serviceName);
     if (service) {
       addServiceToItem(itemId, { name: service.name, amount: service.amount });
     }
@@ -174,7 +179,15 @@ export function Services() {
                                   key={service.id}
                                   value={service.name}
                                 >
-                                  {service.name}
+                                  <div className="flex items-center gap-1 justify-between w-full">
+                                    <span>{service.name}</span>
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-gray-500"> -</span>
+                                      <span className="text-sm text-gray-500 font-medium">
+                                        {formatPrice(service.amount)}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </ComboboxItem>
                               ))}
                             </ComboboxGroup>

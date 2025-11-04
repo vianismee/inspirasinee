@@ -35,11 +35,13 @@ type NewServiceData = {
 
 interface ServiceCatalogState {
   serviceCatalog: ServiceCatalog[];
+  allServicesCatalog: ServiceCatalog[];
   discountOptions: Discount[];
   serviceCategory: Category[];
   isLoading: boolean;
   totalCount: number;
   fetchCatalog: (options?: { page?: number; pageSize?: number }) => Promise<void>;
+  fetchAllCatalog: () => Promise<void>;
   addService: (data: NewServiceData) => Promise<void>;
   updateService: (serviceId: number, data: NewServiceData) => Promise<void>;
   deleteService: (serviceId: number) => Promise<void>;
@@ -54,6 +56,7 @@ interface ServiceCatalogState {
 export const useServiceCatalogStore = create<ServiceCatalogState>(
   (set, get) => ({
     serviceCatalog: [],
+    allServicesCatalog: [],
     discountOptions: [],
     serviceCategory: [],
     isLoading: false,
@@ -107,6 +110,28 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
       }
     },
 
+    fetchAllCatalog: async () => {
+      set({ isLoading: true });
+      const supabase = createClient();
+      try {
+        const { data: allServiceData, error: serviceError } = await supabase
+          .from("service_catalog")
+          .select("*, service_category(*)")
+          .order("name", { ascending: true });
+
+        if (serviceError) throw serviceError;
+
+        set({
+          allServicesCatalog: allServiceData || [],
+        });
+      } catch (error) {
+        console.error("Gagal memuat semua data katalog:", error);
+        toast.error("Gagal memuat semua data katalog.");
+      } finally {
+        set({ isLoading: false });
+      }
+    },
+
     addService: async (dataToAdd) => {
       const supabase = createClient();
       try {
@@ -119,6 +144,7 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         }
         toast.success(`Layanan "${dataToAdd.name}" berhasil ditambahkan.`);
         get().fetchCatalog();
+        get().fetchAllCatalog();
       } catch (error) {
         console.error("Gagal menambah service:", error);
         toast.error("Gagal menambah layanan baru.");
@@ -138,7 +164,7 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         toast.success("Layanan berhasil diperbarui.");
 
         set((state) => {
-          const updatedCatalog = state.serviceCatalog.map((service) => {
+          const updateService = (service: ServiceCatalog) => {
             if (service.id === serviceId) {
               const category =
                 state.serviceCategory.find(
@@ -151,8 +177,15 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
               };
             }
             return service;
-          });
-          return { serviceCatalog: updatedCatalog };
+          };
+
+          const updatedCatalog = state.serviceCatalog.map(updateService);
+          const updatedAllCatalog = state.allServicesCatalog.map(updateService);
+
+          return {
+            serviceCatalog: updatedCatalog,
+            allServicesCatalog: updatedAllCatalog
+          };
         });
       } catch (error) {
         console.error("Gagal memperbarui service:", error);
@@ -175,6 +208,9 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
           serviceCatalog: state.serviceCatalog.filter(
             (s) => s.id !== serviceId
           ),
+          allServicesCatalog: state.allServicesCatalog.filter(
+            (s) => s.id !== serviceId
+          ),
         }));
       } catch (error) {
         console.error("Gagal menghapus service:", error);
@@ -184,7 +220,10 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
 
     subscribeToChanges: () => {
       const supabase = createClient();
-      const refreshData = () => get().fetchCatalog();
+      const refreshData = () => {
+        get().fetchCatalog();
+        get().fetchAllCatalog();
+      };
       const schema =
         process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
 
