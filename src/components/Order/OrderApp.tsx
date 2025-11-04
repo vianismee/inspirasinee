@@ -35,9 +35,12 @@ export function OrderApp() {
   const prepareCustomer = useCustomerStore((state) => state.prepareCustomer);
   const custoemerId = useCustomerID();
   const fetchCatalog = useServiceCatalogStore((state) => state.fetchCatalog);
+  const fetchAllCatalog = useServiceCatalogStore((state) => state.fetchAllCatalog);
+
   useEffect(() => {
     fetchCatalog();
-  }, [fetchCatalog]);
+    fetchAllCatalog();
+  }, [fetchCatalog, fetchAllCatalog]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
