@@ -1564,6 +1564,336 @@ export const AdminReferralService = {
   }
 };
 
+// === DROP-POINT SERVICES ===
+
+export const DropPointService = {
+  // Get available drop-point locations with capacity information
+  async getDropPointLocations() {
+    try {
+      const { data, error } = await supabase
+        .from('drop_points')
+        .select(`
+          *,
+          drop_point_shelves (
+            id,
+            is_occupied,
+            customer_id
+          )
+        `)
+        .eq('is_active', true)
+        .order('created_at');
+
+      if (error) throw error;
+
+      // Calculate current capacity for each drop-point
+      const dropPointsWithCapacity = data.map(dropPoint => ({
+        ...dropPoint,
+        current_capacity: dropPoint.drop_point_shelves.filter(shelf => shelf.is_occupied).length,
+        available_capacity: dropPoint.max_capacity - dropPoint.drop_point_shelves.filter(shelf => shelf.is_occupied).length,
+        is_available: dropPoint.max_capacity > dropPoint.drop_point_shelves.filter(shelf => shelf.is_occupied).length
+      }));
+
+      return dropPointsWithCapacity;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch drop-point locations'
+      });
+      return [];
+    }
+  },
+
+  // Get specific drop-point details
+  async getDropPointDetails(dropPointId: number) {
+    try {
+      const { data, error } = await supabase
+        .from('drop_points')
+        .select(`
+          *,
+          drop_point_shelves (
+            id,
+            shelf_number,
+            is_occupied,
+            order_invoice_id,
+            item_number,
+            customer_id
+          )
+        `)
+        .eq('id', dropPointId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch drop-point details'
+      });
+      return null;
+    }
+  },
+
+  // Check capacity for a specific drop-point
+  async checkDropPointCapacity(dropPointId: number) {
+    try {
+      const { data, error } = await supabase
+        .from('drop_point_capacity_view')
+        .select('*')
+        .eq('id', dropPointId)
+        .single();
+
+      if (error) throw error;
+      return {
+        ...data,
+        is_available: data.current_capacity < data.max_capacity,
+        available_slots: data.max_capacity - data.current_capacity
+      };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to check drop-point capacity'
+      });
+      return null;
+    }
+  }
+};
+
+export const DropPointOrderService = {
+  // Create drop-point order with items
+  async createDropPointOrder(orderData: any) {
+    try {
+      logger.info("Creating drop-point order", { orderData }, "DropPointOrderService");
+
+      // Start a transaction by using RPC
+      const { data, error } = await supabase.rpc('create_drop_point_order', {
+        p_invoice_id: orderData.invoice_id,
+        p_customer_id: orderData.customer_id,
+        p_customer_name: orderData.customer_name,
+        p_customer_whatsapp: orderData.customer_whatsapp,
+        p_drop_point_id: orderData.drop_point_id,
+        p_customer_marking: orderData.customer_marking,
+        p_items: orderData.items,
+        p_total_price: orderData.total_price,
+        p_payment_method: orderData.payment_method,
+        p_payment_status: orderData.payment_status
+      });
+
+      if (error) throw error;
+
+      logger.info("Drop-point order created successfully", { data }, "DropPointOrderService");
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to create drop-point order'
+      });
+      return null;
+    }
+  },
+
+  // Assign shelves for drop-point order items
+  async assignShelvesToOrder(invoiceId: string, items: Array<{ item_number: number }>) {
+    try {
+      const results = [];
+
+      for (const item of items) {
+        const { data, error } = await supabase.rpc('assign_drop_point_shelf', {
+          p_order_invoice_id: invoiceId,
+          p_item_number: item.item_number,
+          p_customer_id: null // Will be set from order data
+        });
+
+        if (error) {
+          logger.error("Failed to assign shelf", { invoiceId, itemNumber: item.item_number, error }, "DropPointOrderService");
+          throw error;
+        }
+
+        results.push(data);
+      }
+
+      return results;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to assign shelves to order'
+      });
+      return null;
+    }
+  },
+
+  // Get drop-point orders with details
+  async getDropPointOrders(filters?: { drop_point_id?: number; status?: string }) {
+    try {
+      let query = supabase
+        .from('drop_point_orders_view')
+        .select(`
+          *,
+          order_item (
+            id,
+            shoe_name,
+            color,
+            size,
+            item_number,
+            has_white_treatment,
+            custom_shoe_name
+          )
+        `);
+
+      if (filters?.drop_point_id) {
+        query = query.eq('drop_point_id', filters.drop_point_id);
+      }
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      }
+
+      query = query.order('created_at', { ascending: false });
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch drop-point orders'
+      });
+      return [];
+    }
+  },
+
+  // Update drop-point order status
+  async updateDropPointOrderStatus(invoiceId: string, status: string) {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .update({
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('invoice_id', invoiceId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // If order is completed, release shelves
+      if (status === 'completed') {
+        await this.releaseOrderShelves(invoiceId);
+      }
+
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to update drop-point order status'
+      });
+      return null;
+    }
+  },
+
+  // Release shelves when order is completed
+  async releaseOrderShelves(invoiceId: string) {
+    try {
+      const { data, error } = await supabase.rpc('release_drop_point_shelf', {
+        p_order_invoice_id: invoiceId
+      });
+
+      if (error) throw error;
+
+      logger.info("Shelves released for order", { invoiceId }, "DropPointOrderService");
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to release order shelves'
+      });
+      return null;
+    }
+  },
+
+  // Get customer marker information
+  async getCustomerMarker(customerId: string, dropPointId: number) {
+    try {
+      const { data, error } = await supabase
+        .from('drop_point_customer_markers')
+        .select('*')
+        .eq('customer_id', customerId)
+        .eq('drop_point_id', dropPointId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to get customer marker'
+      });
+      return null;
+    }
+  },
+
+  // Create or update customer marker
+  async updateCustomerMarker(customerId: string, dropPointId: number, markerId: string, itemCount: number) {
+    try {
+      const { data, error } = await supabase
+        .from('drop_point_customer_markers')
+        .upsert({
+          customer_id: customerId,
+          drop_point_id: dropPointId,
+          marker_id: markerId,
+          total_items: itemCount,
+          last_order_date: new Date().toISOString()
+        }, {
+          onConflict: 'customer_id,drop_point_id'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to update customer marker'
+      });
+      return null;
+    }
+  }
+};
+
+export const AddOnService = {
+  // Get available add-on services
+  async getAddOnServices() {
+    try {
+      const { data, error } = await supabase
+        .from('add_on_services')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch add-on services'
+      });
+      return [];
+    }
+  },
+
+  // Get add-ons for a specific condition (e.g., color:white)
+  async getAddOnsForCondition(condition: string) {
+    try {
+      const { data, error } = await supabase
+        .from('add_on_services')
+        .select('*')
+        .eq('trigger_condition', condition)
+        .eq('is_active', true);
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch add-ons for condition'
+      });
+      return [];
+    }
+  }
+};
+
 // === DATABASE HEALTH SERVICES ===
 
 export const DatabaseService = {
