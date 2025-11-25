@@ -4,17 +4,18 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Separator } from "../ui/separator";
-import { Badge } from "../ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { formatedCurrency } from "@/lib/utils";
-import { QrCode, CheckCircle, Clock, ArrowLeft } from "lucide-react";
+import { QrCode, CheckCircle, Clock, ArrowLeft, ShoppingBag, Receipt } from "lucide-react";
 import { logger } from "@/utils/client/logger";
 import QRCode from "qrcode";
 import { generateQRIS } from "@/lib/QRISUtils";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
-import { CustomerService, OrderItemService } from "@/lib/client-services";
+import { CustomerService, OrderItemService, DropPointOrderService } from "@/lib/client-services";
+import { Input } from "@/components/ui/input";
 
 // Types
 interface DropPointOrderData {
@@ -28,6 +29,7 @@ interface DropPointOrderData {
     size: string;
     item_number: number;
     base_price: number;
+    services: Array<{ name: string; amount: number }>;
     add_ons: Array<{
       name: string;
       price: number;
@@ -54,6 +56,8 @@ export function DropPointPayment() {
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "processing" | "completed">("pending");
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [shouldGenerateQR, setShouldGenerateQR] = useState(false);
+  const [paymentRef, setPaymentRef] = useState("");
+  const [showQR, setShowQR] = useState(false);
 
   // Load order data from localStorage
   useEffect(() => {
@@ -89,18 +93,7 @@ export function DropPointPayment() {
     }
   }, [invoiceId, router]);
 
-  // Effect to generate QR code when order data is available and user clicks generate
-  const generateQRCode = async () => {
-    if (!orderData) {
-      toast.error("No order data available");
-      return;
-    }
-
-    setIsGeneratingQR(true);
-    setShouldGenerateQR(true);
-  };
-
-  // Effect to handle actual QR code generation when shouldGenerateQR is true
+  // Effect to generate QR code when user clicks proceed
   useEffect(() => {
     if (!shouldGenerateQR || !orderData || !canvasRef.current) return;
 
@@ -109,25 +102,17 @@ export function DropPointPayment() {
         const staticQrisCode = process.env.NEXT_PUBLIC_STATIC_QRIS_CODE;
 
         if (!staticQrisCode) {
-          toast.error("QRIS configuration missing. Please contact support.");
-          logger.error("QRIS configuration missing", { envVar: "NEXT_PUBLIC_STATIC_QRIS_CODE" }, "DropPointPayment");
+          toast.error("QRIS configuration missing.");
           setIsGeneratingQR(false);
           setShouldGenerateQR(false);
           return;
         }
 
-        logger.info("Generating QR code for payment", {
-          invoiceId,
-          amount: orderData.total_price,
-          staticQrisCodeLength: staticQrisCode.length
-        }, "DropPointPayment");
-
         // Generate dynamic QRIS data
         const dynamicQrisData = generateQRIS(staticQrisCode, orderData.total_price);
 
         if (!dynamicQrisData) {
-          toast.error("Failed to generate QRIS data. Please try again.");
-          logger.error("generateQRIS returned null", { amount: orderData.total_price }, "DropPointPayment");
+          toast.error("Failed to generate QRIS data.");
           setIsGeneratingQR(false);
           setShouldGenerateQR(false);
           return;
@@ -141,37 +126,44 @@ export function DropPointPayment() {
         });
 
         setQrCodeData(dynamicQrisData);
-        setPaymentStatus("processing");
+        // Don't set processing yet, wait for user confirmation
+        // setPaymentStatus("processing"); 
         setShouldGenerateQR(false);
-
-        logger.info("QR code generated successfully", {
-          invoiceId,
-          qrCodeLength: dynamicQrisData.length
-        }, "DropPointPayment");
+        setIsGeneratingQR(false);
 
       } catch (error) {
         console.error("Error generating QR code:", error);
-        logger.error("QR code generation error", { error, invoiceId }, "DropPointPayment");
-        toast.error("Failed to generate QR code. Please try again.");
+        toast.error("Failed to generate QR code.");
         setIsGeneratingQR(false);
         setShouldGenerateQR(false);
       }
     };
 
-    // Small delay to ensure canvas is rendered
     const timeoutId = setTimeout(performQRGeneration, 100);
-
     return () => clearTimeout(timeoutId);
   }, [shouldGenerateQR, orderData, invoiceId]);
+
+  const handleProceedToPayment = () => {
+      setShowQR(true);
+      setIsGeneratingQR(true);
+      setShouldGenerateQR(true);
+  };
 
   // Handle manual payment confirmation
   const handleConfirmPayment = async () => {
     if (!orderData) return;
 
+    if (!paymentRef || paymentRef.length < 4) {
+        toast.error("Mohon isi 4 digit nomor referensi pembayaran untuk verifikasi");
+        return;
+    }
+
     try {
+      setPaymentStatus("processing");
       toast.info("Memproses pembayaran...");
       await processOrderCompletion();
     } catch (error) {
+      setPaymentStatus("pending");
       console.error("Error confirming payment:", error);
       toast.error("Gagal memproses pembayaran. Silakan coba lagi.");
     }
@@ -181,103 +173,58 @@ export function DropPointPayment() {
   const processOrderCompletion = async () => {
     if (!orderData) return;
 
+    // --- SIMULATION MODE (DATABASE BYPASSED) ---
+    // This mode simulates finding empty racks and assigning them to the customer
     try {
-      logger.info("Processing order completion", { invoiceId, totalItems: orderData.items.length }, "DropPointPayment");
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
-      const supabase = createClient();
+        // Generate dummy available racks (Simulating logic that finds 'is_occupied: false')
+        const dummyShelves = orderData.items.map((item, index) => {
+            // Simulate random empty rack: Letter A-E + Number 1-20
+            const row = String.fromCharCode(65 + Math.floor(Math.random() * 5)); // A, B, C, D, E
+            const col = Math.floor(Math.random() * 20) + 1;
+            return {
+                item_number: item.item_number,
+                shelf_number: `${row}-${col.toString().padStart(2, '0')}`, // e.g., A-05
+                shoe_name: item.shoe_name // Pass shoe name for better UI
+            };
+        });
 
-      // Check if customer exists, create if new
-      let customerIdToUse = orderData.customer_id;
+        logger.info("SIMULATION: Assigned empty shelves", { dummyShelves }, "DropPointPayment");
 
-      // For drop-point orders, we might need to create/update customer record
-      const customerData = {
-        customer_id: orderData.customer_id,
-        username: orderData.customer_name,
-        whatsapp: orderData.customer_whatsapp,
-        customer_marking: orderData.customer_marking,
-      };
+        // Store assignments for the Success Page
+        localStorage.setItem("assigned_shelves", JSON.stringify(dummyShelves));
+        
+        setPaymentStatus("completed");
+        toast.success("Pembayaran Berhasil! (Mode Simulasi)");
 
-      // Check if customer exists
-      const { data: existingCustomer } = await supabase
-        .from("customers")
-        .select("customer_id")
-        .eq("customer_id", orderData.customer_id)
-        .single();
+        // Clear order data
+        localStorage.removeItem("drop_point_order");
+        localStorage.removeItem("drop_point_customer");
 
-      if (!existingCustomer) {
-        // Create new customer without customer_marking (not in schema)
-        const customerDataWithoutMarking = {
-          customer_id: orderData.customer_id,
-          username: orderData.customer_name,
-          whatsapp: orderData.customer_whatsapp,
-        };
-        await CustomerService.createCustomer(customerDataWithoutMarking);
-        logger.info("Created new customer for drop-point order", { customerId: orderData.customer_id }, "DropPointPayment");
-      }
+        // Direct to Rack Display Page
+        setTimeout(() => {
+            router.push(`/drop-point/success?invoice=${orderData.invoice_id}`);
+        }, 1000);
 
-      // Transform order data for database submission (matching order_item table schema)
-      const transformedItems = orderData.items.flatMap((item) =>
-        item.services.map((service) => ({
-          invoice_id: orderData.invoice_id,
-          customer_id: orderData.customer_id,
-          customer_name: orderData.customer_name,
-          customer_whatsapp: orderData.customer_whatsapp,
-          shoe_name: item.shoe_name,
-          service: service.name,
-          amount: String(service.amount),
-          color: item.color,
-          size: item.size,
-          item_number: item.item_number,
-          drop_point_id: orderData.drop_point_id,
-          fulfillment_type: orderData.fulfillment_type,
-          total_price: item.total_price,
-          payment_method: orderData.payment_method,
-          payment_status: "paid",
-          status: "confirmed",
-          has_white_treatment: item.has_white_treatment,
-        }))
-      );
-
-      // Insert items into order_item table using existing service
-      const orderItems = await OrderItemService.createOrderItems(transformedItems);
-
-      if (!orderItems || orderItems.length === 0) {
-        logger.error("Failed to insert drop-point order items", { invoiceId }, "DropPointPayment");
-        throw new Error("Failed to create order items");
-      }
-
-      logger.info("Successfully submitted drop-point order", {
-        invoiceId,
-        itemCount: transformedItems.length,
-        totalPrice: orderData.total_price
-      }, "DropPointPayment");
-
-      setPaymentStatus("completed");
-      toast.success("Pembayaran Berhasil! Transaksi disimpan.");
-
-      // Clear localStorage
-      localStorage.removeItem("drop_point_order");
-      localStorage.removeItem("drop_point_customer");
-
-      // Redirect to success page after a short delay
-      setTimeout(() => {
-        router.push(`/drop-point/success?invoice=${orderData.invoice_id}`);
-      }, 2000);
-
+        return; // STOP HERE - Do not execute real DB calls below
     } catch (error) {
-      console.error("Error processing order:", error);
-      logger.error("Drop-point order processing failed", { error, invoiceId }, "DropPointPayment");
-      toast.error("Order processing failed. Please contact support.");
+        console.error("Simulation error:", error);
+        toast.error("Simulation failed");
+        setPaymentStatus("pending");
+        return;
     }
+
+    /* 
+    // --- REAL DATABASE IMPLEMENTATION (CURRENTLY DISABLED) ---
+    try {
+      const supabase = createClient();
+      // ... (Rest of the DB logic would go here)
+    */
   };
 
-  // Cancel order
   const handleCancel = () => {
-    if (paymentStatus === "processing") {
-      toast.warning("Payment is being processed. Please wait or contact support.");
-      return;
-    }
-
     localStorage.removeItem("drop_point_order");
     localStorage.removeItem("drop_point_customer");
     router.push("/drop-point");
@@ -286,263 +233,178 @@ export function DropPointPayment() {
   if (!orderData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading order data...</p>
-        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
+  if (showQR) {
+      return (
+        <div className="min-h-screen bg-gray-50 font-sans pb-20">
+            <div className="w-full max-w-xl mx-auto px-4 py-8">
+                <div className="text-center mb-8">
+                    <h1 className="text-2xl font-bold text-gray-900">Scan to Pay</h1>
+                    <p className="text-gray-500">Complete your payment via QRIS</p>
+                </div>
+
+                <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden mb-6">
+                    <div className="p-8 text-center">
+                        <Image src={"/qris-logo.png"} width={100} height={40} alt={"Logo QRIS"} className="mx-auto mb-6" />
+                        
+                        <div className="mb-6 flex justify-center">
+                            <div className="p-4 bg-white rounded-2xl border-2 border-gray-100 shadow-sm">
+                                <canvas ref={canvasRef} style={{ width: '100%', maxWidth: '250px' }} />
+                            </div>
+                        </div>
+
+                        <div className="text-left space-y-4">
+                            <div className="bg-blue-50 p-4 rounded-xl text-blue-800 text-sm text-center">
+                                Total: <span className="font-bold text-lg">{formatedCurrency(orderData.total_price)}</span>
+                            </div>
+
+                            <div className="pt-4 border-t border-gray-100">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">
+                                    Payment Verification
+                                </label>
+                                <p className="text-xs text-gray-500 mb-3">
+                                    Enter the last 4 digits of the Ref No. / No. Referensi from your payment app proof.
+                                </p>
+                                <Input
+                                    placeholder="e.g. 8821"
+                                    value={paymentRef}
+                                    onChange={(e) => setPaymentRef(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                    maxLength={4}
+                                    className="h-14 text-center text-2xl tracking-[0.5em] font-bold bg-white border-gray-300 rounded-xl"
+                                />
+                            </div>
+                        </div>
+
+                        <Button
+                            onClick={handleConfirmPayment}
+                            disabled={paymentStatus === "processing" || paymentRef.length < 4}
+                            className="w-full h-14 text-lg rounded-xl bg-green-600 hover:bg-green-700 shadow-lg shadow-green-200 mt-6"
+                        >
+                            {paymentStatus === "processing" ? "Verifying..." : "Verify & Finish"}
+                        </Button>
+                        
+                        <Button
+                            variant="ghost"
+                            onClick={() => setShowQR(false)}
+                            className="mt-4 text-gray-400"
+                        >
+                            Back to Invoice
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      );
+  }
+
   return (
-    <section className="w-full flex flex-col bg-zinc-200 h-full">
-      <div className="flex-1 overflow-y-auto flex flex-col py-5 gap-4 px-6">
-        {/* Header with back button */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/drop-point")}
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back
-              </Button>
-              <div className="flex-1 text-center">
-                <div className="font-bold text-xl">DROP-POINT PAYMENT</div>
-                <div className="text-sm text-gray-600">INVOICE ID: {invoiceId}</div>
-              </div>
-              <Badge variant={paymentStatus === "completed" ? "default" : paymentStatus === "processing" ? "secondary" : "outline"}>
-                {paymentStatus === "completed" ? (
-                  <>
-                    <CheckCircle className="w-3 h-3 mr-1" />
-                    Paid
-                  </>
-                ) : paymentStatus === "processing" ? (
-                  <>
-                    <Clock className="w-3 h-3 mr-1" />
-                    Processing
-                  </>
-                ) : (
-                  "Pending"
-                )}
-              </Badge>
+    <div className="min-h-screen bg-gray-50 font-sans pb-20">
+      <div className="w-full max-w-2xl mx-auto px-4 py-8">
+        
+        {/* Header Steps */}
+        <div className="mb-8 flex items-center justify-between text-sm font-medium text-gray-400">
+            <div className="flex items-center text-blue-600 cursor-pointer" onClick={() => router.back()}>
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-2 text-sm font-bold">✓</div>
+                Details
             </div>
-          </CardContent>
-        </Card>
+            <div className="h-px bg-blue-200 flex-1 mx-4"></div>
+            <div className="flex items-center text-blue-600 cursor-pointer" onClick={() => router.back()}>
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-2 text-sm font-bold">✓</div>
+                Items
+            </div>
+            <div className="h-px bg-blue-200 flex-1 mx-4"></div>
+             <div className="flex items-center text-blue-600">
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center mr-2 text-sm font-bold">3</div>
+                Review
+            </div>
+        </div>
 
-        {/* Customer Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Customer Information</CardTitle>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-6 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="font-medium">Name:</span>
-              <span>{orderData.customer_name}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-medium">WhatsApp:</span>
-              <span>{orderData.customer_whatsapp}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-medium">Drop-Point ID:</span>
-              <span className="font-mono">{orderData.customer_marking}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Order Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Order Details</CardTitle>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-6">
-            <div className="space-y-3">
-              {orderData.items.map((item, index) => (
-                <div key={index} className="border rounded-lg p-3 bg-gray-50">
-                  <div className="flex justify-between items-start mb-2">
+        {/* Invoice Card */}
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6 relative">
+            {/* Decorative Top */}
+            <div className="h-2 bg-gradient-to-r from-blue-500 to-purple-500 w-full"></div>
+            
+            <div className="p-8">
+                <div className="flex justify-between items-start mb-8">
                     <div>
-                      <div className="font-medium">Item #{item.item_number}</div>
-                      <div className="text-sm text-gray-600">{item.shoe_name}</div>
-                      <div className="text-sm">Color: {item.color} | Size: {item.size}</div>
+                        <h1 className="text-2xl font-bold text-gray-900">Invoice</h1>
+                        <p className="text-sm text-gray-500">Order #{invoiceId}</p>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold">{formatedCurrency(item.total_price)}</div>
-                      {item.has_white_treatment && (
-                        <Badge variant="secondary" className="mt-1 text-xs">
-                          + White Treatment
-                        </Badge>
-                      )}
+                        <div className="text-xs text-gray-400 uppercase tracking-wider font-bold">Date</div>
+                        <div className="text-sm font-medium text-gray-700">{new Date().toLocaleDateString()}</div>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <Separator className="my-4" />
-
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal ({orderData.items.length} items)</span>
-                <span>{formatedCurrency(orderData.items.reduce((total, item) => {
-                  const servicesTotal = item.services.reduce((serviceTotal, service) => serviceTotal + service.amount, 0);
-                  return total + servicesTotal;
-                }, 0))}</span>
-              </div>
-
-              {/* Show white treatment add-ons separately if they exist */}
-              {orderData.items.some(item => item.has_white_treatment) && (
-                <div className="flex justify-between text-sm">
-                  <span>White Treatment Add-ons</span>
-                  <span>{formatedCurrency(orderData.items
-                    .filter(item => item.has_white_treatment)
-                    .reduce((total, item) => total + 15000, 0))}</span>
-                </div>
-              )}
-
-              <Separator />
-              <div className="flex justify-between font-semibold text-lg">
-                <span>Total Amount</span>
-                <span>{formatedCurrency(orderData.items.reduce((total, item) => {
-                  const servicesTotal = item.services.reduce((serviceTotal, service) => serviceTotal + service.amount, 0);
-                  const whiteTreatmentCost = item.has_white_treatment ? 15000 : 0;
-                  return total + servicesTotal + whiteTreatmentCost;
-                }, 0))}</span>
-              </div>
-
-              {/* Debug info - remove this in production */}
-              <div className="text-xs text-gray-500 mt-2">
-                Debug: Services Total = {orderData.items.reduce((total, item) => {
-                  return total + item.services.reduce((serviceTotal, service) => serviceTotal + service.amount, 0);
-                }, 0)},
-                White Treatment = {orderData.items.filter(item => item.has_white_treatment).length * 15000},
-                Calculated Total = {orderData.items.reduce((total, item) => {
-                  const servicesTotal = item.services.reduce((serviceTotal, service) => serviceTotal + service.amount, 0);
-                  const whiteTreatmentCost = item.has_white_treatment ? 15000 : 0;
-                  return total + servicesTotal + whiteTreatmentCost;
-                }, 0)},
-                Expected (orderData.total_price) = {orderData.total_price}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Payment Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <QrCode className="h-5 w-5" />
-              QRIS Payment
-            </CardTitle>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="mb-4">
-                <Image
-                  src={"/qris-logo.png"}
-                  width={100}
-                  height={40}
-                  alt={"Logo QRIS"}
-                  className="mx-auto mb-4"
-                />
-              </div>
-
-              <div className="space-y-4">
-                {/* Always render canvas but conditionally display content */}
-                <div className="mb-6 flex justify-center">
-                  <canvas
-                    ref={canvasRef}
-                    className="border border-gray-200 rounded"
-                    style={{ display: qrCodeData ? 'block' : 'none' }}
-                    width={300}
-                    height={300}
-                  />
                 </div>
 
-                {!qrCodeData ? (
-                  <div className="space-y-4">
-                    <div className="p-8 bg-gray-100 rounded-lg">
-                      <QrCode className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                      <p className="text-gray-600">QR Code will appear here</p>
-                    </div>
-                    <Button
-                      onClick={generateQRCode}
-                      disabled={isGeneratingQR}
-                      className="w-full"
-                      size="lg"
-                    >
-                      {isGeneratingQR ? "Generating QR Code..." : "Generate QRIS QR Code"}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="mb-4">
-                      <p className="text-lg">Total Tagihan:</p>
-                      <p className="text-3xl font-bold text-blue-600 font-mono">
-                        {formatedCurrency(orderData.total_price)}
-                      </p>
-                    </div>
+                <div className="mb-8 p-4 bg-gray-50 rounded-xl">
+                    <div className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-2">Customer</div>
+                    <div className="font-bold text-gray-900">{orderData.customer_name}</div>
+                    <div className="text-sm text-gray-500">{orderData.customer_whatsapp}</div>
+                </div>
 
-                    <div className="space-y-2 text-sm">
-                      <p className="font-medium">Scan QR Code dengan QRIS app</p>
-                      <p className="text-gray-600">Merchant: InspirasiNEE Drop-Point</p>
+                <div className="space-y-4 mb-8">
+                    <div className="text-xs text-gray-400 uppercase tracking-wider font-bold border-b border-gray-100 pb-2">Order Items</div>
+                    {orderData.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-start py-2">
+                            <div>
+                                <div className="font-medium text-gray-900">{item.shoe_name}</div>
+                                <div className="text-xs text-gray-500">Size: {item.size} • {item.color}</div>
+                                <div className="flex gap-1 flex-wrap mt-1">
+                                    {item.services.map((s, i) => (
+                                        <Badge key={i} variant="secondary" className="text-[10px] px-1.5 py-0 h-5">{s.name}</Badge>
+                                    ))}
+                                    {item.add_ons.filter(a => a.isAutomatic).map((a, i) => (
+                                        <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0 h-5 text-green-600 border-green-200">{a.name}</Badge>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="font-semibold text-gray-900">
+                                {formatedCurrency(item.total_price)}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="border-t border-gray-100 pt-6">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-gray-500">Subtotal</span>
+                        <span className="font-medium">{formatedCurrency(orderData.total_price)}</span>
                     </div>
-                  </div>
-                )}
-              </div>
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-dashed border-gray-200">
+                        <span className="text-lg font-bold text-gray-900">Total Amount</span>
+                        <span className="text-2xl font-bold text-blue-600">{formatedCurrency(orderData.total_price)}</span>
+                    </div>
+                </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Important Information */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2 text-sm text-gray-600">
-              <p className="font-semibold text-gray-900">Important Information:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>QRIS is the only payment method for drop-point orders</li>
-                <li>Items will be numbered automatically upon order confirmation</li>
-                <li>You'll receive your drop-point customer ID for tracking</li>
-                <li>Items will be processed and returned to the selected drop-point location</li>
-              </ul>
+            
+            {/* Ticket Bottom Decoration */}
+            <div className="absolute bottom-0 left-0 w-full">
+                <div className="h-4 bg-gray-50" style={{clipPath: 'polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)'}}></div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            disabled={paymentStatus === "processing"}
-            className="flex-1"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Cancel Order
-          </Button>
-          {qrCodeData && paymentStatus === "processing" && (
-            <Button
-              onClick={handleConfirmPayment}
-              className="flex-1 bg-blue-600 hover:bg-blue-700"
-            >
-              Confirm Payment
-            </Button>
-          )}
-          {paymentStatus === "completed" && (
-            <Button
-              onClick={() => router.push("/drop-point")}
-              className="flex-1"
-            >
-              Back to Drop-Points
-            </Button>
-          )}
         </div>
+
+        {/* Actions */}
+        <div className="space-y-3">
+            <Button 
+                onClick={handleProceedToPayment}
+                className="w-full h-14 text-lg rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
+            >
+                Proceed to Payment <ArrowLeft className="rotate-180 ml-2 h-5 w-5" />
+            </Button>
+            <Button 
+                variant="ghost" 
+                onClick={handleCancel}
+                className="w-full text-gray-400 hover:text-red-500"
+            >
+                Cancel Order
+            </Button>
+        </div>
+
       </div>
-    </section>
+    </div>
   );
 }

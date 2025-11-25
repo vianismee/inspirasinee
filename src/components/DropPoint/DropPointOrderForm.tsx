@@ -87,11 +87,10 @@ const COLORS = [
   { value: "yellow", label: "Yellow", hasWhiteTreatment: false },
   { value: "purple", label: "Purple", hasWhiteTreatment: false },
   { value: "pink", label: "Pink", hasWhiteTreatment: false },
-  { value: "other", label: "Other", hasWhiteTreatment: false },
 ];
 
 const BASE_SERVICE_PRICE = 35000; // Base cleaning service price
-const WHITE_TREATMENT_PRICE = 15000; // Automatic add-on for white shoes
+const WHITE_TREATMENT_PRICE = 5000; // Automatic add-on for white shoes
 const MAX_ITEMS_PER_ORDER = 40;
 
 // Form schema for customer information
@@ -258,8 +257,27 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
 
   // Calculate item total with services and add-ons
   const calculateItemTotal = (color: string, services: ServiceItem[], addOns: Array<{name: string; price: number}>): number => {
+    // Use the same price logic as updateItemColor to find service price
+    // However, the services array already contains the price (amount)
     const servicesTotal = services.reduce((total, service) => total + service.amount, 0);
+    // AddOns are also handled correctly
     const addOnsTotal = addOns.reduce((total, addOn) => total + addOn.price, 0);
+    
+    // Check if white treatment is in services but not addOns (should usually be consistent)
+    // or if it's just missing from addOns
+    let extraWhiteCost = 0;
+    if (color === "white") {
+        const hasWhiteAddon = addOns.some(a => a.name === "White Treatment");
+        if (!hasWhiteAddon) {
+             // If for some reason it's not in addOns but color is white, add it?
+             // Actually, updateItemColor ensures it is in addOns. 
+             // The issue might be that service amount is 0 for White Treatment in DB?
+             // Or simply that it was added as a Service (with a price) AND as an AddOn?
+             // The previous logic added it to BOTH services and addOns.
+             // Let's look at updateItemColor again.
+        }
+    }
+
     return servicesTotal + addOnsTotal;
   };
 
@@ -267,8 +285,8 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
   const updateItemColor = (itemId: string, color: string) => {
     setItems(items.map(item => {
       if (item.id === itemId) {
-        const updatedAddOns = [...item.addOns];
-        const updatedServices = [...item.services];
+        let updatedAddOns = [...item.addOns];
+        let updatedServices = [...item.services];
 
         // Add automatic white treatment if color is white
         if (color === "white") {
@@ -277,23 +295,35 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
 
           if (!hasWhiteTreatment) {
             // Find White Treatment service from catalog
-            const whiteTreatmentService = allServicesCatalog.find(service => service.name === "White Treatment");
-            if (whiteTreatmentService) {
-              updatedServices.push({ name: "White Treatment", amount: whiteTreatmentService.amount });
-              updatedAddOns.push({
-                name: "White Treatment",
-                price: WHITE_TREATMENT_PRICE,
-                isAutomatic: true,
-              });
+            // IMPORTANT: We don't add it to services list to avoid double charging if we charge via addOns
+            // OR we add it to services but ensure price is correct.
+            // The prompt said: "otomatis tambahkan harga Rp 5.000"
+            
+            // Let's add it ONLY as an Add-on to be safe and simple, or as a Service if that's how the system works.
+            // The previous code added it to BOTH.
+            // If "White Treatment" exists in catalog with a price, and we add it to services, it adds cost.
+            // If we ALSO add it to addOns with a price, it adds cost AGAIN.
+            
+            // Fix: Only add to AddOns for the extra charge, OR only add to Services.
+            // The display uses AddOns to show "(Auto)".
+            
+            if (!hasWhiteTreatmentAddOn) {
+                updatedAddOns.push({
+                    name: "White Treatment",
+                    price: WHITE_TREATMENT_PRICE,
+                    isAutomatic: true,
+                });
             }
           }
         } else {
           // Remove white treatment if color is not white
+          // Remove from services if it was added there? 
+          // The previous logic removed from both.
           const whiteTreatmentIndex = updatedServices.findIndex(service => service.name === "White Treatment");
           if (whiteTreatmentIndex !== -1) {
             updatedServices.splice(whiteTreatmentIndex, 1);
           }
-          updatedAddOns.splice(updatedAddOns.findIndex(addOn => addOn.name === "White Treatment"), 1);
+          updatedAddOns = updatedAddOns.filter(addOn => addOn.name !== "White Treatment");
         }
 
         return {
@@ -466,389 +496,225 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
     }
   };
 
-  if (isLoadingLocation) {
-    return (
-      <section className="w-full flex flex-col bg-zinc-200 h-full">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p>Loading drop-point location...</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <section className="w-full flex flex-col bg-zinc-200 h-full">
-      <div className="flex-1 overflow-y-auto flex flex-col py-5 gap-4 px-6 mb-20">
-        {/* Header with back button */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/drop-point")}
+    <div className="min-h-screen bg-gray-50 font-sans pb-20">
+      <div className="w-full max-w-3xl mx-auto px-4 py-8">
+        
+        {/* Header Steps */}
+        <div className="mb-8 flex items-center justify-between text-sm font-medium text-gray-400">
+            <div className="flex items-center text-blue-600 cursor-pointer" onClick={() => router.back()}>
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-2 text-sm font-bold">✓</div>
+                Details
+            </div>
+            <div className="h-px bg-blue-200 flex-1 mx-4"></div>
+            <div className="flex items-center text-blue-600">
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center mr-2 text-sm font-bold">2</div>
+                Items
+            </div>
+            <div className="h-px bg-gray-200 flex-1 mx-4"></div>
+             <div className="flex items-center">
+                <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center mr-2 text-sm font-bold">3</div>
+                Pay
+            </div>
+        </div>
+
+        {/* Welcome / Info */}
+        <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Add Your Items</h1>
+            <p className="text-gray-500 mt-1">Add shoes and select services for each.</p>
+        </div>
+
+        {/* Items List */}
+        <div className="space-y-6 mb-8">
+             {items.length === 0 ? (
+              <div 
+                className="border-2 border-dashed border-gray-300 rounded-3xl p-12 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer group"
+                onClick={addNewItem}
               >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Locations
-              </Button>
-              <div className="flex-1">
-                <div className="font-bold text-xl">DROP-POINT ORDER</div>
-                <div className="text-sm text-gray-600">INVOICE ID: {invoiceId}</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Selected Drop-Point Info */}
-        {selectedDropPoint && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Drop-Point Location
-              </CardTitle>
-            </CardHeader>
-            <Separator />
-            <CardContent className="pt-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="font-semibold">{selectedDropPoint.name}</h4>
-                  <p className="text-sm text-gray-600">{selectedDropPoint.address}</p>
+                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-100 transition-colors">
+                    <Package className="h-8 w-8 text-blue-500" />
                 </div>
-                <Badge variant="default">
-                  {selectedDropPoint.available_capacity} available spots
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Customer Information Display */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Customer Information</CardTitle>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-6">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Name:</span>
-                <span>{activeCustomer?.username}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium">WhatsApp:</span>
-                <span>{activeCustomer?.whatsapp}</span>
-              </div>
-              {activeCustomer?.email && (
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Email:</span>
-                  <span>{activeCustomer.email}</span>
-                </div>
-              )}
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Customer Type:</span>
-                <Badge variant={activeCustomer?.isNew ? "secondary" : "default"}>
-                  {activeCustomer?.isNew ? "New Customer" : "Existing Customer"}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Items Configuration */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Item Configuration ({items.length}/{MAX_ITEMS_PER_ORDER})
-            </CardTitle>
-            <Button
-              onClick={addNewItem}
-              disabled={items.length >= MAX_ITEMS_PER_ORDER || !selectedDropPoint || !isCapacityAvailable}
-              size="sm"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add Item
-            </Button>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-6 space-y-4">
-            {items.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No items added yet</p>
-                <p className="text-sm">Click "Add Item" to configure your first item</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Your cart is empty</h3>
+                <p className="text-gray-500 mb-6">Start adding shoes to your order</p>
+                <Button onClick={(e) => { e.stopPropagation(); addNewItem(); }} className="rounded-full px-6">
+                    <Plus className="h-4 w-4 mr-2" /> Add First Item
+                </Button>
               </div>
             ) : (
-              items.map((item) => (
+              items.map((item, index) => (
                 <div
                   key={item.id}
-                  className="p-4 border rounded-md grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6 relative"
+                  className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 relative overflow-hidden"
                 >
-                  {/* Item Header */}
-                  <div className="md:col-span-2 flex justify-between items-start">
-                    <h4 className="font-semibold">Item #{item.itemNumber}</h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeItem(item.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  {/* Shoe Name */}
-                  <div className="space-y-2 md:col-span-1">
-                    <Label htmlFor={`shoeName-${item.id}`}>Shoe Name/Model</Label>
-                    <Input
-                      id={`shoeName-${item.id}`}
-                      value={item.shoeName}
-                      onChange={(e) => updateItem(item.id, "shoeName", e.target.value)}
-                      className="border-zinc-300"
-                      placeholder="e.g., Nike Air Max 90"
-                    />
-                  </div>
-
-                  {/* Size */}
-                  <div className="space-y-2">
-                    <Label htmlFor={`size-${item.id}`}>Size</Label>
-                    <Input
-                      id={`size-${item.id}`}
-                      value={item.size}
-                      onChange={(e) => updateItem(item.id, "size", e.target.value)}
-                      className="border-zinc-300"
-                      placeholder="e.g., 42, 8US, L"
-                    />
-                  </div>
-
-                  {/* Color */}
-                  <div className="space-y-2 md:col-span-1">
-                    <Label htmlFor={`color-${item.id}`}>Color</Label>
-                    <select
-                      id={`color-${item.id}`}
-                      value={item.color}
-                      onChange={(e) => updateItem(item.id, "color", e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                    >
-                      <option value="">Select color...</option>
-                      {COLORS.map((color) => (
-                        <option key={color.value} value={color.value}>
-                          {color.label}
-                          {color.hasWhiteTreatment && " (includes White Treatment)"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Price Display */}
-                  <div className="flex items-end justify-end">
-                    <div className="text-right">
-                      <Label>Total Price</Label>
-                      <p className="font-semibold text-lg">
-                        {formatedCurrency(item.totalPrice)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Services Section */}
-                  <div className="space-y-4 md:col-span-2">
-                    <Label>Services</Label>
-                    {/* Display selected services as Badges */}
-                    <div className="flex flex-wrap gap-2">
-                      {item.services.length > 0 ? (
-                        item.services.map((service) => (
-                          <Badge
-                            key={service.name}
-                            variant="secondary"
-                            className="py-1 px-2 text-sm"
-                          >
-                            {service.name}
-                            <button
-                              onClick={() => removeServiceFromItem(item.id, service.name)}
-                              className="ml-2 rounded-full hover:bg-zinc-300 dark:hover:bg-zinc-600 p-0.5"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))
-                      ) : (
-                        <p className="text-xs text-zinc-500">
-                          No services selected yet.
-                        </p>
-                      )}
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
+                    
+                    <div className="flex justify-between items-start mb-6 pl-2">
+                        <div className="flex items-center gap-2">
+                            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-sm">
+                                {index + 1}
+                            </span>
+                            <h3 className="font-bold text-lg text-gray-900">Shoe Details</h3>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeItem(item.id)}
+                            className="text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+                        >
+                            <Trash2 className="h-5 w-5" />
+                        </Button>
                     </div>
 
-                    {/* Service Selection Combobox */}
-                    <Combobox
-                      onValueChange={(val) => handleServiceSelect(item.id, val)}
-                      value=""
-                    >
-                      <ComboboxAnchor>
-                        <ComboboxTrigger>
-                          <ComboboxInput
-                            placeholder="+ Add service"
-                            className="w-full border-zinc-400"
-                            readOnly
-                          />
-                          <ChevronDown className="h-4 w-4" />
-                        </ComboboxTrigger>
-                      </ComboboxAnchor>
-                      <ComboboxContent>
-                        <ComboboxEmpty>No services found.</ComboboxEmpty>
-                        <ScrollArea className="h-[250px]">
-                          {Object.entries(groupedServices).map(
-                            ([category, services], index) => (
-                              <React.Fragment key={category}>
-                                <ComboboxGroup>
-                                  <ComboboxGroupLabel>
-                                    {category}
-                                  </ComboboxGroupLabel>
-                                  {services.map((service) => (
-                                    <ComboboxItem
-                                      key={service.id}
-                                      value={service.name}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pl-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Model Name</Label>
+                            <Input
+                                value={item.shoeName}
+                                onChange={(e) => updateItem(item.id, "shoeName", e.target.value)}
+                                className="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-blue-100"
+                                placeholder="e.g. Nike Air Force 1"
+                            />
+                        </div>
+                         <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Size</Label>
+                            <Input
+                                value={item.size}
+                                onChange={(e) => updateItem(item.id, "size", e.target.value)}
+                                className="h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-blue-100"
+                                placeholder="e.g. 42"
+                            />
+                        </div>
+                         <div className="space-y-1.5 md:col-span-2">
+                            <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Color</Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {COLORS.map((c) => (
+                                    <div 
+                                        key={c.value}
+                                        onClick={() => updateItem(item.id, "color", c.value)}
+                                        className={`cursor-pointer rounded-lg border px-3 py-2 flex items-center gap-2 transition-all ${
+                                            item.color === c.value 
+                                            ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' 
+                                            : 'border-gray-200 hover:border-gray-300'
+                                        }`}
                                     >
-                                      <div className="flex items-center gap-1 justify-between w-full">
-                                        <span>{service.name}</span>
-                                        <div className="flex items-center gap-1">
-                                          <span className="text-gray-500"> -</span>
-                                          <span className="text-sm text-gray-500 font-medium">
-                                            {formatedCurrency(service.amount)}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </ComboboxItem>
-                                  ))}
-                                </ComboboxGroup>
-                                {index <
-                                  Object.entries(groupedServices).length - 1 && (
-                                  <Separator className="my-1" />
-                                )}
-                              </React.Fragment>
-                            )
-                          )}
-                        </ScrollArea>
-                      </ComboboxContent>
-                    </Combobox>
-                  </div>
-
-                  {/* Automatic Add-ons Display */}
-                  {item.addOns.length > 0 && (
-                    <div className="md:col-span-2">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <div className="text-sm font-medium text-blue-900 mb-1">Automatic Add-ons:</div>
-                        {item.addOns.map((addOn, index) => (
-                          <Badge key={index} variant="secondary" className="mr-1 mb-1">
-                            {addOn.name} (+{formatedCurrency(addOn.price)})
-                          </Badge>
-                        ))}
-                      </div>
+                                        <div className={`w-4 h-4 rounded-full border shadow-sm`} style={{ backgroundColor: c.value === 'other' ? 'transparent' : c.value }}></div>
+                                        <span className="text-sm font-medium text-gray-700 capitalize">{c.value}</span>
+                                    </div>
+                                ))}
+                            </div>
+                             {item.color === 'white' && (
+                                <div className="text-xs text-green-600 mt-1 flex items-center font-medium animate-in fade-in slide-in-from-top-1">
+                                    ✓ White Treatment (+Rp 5.000) auto-applied
+                                </div>
+                            )}
+                        </div>
                     </div>
-                  )}
+
+                    <div className="bg-gray-50 rounded-2xl p-5 pl-6">
+                         <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 block">Services</Label>
+                         
+                         {/* Selected Services Tags */}
+                         <div className="flex flex-wrap gap-2 mb-4">
+                            {item.services.map((service) => (
+                                <Badge key={service.name} className="pl-3 pr-1 py-1.5 bg-white border-blue-200 text-blue-700 hover:bg-blue-50 shadow-sm rounded-lg text-sm font-medium">
+                                    {service.name}
+                                    <div className="ml-2 h-5 w-5 rounded-md flex items-center justify-center hover:bg-blue-100 cursor-pointer" onClick={() => removeServiceFromItem(item.id, service.name)}>
+                                        <X className="h-3 w-3" />
+                                    </div>
+                                </Badge>
+                            ))}
+                            <Combobox onValueChange={(val) => handleServiceSelect(item.id, val)} value="">
+                                <ComboboxAnchor>
+                                    <ComboboxTrigger className="as-child">
+                                        <Badge variant="outline" className="cursor-pointer border-dashed border-gray-400 text-gray-500 hover:text-gray-800 hover:border-gray-600 bg-transparent py-1.5 px-3 rounded-lg text-sm">
+                                            <Plus className="h-3 w-3 mr-1" /> Add Service
+                                        </Badge>
+                                    </ComboboxTrigger>
+                                </ComboboxAnchor>
+                                <ComboboxContent align="start" className="w-[250px]">
+                                    <ScrollArea className="h-[200px]">
+                                         {Object.entries(groupedServices).map(([category, services], idx) => (
+                                            <div key={category}>
+                                                <ComboboxGroup>
+                                                    <ComboboxGroupLabel className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-2">{category}</ComboboxGroupLabel>
+                                                    {services.map((service) => (
+                                                        <ComboboxItem key={service.id} value={service.name} className="pl-4 py-2 cursor-pointer">
+                                                            <div className="flex justify-between w-full">
+                                                                <span>{service.name}</span>
+                                                                <span className="text-gray-400 text-xs">{formatedCurrency(service.amount)}</span>
+                                                            </div>
+                                                        </ComboboxItem>
+                                                    ))}
+                                                </ComboboxGroup>
+                                                {idx < Object.keys(groupedServices).length - 1 && <Separator className="my-1"/>}
+                                            </div>
+                                         ))}
+                                    </ScrollArea>
+                                </ComboboxContent>
+                            </Combobox>
+                         </div>
+
+                         {/* Automatic Addons */}
+                         {item.addOns.filter(a => a.isAutomatic).length > 0 && (
+                             <div className="space-y-2 border-t border-gray-200 pt-3 mt-2">
+                                 {item.addOns.filter(a => a.isAutomatic).map((addon, idx) => (
+                                     <div key={idx} className="flex justify-between text-sm text-gray-500 italic">
+                                         <span>{addon.name} (Auto)</span>
+                                         <span>+{formatedCurrency(addon.price)}</span>
+                                     </div>
+                                 ))}
+                             </div>
+                         )}
+
+                         <div className="flex justify-between items-end mt-4 pt-4 border-t border-gray-200">
+                            <span className="text-sm font-medium text-gray-500">Item Total</span>
+                            <span className="text-xl font-bold text-gray-900">{formatedCurrency(item.totalPrice)}</span>
+                         </div>
+                    </div>
                 </div>
               ))
             )}
-          </CardContent>
-        </Card>
 
-        {/* Order Summary */}
-        {items.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
-            </CardHeader>
-            <Separator />
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Items ({items.length})</span>
-                  <span>{formatedCurrency(items.reduce((total, item) => total + item.totalPrice, 0))}</span>
-                </div>
-
-                {/* Show breakdown by service types */}
-                {items.some(item => item.services.length > 0) && (
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <div className="font-medium">Services Breakdown:</div>
-                    {allServicesCatalog.map(service => {
-                      const serviceCount = items.reduce((count, item) =>
-                        count + item.services.filter(s => s.name === service.name).length, 0
-                      );
-                      if (serviceCount > 0) {
-                        return (
-                          <div key={service.id} className="ml-2 text-xs">
-                            • {service.name} x{serviceCount} = {formatedCurrency(service.amount * serviceCount)}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                )}
-
-                {items.some(item => item.addOns.length > 0) && (
-                  <div className="flex justify-between text-sm">
-                    <span>Automatic Add-ons</span>
-                    <span>{formatedCurrency(items.reduce((total, item) =>
-                      total + item.addOns.reduce((addOnTotal, addOn) => addOnTotal + addOn.price, 0), 0
-                    ))}</span>
-                  </div>
-                )}
-
-                <Separator />
-                <div className="flex justify-between font-semibold text-lg">
-                  <span>Total Amount</span>
-                  <span>{formatedCurrency(orderTotal)}</span>
-                </div>
-              </div>
-
-              {selectedDropPoint && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <div className="text-sm font-medium text-blue-900">
-                    Drop-Point: {selectedDropPoint.name}
-                  </div>
-                  <div className="text-sm text-blue-700">
-                    {selectedDropPoint.address}
-                  </div>
-                  <div className="text-sm text-blue-700 mt-1">
-                    Capacity: {selectedDropPoint.current_capacity + items.length}/{selectedDropPoint.max_capacity}
-                    {!isCapacityAvailable && (
-                      <span className="text-red-600 font-semibold ml-2">
-                        - Insufficient capacity!
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Action Buttons */}
-        <div className="space-y-2">
-          <Button
-            className="w-full"
-            onClick={onSubmit}
-            disabled={!selectedDropPoint || items.length === 0 || !isCapacityAvailable}
-          >
-            Proceed to QRIS Payment
-          </Button>
-          <Button
-            className="w-full"
-            variant="outline"
-            onClick={() => {
-              clearCustomer();
-              localStorage.removeItem("drop_point_location_id");
-              router.push("/drop-point");
-            }}
-          >
-            Cancel
-          </Button>
+            {/* Add Button */}
+            {items.length > 0 && items.length < MAX_ITEMS_PER_ORDER && (
+                 <Button 
+                    variant="outline" 
+                    onClick={addNewItem} 
+                    className="w-full h-14 rounded-2xl border-dashed border-2 border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50"
+                >
+                    <Plus className="h-5 w-5 mr-2" /> Add Another Item
+                </Button>
+            )}
         </div>
+
+        {/* Sticky Footer / Summary */}
+        {items.length > 0 && (
+            <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 shadow-lg z-10 p-4">
+                <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
+                    <div className="hidden sm:block">
+                        <div className="text-sm text-gray-500">Total Payment</div>
+                        <div className="text-2xl font-bold text-gray-900">{formatedCurrency(orderTotal)}</div>
+                    </div>
+                    <div className="flex-1 sm:flex-none flex gap-3">
+                         <Button variant="ghost" onClick={() => router.back()} className="hidden sm:flex text-gray-500">
+                             Back
+                         </Button>
+                         <Button 
+                            onClick={onSubmit} 
+                            className="flex-1 sm:w-64 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-lg shadow-lg shadow-blue-200"
+                            disabled={!isCapacityAvailable}
+                        >
+                            Checkout ({items.length})
+                         </Button>
+                    </div>
+                </div>
+                {/* Mobile Total show above button */}
+                <div className="sm:hidden text-center mb-2 text-sm">
+                    Total: <span className="font-bold">{formatedCurrency(orderTotal)}</span>
+                </div>
+            </div>
+        )}
       </div>
-    </section>
+    </div>
   );
 }

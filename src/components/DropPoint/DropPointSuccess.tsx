@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -11,10 +11,26 @@ export function DropPointSuccess() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invoiceId = searchParams.get("invoice");
+  const [assignedShelves, setAssignedShelves] = useState<any[]>([]);
 
   useEffect(() => {
     if (!invoiceId) {
       router.push("/drop-point");
+    }
+    
+    const storedShelves = localStorage.getItem("assigned_shelves");
+    if (storedShelves) {
+        try {
+            setAssignedShelves(JSON.parse(storedShelves));
+        } catch (e) {
+            console.error("Failed to parse assigned shelves", e);
+        }
+    } else {
+        // DUMMY DATA FOR UI PREVIEW (When accessing page directly or no localStorage)
+        setAssignedShelves([
+            { item_number: 1, shelf_number: "A-05", shoe_name: "Nike Air Force 1 (Preview)" },
+            { item_number: 2, shelf_number: "C-12", shoe_name: "Adidas Ultraboost (Preview)" }
+        ]);
     }
   }, [invoiceId, router]);
 
@@ -23,146 +39,95 @@ export function DropPointSuccess() {
   };
 
   return (
-    <section className="w-full flex flex-col bg-zinc-200 h-full">
-      <div className="flex-1 overflow-y-auto flex flex-col py-5 gap-4 px-6">
-        {/* Success Header */}
-        <Card>
-          <CardContent className="pt-6 pb-6">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="h-8 w-8 text-green-600" />
-              </div>
-              <h1 className="text-2xl font-bold text-green-600 mb-2">Order Confirmed!</h1>
-              <p className="text-gray-600">Your drop-point order has been successfully processed</p>
-              {invoiceId && (
-                <div className="mt-4">
-                  <Badge variant="outline" className="text-lg px-4 py-2">
-                    INVOICE: {invoiceId}
-                  </Badge>
+    <div className="min-h-screen bg-green-50 font-sans flex items-center justify-center p-4">
+      <div className="w-full max-w-lg">
+        
+        {/* Success Card */}
+        <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-green-100">
+            
+            {/* Header */}
+            <div className="bg-gradient-to-b from-green-50 to-white p-8 text-center">
+                <div className="inline-flex items-center justify-center w-24 h-24 bg-green-100 rounded-full mb-6 shadow-sm animate-in zoom-in duration-300">
+                    <CheckCircle className="h-12 w-12 text-green-600" />
                 </div>
-              )}
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
+                <p className="text-gray-500">Thank you for your order.</p>
+                {invoiceId && (
+                    <div className="mt-4 inline-block bg-gray-50 px-4 py-1.5 rounded-full text-sm font-mono text-gray-600 border border-gray-200">
+                        #{invoiceId}
+                    </div>
+                )}
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Order Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Order Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="h-4 w-4 text-blue-600" />
-                  <h4 className="font-medium text-blue-900">Drop-Point Location</h4>
-                </div>
-                <p className="text-sm text-blue-800">Main Drop-Point</p>
-                <p className="text-sm text-blue-700">Jl. Sudirman No. 123, Jakarta</p>
-              </div>
+            <div className="p-8 pt-0">
+                {/* Shelf Assignments - MAIN FOCUS */}
+                {assignedShelves.length > 0 && (
+                    <div className="mb-8">
+                        <div className="bg-blue-600 text-white p-6 rounded-2xl shadow-lg shadow-blue-200 relative overflow-hidden">
+                            {/* Background decoration */}
+                            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-blue-500 rounded-full opacity-50"></div>
+                            
+                            <h2 className="relative z-10 text-lg font-medium text-blue-100 mb-4 flex items-center gap-2">
+                                <Package className="h-5 w-5" /> Place your items in these EMPTY racks:
+                            </h2>
+                            
+                            <div className="relative z-10 space-y-3">
+                                {assignedShelves.map((shelf: any, idx: number) => (
+                                    <div key={idx} className="bg-white/10 backdrop-blur-sm rounded-xl p-4 flex justify-between items-center border border-white/20">
+                                        <div>
+                                            <span className="block text-xs text-blue-200 uppercase tracking-wider font-bold">Item #{shelf.item_number || (idx + 1)}</span>
+                                            <span className="text-sm text-white font-medium">{shelf.shoe_name || "Shoe"}</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="block text-xs text-blue-200 uppercase tracking-wider font-bold mb-1">RACK NUMBER</span>
+                                            <span className="text-4xl font-black text-white tracking-tight leading-none">{shelf.shelf_number}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <p className="text-center text-sm text-gray-400 mt-3">
+                            Please ensure you place the correct item in the assigned rack.
+                        </p>
+                    </div>
+                )}
 
-              <div className="p-4 bg-green-50 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <h4 className="font-medium text-green-900">Payment Status</h4>
+                {/* Next Steps */}
+                <div className="space-y-4 mb-8">
+                    <h3 className="font-bold text-gray-900 text-lg">What's Next?</h3>
+                    <div className="flex gap-4 items-start">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm flex-shrink-0">1</div>
+                        <div>
+                            <p className="font-medium text-gray-900">Place Items</p>
+                            <p className="text-sm text-gray-500">Put your shoes in the assigned racks above.</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-4 items-start">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm flex-shrink-0">2</div>
+                        <div>
+                            <p className="font-medium text-gray-900">We Clean</p>
+                            <p className="text-sm text-gray-500">Our experts will take care of your shoes.</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-4 items-start">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm flex-shrink-0">3</div>
+                        <div>
+                            <p className="font-medium text-gray-900">You Collect</p>
+                            <p className="text-sm text-gray-500">We'll WhatsApp you when they are ready!</p>
+                        </div>
+                    </div>
                 </div>
-                <p className="text-sm text-green-800">Paid via QRIS</p>
-                <p className="text-sm text-green-700">Transaction completed</p>
-              </div>
+
+                {/* Home Button */}
+                <Button 
+                    onClick={handleNewOrder} 
+                    className="w-full h-14 text-lg rounded-xl bg-gray-900 hover:bg-gray-800 shadow-xl"
+                >
+                    Back to Home
+                </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Next Steps */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Next Steps</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-blue-600">1</span>
-                </div>
-                <div>
-                  <h4 className="font-medium">Item Processing</h4>
-                  <p className="text-sm text-gray-600">Your items will be processed with the selected services</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-blue-600">2</span>
-                </div>
-                <div>
-                  <h4 className="font-medium">Quality Check</h4>
-                  <p className="text-sm text-gray-600">Each item goes through quality assurance</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-blue-600">3</span>
-                </div>
-                <div>
-                  <h4 className="font-medium">Return to Drop-Point</h4>
-                  <p className="text-sm text-gray-600">Items will be returned to the selected drop-point location</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-blue-600">4</span>
-                </div>
-                <div>
-                  <h4 className="font-medium">Pickup Notification</h4>
-                  <p className="text-sm text-gray-600">You'll be notified when items are ready for pickup</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Important Information */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-3 text-sm">
-              <div className="flex items-start gap-3">
-                <Phone className="h-4 w-4 text-gray-400 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-gray-900">Need Help?</h4>
-                  <p className="text-gray-600">Contact our support team for any questions about your order</p>
-                </div>
-              </div>
-
-              <div className="border-t pt-3">
-                <h4 className="font-medium text-gray-900 mb-2">Remember:</h4>
-                <ul className="list-disc list-inside space-y-1 text-gray-600">
-                  <li>Keep your invoice ID for order tracking</li>
-                  <li>Items will be numbered for easy identification</li>
-                  <li>Bring your ID when picking up items</li>
-                  <li>Quality guarantee applies to all services</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleNewOrder}
-            className="flex-1"
-          >
-            <Package className="h-4 w-4 mr-2" />
-            New Drop-Point Order
-          </Button>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

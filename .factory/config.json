@@ -1,0 +1,12 @@
+{
+  "custom_models": [
+    {
+      "model_display_name": "GLM 4.6 (Custom)",
+      "model": "glm-4.6",
+      "base_url": "https://api.z.ai/api/anthropic",
+      "api_key": "12a8fc9ec1934de6ab35019f6084ac1f.jqTaZrX2yVNywtkY",
+      "provider": "x-api-key",
+      "max_tokens": 8192
+    }
+  ]
+}

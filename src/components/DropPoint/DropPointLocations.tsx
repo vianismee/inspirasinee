@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { MapPin, Package, Users, Clock } from "lucide-react";
+import { MapPin, Package, Users, Clock, ArrowRight } from "lucide-react";
 import { DropPointService } from "@/lib/client-services";
 import { toast } from "sonner";
 import { logger } from "@/utils/client/logger";
@@ -53,212 +53,122 @@ export function DropPointLocations() {
     router.push(`/drop-point/${locationSlug}/order?id=${locationId}`);
   };
 
-  if (isLoading) {
-    return (
-      <section className="w-full flex flex-col bg-zinc-200 h-full">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-lg font-medium">Loading Drop-Point Locations...</p>
-            <p className="text-sm text-gray-600">Please wait while we fetch available locations</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="w-full max-w-7xl mx-auto">
-        <section className="w-full flex flex-col bg-zinc-200 h-full">
-          <div className="flex-1 overflow-y-auto flex flex-col py-5 gap-4 px-6">
-            {/* Header */}
-            <Card>
-              <CardContent className="pt-6 pb-6">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <MapPin className="h-8 w-8 text-blue-600" />
-                  </div>
-                  <h1 className="text-2xl font-bold mb-2">Drop-Point Shoe Cleaning Service</h1>
-                  <p className="text-gray-600 max-w-2xl mx-auto">
-                    Select a convenient drop-point location to start your order.
-                    We offer professional shoe cleaning with special treatments for white shoes.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+    <div className="min-h-screen bg-gray-50 font-sans">
+      <div className="w-full max-w-5xl mx-auto px-4 py-8">
+        
+        {/* Header */}
+        <div className="text-center mb-10">
+            <h1 className="text-4xl font-bold text-gray-900 mb-3 tracking-tight">Drop-Point Cleaning</h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Premium shoe cleaning services at your convenience. Select a location below to get started.
+            </p>
+        </div>
 
-            {/* Drop-Point Locations */}
-            {dropPointLocations.length === 0 ? (
-              <Card>
-                <CardContent className="pt-12 pb-12">
-                  <div className="text-center">
-                    <Package className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">No Drop-Point Locations Available</h3>
-                    <p className="text-gray-600 mb-6">
-                      We&apos;re currently setting up more drop-point locations. Please check back later.
-                    </p>
-                  </div>
-                  <Button onClick={() => window.location.reload()}>
-                    Refresh Locations
-                  </Button>
-                </CardContent>
-              </Card>
+        {/* Locations Grid */}
+        <div className="grid gap-6 md:grid-cols-2 mb-12">
+            {isLoading ? (
+                 <div className="col-span-full flex justify-center py-20">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                 </div>
+            ) : dropPointLocations.length === 0 ? (
+                <div className="col-span-full text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
+                    <Package className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                    <h3 className="text-xl font-medium text-gray-900">No Locations Found</h3>
+                    <p className="text-gray-500 mt-2">We are currently expanding our network.</p>
+                </div>
             ) : (
-              <div className="grid gap-4">
-                <h2 className="text-xl font-semibold mb-2">Available Drop-Points</h2>
-                {dropPointLocations.map((location) => (
-                  <Card
-                    key={location.id}
-                    className={`cursor-pointer transition-all hover:shadow-lg ${
-                      !location.is_available ? 'opacity-60' : 'hover:border-blue-300'
-                    }`}
-                    onClick={() => location.is_available && handleSelectLocation(location.id, location.name)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-lg mb-1">{location.name}</CardTitle>
-                          <p className="text-sm text-gray-600">{location.address}</p>
-                        </div>
-                        <Badge
-                          variant={location.is_available ? "default" : "secondary"}
-                          className="ml-3"
-                        >
-                          {location.is_available ? "Available" : "Full"}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-blue-600" />
-                          <div>
-                            <div className="font-medium">{location.current_capacity}/{location.max_capacity}</div>
-                            <div className="text-gray-500">Items</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-green-600" />
-                          <div>
-                            <div className="font-medium">{location.available_capacity}</div>
-                            <div className="text-gray-500">Available</div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-orange-600" />
-                          <div>
-                            <div className="font-medium">
-                              {location.available_capacity > 20 ? 'Low' :
-                               location.available_capacity > 10 ? 'Medium' :
-                               location.available_capacity > 0 ? 'High' : 'Full'}
+                dropPointLocations.map((location) => (
+                    <div
+                        key={location.id}
+                        onClick={() => location.is_available && handleSelectLocation(location.id, location.name)}
+                        className={`group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all duration-300 
+                            ${location.is_available 
+                                ? 'hover:shadow-md hover:border-blue-200 cursor-pointer' 
+                                : 'opacity-75 cursor-not-allowed bg-gray-50'
+                            }`}
+                    >
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                                    {location.name}
+                                </h3>
+                                <div className="flex items-center text-gray-500 mt-1 text-sm">
+                                    <MapPin className="h-4 w-4 mr-1" />
+                                    {location.address}
+                                </div>
                             </div>
-                            <div className="text-gray-500">Demand</div>
-                          </div>
+                            <Badge 
+                                className={`px-3 py-1 rounded-full font-medium ${
+                                    location.is_available 
+                                    ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                }`}
+                            >
+                                {location.is_available ? 'Open' : 'Full'}
+                            </Badge>
                         </div>
-                      </div>
-                    </CardContent>
 
-                    {location.is_available && (
-                      <div className="mt-4 flex justify-end">
-                        <Button size="sm" className="w-full sm:w-auto">
-                          Select This Location
-                        </Button>
-                      </div>
-                    )}
-
-                    {!location.is_available && (
-                      <div className="mt-4">
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
-                          <span className="font-medium text-red-800">Currently Full</span>
-                          <p className="text-red-600">This location has reached maximum capacity. Please check back later or choose another location.</p>
+                        <div className="grid grid-cols-2 gap-4 mt-6">
+                            <div className="bg-gray-50 rounded-xl p-3">
+                                <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Available Slots</div>
+                                <div className="text-2xl font-bold text-gray-900 flex items-baseline gap-1">
+                                    {location.available_capacity}
+                                    <span className="text-sm text-gray-400 font-normal">/ {location.max_capacity}</span>
+                                </div>
+                            </div>
+                            <div className="bg-gray-50 rounded-xl p-3">
+                                <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Demand</div>
+                                <div className={`text-lg font-bold ${
+                                    location.available_capacity < 10 ? 'text-orange-500' : 'text-blue-500'
+                                }`}>
+                                     {location.available_capacity > 20 ? 'Normal' : location.available_capacity > 0 ? 'High' : 'Maxed'}
+                                </div>
+                            </div>
                         </div>
-                      </div>
-                    )}
-                  </Card>
-              ))}
-            </div>
+
+                        {location.is_available && (
+                             <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0">
+                                <div className="bg-blue-600 text-white p-2 rounded-full shadow-lg">
+                                    <ArrowRight className="h-5 w-5" />
+                                </div>
+                             </div>
+                        )}
+                    </div>
+                ))
             )}
+        </div>
 
-            {/* Information Section */}
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="font-semibold text-lg mb-3">How It Works</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-bold text-blue-600">1</span>
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Select Drop-Point Location</h4>
-                      <p className="text-gray-600">Choose a convenient location near you</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-bold text-blue-600">2</span>
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Configure Your Order</h4>
-                      <p className="text-gray-600">Add items with colors and sizes (max 40 items per order)</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-bold text-blue-600">3</span>
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Pay with QRIS</h4>
-                      <p className="text-gray-600">Secure QRIS payment (automatic white treatment for white shoes)</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-bold text-blue-600">4</span>
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Drop & Collect</h4>
-                      <p className="text-gray-600">Drop your items and collect them when ready</p>
-                    </div>
-                  </div>
+        {/* Info Cards */}
+        <div className="grid md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                    <Package className="h-5 w-5 text-blue-600" />
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Pricing Information */}
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="font-semibold text-lg mb-3">Pricing</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <div className="font-medium text-blue-900">Standard Cleaning</div>
-                    <div className="text-2xl font-bold text-blue-600">Rp 35,000</div>
-                    <div className="text-sm text-blue-700">per item</div>
-                  </div>
-                  <div className="p-3 bg-green-50 rounded-lg">
-                    <div className="font-medium text-green-900">White Treatment</div>
-                    <div className="text-2xl font-bold text-green-600">Rp 15,000</div>
-                    <div className="text-sm text-green-700">automatically added for white shoes</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Action Button */}
-            <div className="text-center py-4">
-              <Button
-                onClick={() => window.location.reload()}
-                variant="outline"
-                className="px-8"
-              >
-                Refresh Drop-Point Locations
-              </Button>
+                <h3 className="font-semibold text-gray-900 mb-2">Smart Drop-Off</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                    Book a slot, drop your shoes, and track progress instantly via our digital system.
+                </p>
             </div>
-          </div>
-        </section>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                    <Users className="h-5 w-5 text-green-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Expert Care</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                    Professional cleaning including special treatments for white shoes and delicate materials.
+                </p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                    <Clock className="h-5 w-5 text-purple-600" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">Quick Turnaround</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                    Get notified as soon as your shoes are ready for pickup at your chosen location.
+                </p>
+            </div>
+        </div>
       </div>
     </div>
   );
