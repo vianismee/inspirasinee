@@ -1,20 +1,38 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { CheckCircle, Package, MapPin, Phone, ArrowLeft } from "lucide-react";
+import { CheckCircle, Package, MapPin, Phone, ArrowLeft, Eye, QrCode } from "lucide-react";
+
+interface AssignedShelf {
+  item_number: number;
+  shelf_number: string;
+  shoe_name: string;
+}
 
 export function DropPointSuccess() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invoiceId = searchParams.get("invoice");
+  const [assignedShelves, setAssignedShelves] = useState<AssignedShelf[]>([]);
 
   useEffect(() => {
     if (!invoiceId) {
       router.push("/admin");
+    }
+
+    // Load assigned shelves from localStorage
+    const shelvesData = localStorage.getItem("assigned_shelves");
+    if (shelvesData) {
+      try {
+        const parsed = JSON.parse(shelvesData);
+        setAssignedShelves(parsed);
+      } catch (error) {
+        console.error("Error parsing assigned shelves:", error);
+      }
     }
   }, [invoiceId, router]);
 
@@ -24,6 +42,10 @@ export function DropPointSuccess() {
 
   const handleBackToDashboard = () => {
     router.push("/admin");
+  };
+
+  const handleViewMyItems = () => {
+    router.push("/my-items");
   };
 
   return (
@@ -48,6 +70,32 @@ export function DropPointSuccess() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Collection Codes */}
+        {assignedShelves.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <QrCode className="h-5 w-5" />
+                Collection Codes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-gray-600 mb-4">
+                Use these codes to identify your items when picking them up:
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {assignedShelves.map((shelf, index) => (
+                  <div key={index} className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                    <div className="text-2xl font-bold text-blue-600 mb-2">{shelf.shelf_number}</div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">{shelf.shoe_name}</div>
+                    <div className="text-xs text-gray-500">Item #{shelf.item_number}</div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Order Summary */}
         <Card>
@@ -123,7 +171,7 @@ export function DropPointSuccess() {
                 </div>
                 <div>
                   <h4 className="font-medium">Pickup Notification</h4>
-                  <p className="text-sm text-gray-600">You'll be notified when items are ready for pickup</p>
+                  <p className="text-sm text-gray-600">You&apos;ll be notified when items are ready for pickup</p>
                 </div>
               </div>
             </div>
@@ -156,21 +204,29 @@ export function DropPointSuccess() {
         </Card>
 
         {/* Action Buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-col sm:flex-row">
+          <Button
+            onClick={handleViewMyItems}
+            className="flex-1 bg-blue-600 hover:bg-blue-700"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View My Items
+          </Button>
           <Button
             variant="outline"
             onClick={handleNewOrder}
             className="flex-1"
           >
             <Package className="h-4 w-4 mr-2" />
-            New Drop-Point Order
+            New Order
           </Button>
           <Button
             onClick={handleBackToDashboard}
             className="flex-1"
+            variant="secondary"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
+            Dashboard
           </Button>
         </div>
       </div>

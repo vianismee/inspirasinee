@@ -1588,9 +1588,9 @@ export const DropPointService = {
       // Calculate current capacity for each drop-point
       const dropPointsWithCapacity = data.map(dropPoint => ({
         ...dropPoint,
-        current_capacity: dropPoint.drop_point_shelves.filter(shelf => shelf.is_occupied).length,
-        available_capacity: dropPoint.max_capacity - dropPoint.drop_point_shelves.filter(shelf => shelf.is_occupied).length,
-        is_available: dropPoint.max_capacity > dropPoint.drop_point_shelves.filter(shelf => shelf.is_occupied).length
+        current_capacity: dropPoint.drop_point_shelves.filter((shelf: any) => shelf.is_occupied).length,
+        available_capacity: dropPoint.max_capacity - dropPoint.drop_point_shelves.filter((shelf: any) => shelf.is_occupied).length,
+        is_available: dropPoint.max_capacity > dropPoint.drop_point_shelves.filter((shelf: any) => shelf.is_occupied).length
       }));
 
       return dropPointsWithCapacity;

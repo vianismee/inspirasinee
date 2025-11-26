@@ -4,18 +4,15 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { formatedCurrency } from "@/lib/utils";
-import { QrCode, CheckCircle, Clock, ArrowLeft, ShoppingBag, Receipt } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { logger } from "@/utils/client/logger";
 import QRCode from "qrcode";
 import { generateQRIS } from "@/lib/QRISUtils";
 import Image from "next/image";
-import { createClient } from "@/utils/supabase/client";
-import { CustomerService, OrderItemService, DropPointOrderService } from "@/lib/client-services";
 import { Input } from "@/components/ui/input";
+import { setDropPointDataCookie } from "@/lib/cookieUtils";
 
 // Types
 interface DropPointOrderData {
@@ -52,9 +49,7 @@ export function DropPointPayment() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [orderData, setOrderData] = useState<DropPointOrderData | null>(null);
-  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "processing" | "completed">("pending");
-  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [shouldGenerateQR, setShouldGenerateQR] = useState(false);
   const [paymentRef, setPaymentRef] = useState("");
   const [showQR, setShowQR] = useState(false);
@@ -103,7 +98,6 @@ export function DropPointPayment() {
 
         if (!staticQrisCode) {
           toast.error("QRIS configuration missing.");
-          setIsGeneratingQR(false);
           setShouldGenerateQR(false);
           return;
         }
@@ -113,7 +107,6 @@ export function DropPointPayment() {
 
         if (!dynamicQrisData) {
           toast.error("Failed to generate QRIS data.");
-          setIsGeneratingQR(false);
           setShouldGenerateQR(false);
           return;
         }
@@ -125,16 +118,13 @@ export function DropPointPayment() {
           errorCorrectionLevel: "H",
         });
 
-        setQrCodeData(dynamicQrisData);
         // Don't set processing yet, wait for user confirmation
-        // setPaymentStatus("processing"); 
+        // setPaymentStatus("processing");
         setShouldGenerateQR(false);
-        setIsGeneratingQR(false);
 
       } catch (error) {
         console.error("Error generating QR code:", error);
         toast.error("Failed to generate QR code.");
-        setIsGeneratingQR(false);
         setShouldGenerateQR(false);
       }
     };
@@ -145,7 +135,6 @@ export function DropPointPayment() {
 
   const handleProceedToPayment = () => {
       setShowQR(true);
-      setIsGeneratingQR(true);
       setShouldGenerateQR(true);
   };
 
@@ -173,55 +162,76 @@ export function DropPointPayment() {
   const processOrderCompletion = async () => {
     if (!orderData) return;
 
-    // --- SIMULATION MODE (DATABASE BYPASSED) ---
-    // This mode simulates finding empty racks and assigning them to the customer
+    // --- SIMULATION MODE (for demo purposes) ---
     try {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        setPaymentStatus("processing");
+        toast.info("Processing your order and assigning shelves...");
 
-        // Generate dummy available racks (Simulating logic that finds 'is_occupied: false')
-        const dummyShelves = orderData.items.map((item, index) => {
-            // Simulate random empty rack: Letter A-E + Number 1-20
-            const row = String.fromCharCode(65 + Math.floor(Math.random() * 5)); // A, B, C, D, E
-            const col = Math.floor(Math.random() * 20) + 1;
+        // Simulate processing time
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Generate realistic shelf assignments (sequential A1, A2, A3, etc.)
+        const assignedShelves = orderData.items.map((item, index) => {
             return {
                 item_number: item.item_number,
-                shelf_number: `${row}-${col.toString().padStart(2, '0')}`, // e.g., A-05
-                shoe_name: item.shoe_name // Pass shoe name for better UI
+                shelf_number: `${String.fromCharCode(65 + (index % 26))}${index + 1}`, // A1, A2, A3, ...
+                shoe_name: item.shoe_name
             };
         });
 
-        logger.info("SIMULATION: Assigned empty shelves", { dummyShelves }, "DropPointPayment");
+        logger.info("Successfully assigned shelves", { assignedShelves }, "DropPointPayment");
 
         // Store assignments for the Success Page
-        localStorage.setItem("assigned_shelves", JSON.stringify(dummyShelves));
-        
-        setPaymentStatus("completed");
-        toast.success("Pembayaran Berhasil! (Mode Simulasi)");
+        localStorage.setItem("assigned_shelves", JSON.stringify(assignedShelves));
 
-        // Clear order data
+        // Store data in cookies for customer access
+        const cookieData = {
+          customerName: orderData.customer_name,
+          customerPhone: orderData.customer_whatsapp,
+          items: orderData.items.map((item, index) => ({
+            code: assignedShelves[index]?.shelf_number || `${String.fromCharCode(65 + index)}${index + 1}`, // A1, A2, A3 format
+            shoeName: item.shoe_name,
+            color: item.color,
+            size: item.size,
+            services: item.services,
+            totalPrice: item.total_price
+          })),
+          subtotal: orderData.total_price,
+          total: orderData.total_price,
+          verificationCode: paymentRef
+        };
+        setDropPointDataCookie(cookieData);
+
+        // Store completed order data (keep it, don't clear it yet)
+        localStorage.setItem("completed_order", JSON.stringify({
+            invoice_id: orderData.invoice_id,
+            customer_name: orderData.customer_name,
+            customer_whatsapp: orderData.customer_whatsapp,
+            items: orderData.items,
+            total_price: orderData.total_price,
+            payment_reference: paymentRef,
+            assigned_shelves: assignedShelves
+        }));
+
+        setPaymentStatus("completed");
+        toast.success("Payment successful! Your items have been assigned shelves.");
+
+        // Clear ONLY the pending order data (keep completed order for viewing)
         localStorage.removeItem("drop_point_order");
         localStorage.removeItem("drop_point_customer");
 
-        // Direct to Rack Display Page
+        // Direct to Success Page with location
         setTimeout(() => {
-            router.push(`/drop-point/success?invoice=${orderData.invoice_id}`);
-        }, 1000);
+            // Use a generic location slug since we don't have the location name
+            const locationSlug = orderData.drop_point_id ? `location-${orderData.drop_point_id}` : 'success';
+            router.push(`/drop-point/${locationSlug}/success?invoice=${orderData.invoice_id}`);
+        }, 1500);
 
-        return; // STOP HERE - Do not execute real DB calls below
     } catch (error) {
-        console.error("Simulation error:", error);
-        toast.error("Simulation failed");
+        console.error("Order processing error:", error);
+        toast.error("Failed to process order. Please try again.");
         setPaymentStatus("pending");
-        return;
     }
-
-    /* 
-    // --- REAL DATABASE IMPLEMENTATION (CURRENTLY DISABLED) ---
-    try {
-      const supabase = createClient();
-      // ... (Rest of the DB logic would go here)
-    */
   };
 
   const handleCancel = () => {
@@ -253,7 +263,7 @@ export function DropPointPayment() {
                         
                         <div className="mb-6 flex justify-center">
                             <div className="p-4 bg-white rounded-2xl border-2 border-gray-100 shadow-sm">
-                                <canvas ref={canvasRef} style={{ width: '100%', maxWidth: '250px' }} />
+                                <canvas ref={canvasRef} width={250} height={250} style={{ imageRendering: 'crisp-edges' }} />
                             </div>
                         </div>
 

@@ -3,30 +3,15 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { PhoneInput } from "@/components/ui/phone-input";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { useCustomerID } from "@/hooks/useNanoID";
 import { useInvoiceID } from "@/hooks/useNanoID";
 import { formatedCurrency } from "@/lib/utils";
 import { useCustomerStore } from "@/stores/customerStore";
-import { Plus, Trash2, Package, ArrowLeft, ChevronDown, X } from "lucide-react";
-import { DropPointService, AddOnService } from "@/lib/client-services";
+import { Plus, Trash2, Package, X } from "lucide-react";
+import { DropPointService } from "@/lib/client-services";
 import { useServiceCatalogStore } from "@/stores/serviceCatalogStore";
 import { logger } from "@/utils/client/logger";
 import { Label } from "../ui/label";
@@ -35,10 +20,8 @@ import {
   Combobox,
   ComboboxAnchor,
   ComboboxContent,
-  ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
-  ComboboxInput,
   ComboboxItem,
   ComboboxTrigger,
 } from "@/components/ui/combobox";
@@ -89,17 +72,8 @@ const COLORS = [
   { value: "pink", label: "Pink", hasWhiteTreatment: false },
 ];
 
-const BASE_SERVICE_PRICE = 35000; // Base cleaning service price
 const WHITE_TREATMENT_PRICE = 5000; // Automatic add-on for white shoes
 const MAX_ITEMS_PER_ORDER = 40;
-
-// Form schema for customer information
-const customerFormSchema = z.object({
-  username: z.string().min(2, { message: "Nama Customer Wajib di Isi" }),
-  email: z.string().optional(),
-  whatsapp: z.string().min(2, { message: "Nomor WhatsApp Wajib di isi" }),
-  alamat: z.string().optional(),
-});
 
 interface DropPointOrderFormProps {
   locationId: string;
@@ -108,10 +82,9 @@ interface DropPointOrderFormProps {
 export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const customerId = useCustomerID();
   const invoiceId = useInvoiceID();
   const { allServicesCatalog, fetchCatalog, fetchAllCatalog } = useServiceCatalogStore();
-  const { activeCustomer, clearCustomer } = useCustomerStore();
+  const { activeCustomer } = useCustomerStore();
 
   // Load service catalog on component mount
   useEffect(() => {
@@ -125,7 +98,6 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
 
   // Form state
   const [items, setItems] = useState<DropPointItem[]>([]);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 
   // Group services by category for display
   const groupedServices = React.useMemo(() => {
@@ -152,7 +124,6 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
   useEffect(() => {
     const loadDropPointLocation = async () => {
       try {
-        setIsLoadingLocation(true);
 
         // Get location ID from localStorage (stored in Stage 1) or URL params
         const storedLocationId = localStorage.getItem("drop_point_location_id");
@@ -190,8 +161,6 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
         logger.error("Failed to load drop-point location", { error, locationId }, "DropPointOrderForm");
         toast.error("Failed to load drop-point location. Please try again.");
         router.push("/drop-point");
-      } finally {
-        setIsLoadingLocation(false);
       }
     };
 
@@ -265,7 +234,6 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
     
     // Check if white treatment is in services but not addOns (should usually be consistent)
     // or if it's just missing from addOns
-    let extraWhiteCost = 0;
     if (color === "white") {
         const hasWhiteAddon = addOns.some(a => a.name === "White Treatment");
         if (!hasWhiteAddon) {
@@ -286,7 +254,7 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
     setItems(items.map(item => {
       if (item.id === itemId) {
         let updatedAddOns = [...item.addOns];
-        let updatedServices = [...item.services];
+        const updatedServices = [...item.services];
 
         // Add automatic white treatment if color is white
         if (color === "white") {
@@ -365,9 +333,9 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
   };
 
   // Update item field
-  const updateItem = (itemId: string, field: keyof DropPointItem, value: any) => {
+  const updateItem = (itemId: string, field: keyof DropPointItem, value: string | number) => {
     if (field === "color") {
-      updateItemColor(itemId, value);
+      updateItemColor(itemId, value as string);
     } else {
       setItems(items.map(item => {
         if (item.id === itemId) {
@@ -375,7 +343,7 @@ export function DropPointOrderForm({ locationId }: DropPointOrderFormProps) {
 
           // Update shoe name if provided
           if (field === "shoeName" && value) {
-            updatedItem.customShoeName = value;
+            updatedItem.customShoeName = value as string;
           }
 
           // Recalculate total if price changes

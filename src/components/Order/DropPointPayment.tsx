@@ -348,7 +348,7 @@ export function DropPointPayment() {
               <ul className="list-disc list-inside space-y-1">
                 <li>QRIS is the only payment method for drop-point orders</li>
                 <li>Items will be numbered automatically upon order confirmation</li>
-                <li>You'll receive your drop-point customer ID for tracking</li>
+                <li>You&apos;ll receive your drop-point customer ID for tracking</li>
                 <li>Items will be processed and returned to the selected drop-point location</li>
               </ul>
             </div>

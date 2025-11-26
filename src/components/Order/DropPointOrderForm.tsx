@@ -165,22 +165,18 @@ export function DropPointOrderForm() {
   };
 
   // Update item field
-  const updateItem = (itemId: string, field: keyof DropPointItem, value: any) => {
+  const updateItem = (itemId: string, field: keyof DropPointItem, value: string | number) => {
     setItems(items.map(item => {
       if (item.id === itemId) {
         const updatedItem = { ...item, [field]: value };
 
         // Recalculate price and add-ons when color changes
         if (field === "color") {
-          updatedItem.addOns = getAddOnsForColor(value);
-          updatedItem.totalPrice = calculateItemPrice(value);
+          updatedItem.addOns = getAddOnsForColor(value as string);
+          updatedItem.totalPrice = calculateItemPrice(value as string);
         }
 
-        // Update shoe name if provided
-        if (field === "shoeName" && value) {
-          updatedItem.customShoeName = value;
-        }
-
+        
         return updatedItem;
       }
       return item;
@@ -248,7 +244,7 @@ export function DropPointOrderForm() {
         drop_point_id: selectedDropPoint.id,
         items: items.map(item => ({
           shoe_name: item.shoeName,
-          custom_shoe_name: item.customShoeName || item.shoeName,
+          custom_shoe_name: item.shoeName,
           color: item.color,
           size: item.size,
           item_number: item.itemNumber,
@@ -427,7 +423,7 @@ export function DropPointOrderForm() {
               <div className="text-center py-8 text-gray-500">
                 <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p>No items added yet</p>
-                <p className="text-sm">Click "Add Item" to configure your first item</p>
+                <p className="text-sm">Click &quot;Add Item&quot; to configure your first item</p>
               </div>
             ) : (
               items.map((item) => (

@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { MapPin, Package, Users, Clock, ArrowRight } from "lucide-react";
 import { DropPointService } from "@/lib/client-services";
