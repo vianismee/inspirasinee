@@ -42,6 +42,12 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Temporary bypass for development - remove this after setting up admin user
+  if (process.env.NODE_ENV === 'development') {
+    // Allow access to admin routes during development
+    return supabaseResponse;
+  }
+
   if (!user && request.nextUrl.pathname.startsWith("/admin")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
