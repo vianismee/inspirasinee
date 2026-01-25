@@ -25,8 +25,8 @@ import { useCustomerStore } from "@/stores/customerStore";
 import { useCustomerID } from "@/hooks/useNanoID";
 import { useInvoiceID } from "@/hooks/useNanoID";
 import { formatedCurrency } from "@/lib/utils";
-import { Plus, Trash2, Package } from "lucide-react";
-import { DropPointService, AddOnService } from "@/lib/client-services";
+import { Plus, Trash2, Package, Loader2 } from "lucide-react";
+import { DropPointService, DropPointCRUDService } from "@/lib/client-services";
 import { logger } from "@/utils/client/logger";
 
 // Types
@@ -92,6 +92,7 @@ export function DropPointOrderForm() {
   const [selectedDropPoint, setSelectedDropPoint] = useState<DropPointLocation | null>(null);
   const [dropPointLocations, setDropPointLocations] = useState<DropPointLocation[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load drop-point locations on component mount
   useEffect(() => {
@@ -205,6 +206,8 @@ export function DropPointOrderForm() {
   // Submit order
   const onSubmit = async (customerValues: z.infer<typeof customerFormSchema>) => {
     try {
+      setIsSubmitting(true);
+
       // Validate form
       if (!selectedDropPoint) {
         toast.error("Please select a drop-point location");
@@ -229,36 +232,48 @@ export function DropPointOrderForm() {
       }
 
       // Prepare customer data
+      const customerMarking = `DP${customerId.slice(-6).toUpperCase()}`;
       const customerData = {
         customer_id: customerId,
         ...customerValues,
-        customer_marking: `DP${customerId.slice(-6).toUpperCase()}`, // Customer marker for drop-point
+        customer_marking: customerMarking,
       };
 
       await prepareCustomer(customerData);
 
-      // Prepare order data for drop-point
+      // Calculate subtotal (base prices only)
+      const subtotal = items.reduce((total, item) => total + item.basePrice, 0);
+
+      // Prepare order data for Supabase
       const orderData = {
         invoice_id: invoiceId,
-        fulfillment_type: "drop-point",
+        customer_id: customerId,
+        customer_name: customerValues.username,
+        customer_whatsapp: customerValues.whatsapp,
+        customer_email: customerValues.email,
         drop_point_id: selectedDropPoint.id,
+        customer_marking: customerMarking,
         items: items.map(item => ({
           shoe_name: item.shoeName,
-          custom_shoe_name: item.shoeName,
           color: item.color,
           size: item.size,
           item_number: item.itemNumber,
-          base_price: item.basePrice,
-          add_ons: item.addOns,
-          total_price: item.totalPrice,
+          amount: item.totalPrice,
           has_white_treatment: item.color === "white",
         })),
         total_price: orderTotal,
-        customer_marking: customerData.customer_marking,
+        subtotal: subtotal,
       };
 
-      // Store drop-point order data in localStorage for processing
-      localStorage.setItem("drop_point_order", JSON.stringify(orderData));
+      // Create order in Supabase
+      logger.info("Creating drop-point order in database", { invoice_id: invoiceId }, "DropPointOrderForm");
+      const result = await DropPointCRUDService.createOrder(orderData);
+
+      if (!result.success) {
+        throw new Error("Failed to create order in database");
+      }
+
+      toast.success("Order created successfully!");
 
       // Redirect to drop-point payment (QRIS only)
       router.push(`/admin/drop-point/payment?invoice=${invoiceId}`);
@@ -266,6 +281,8 @@ export function DropPointOrderForm() {
     } catch (error) {
       console.error("Drop-point order submission error", error);
       toast.error("Failed to submit drop-point order. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -563,14 +580,22 @@ export function DropPointOrderForm() {
           <Button
             className="w-full"
             onClick={customerForm.handleSubmit(onSubmit)}
-            disabled={!selectedDropPoint || items.length === 0 || !isCapacityAvailable}
+            disabled={!selectedDropPoint || items.length === 0 || !isCapacityAvailable || isSubmitting}
           >
-            Proceed to QRIS Payment
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Creating Order...
+              </>
+            ) : (
+              "Proceed to QRIS Payment"
+            )}
           </Button>
           <Button
             className="w-full"
             variant="outline"
             onClick={() => router.back()}
+            disabled={isSubmitting}
           >
             Cancel
           </Button>

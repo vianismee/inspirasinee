@@ -1,53 +1,60 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
-import { useCustomerStore } from "@/stores/customerStore";
 import { formatedCurrency } from "@/lib/utils";
-import { QrCode, CheckCircle, Clock, ArrowLeft } from "lucide-react";
+import { QrCode, CheckCircle, Clock, ArrowLeft, Loader2 } from "lucide-react";
+import { DropPointCRUDService } from "@/lib/client-services";
 
 // Types
 interface DropPointOrderData {
   invoice_id: string;
-  fulfillment_type: "drop-point";
+  customer_id: string;
+  customer_marking: string;
+  total_price: number;
+  subtotal: number;
+  status: string;
   drop_point_id: number;
-  items: Array<{
+  customers: {
+    customer_id: string;
+    username: string;
+    whatsapp: string;
+    email: string | null;
+  } | null;
+  drop_points: {
+    id: number;
+    name: string;
+    address: string;
+  } | null;
+  order_item: Array<{
+    id: number;
     shoe_name: string;
-    custom_shoe_name?: string;
     color: string;
     size: string;
     item_number: number;
-    base_price: number;
-    add_ons: Array<{
-      name: string;
-      price: number;
-      isAutomatic: boolean;
-    }>;
-    total_price: number;
+    amount: number;
     has_white_treatment: boolean;
   }>;
-  total_price: number;
-  customer_marking: string;
 }
 
 export function DropPointPayment() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invoiceId = searchParams.get("invoice");
-  const { activeCustomer } = useCustomerStore();
 
   const [orderData, setOrderData] = useState<DropPointOrderData | null>(null);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "processing" | "completed">("pending");
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load order data from localStorage
-  useEffect(() => {
+  // Load order data from Supabase
+  const loadOrderData = useCallback(async () => {
     if (!invoiceId) {
       toast.error("No invoice ID provided");
       router.push("/admin/drop-point");
@@ -55,29 +62,35 @@ export function DropPointPayment() {
     }
 
     try {
-      const storedData = localStorage.getItem("drop_point_order");
-      if (storedData) {
-        const parsedData = JSON.parse(storedData) as DropPointOrderData;
-        if (parsedData.invoice_id === invoiceId) {
-          setOrderData(parsedData);
-        } else {
-          toast.error("Order data mismatch");
-          router.push("/admin/drop-point");
+      setIsLoading(true);
+      const order = await DropPointCRUDService.getOrderByInvoice(invoiceId);
+      
+      if (order) {
+        setOrderData(order as DropPointOrderData);
+        // Check if already paid
+        if (order.status === 'confirmed' || order.status === 'completed') {
+          setPaymentStatus("completed");
         }
       } else {
-        toast.error("No order data found");
+        toast.error("Order not found");
         router.push("/admin/drop-point");
       }
     } catch (error) {
       console.error("Error loading order data:", error);
       toast.error("Failed to load order data");
       router.push("/admin/drop-point");
+    } finally {
+      setIsLoading(false);
     }
   }, [invoiceId, router]);
 
+  useEffect(() => {
+    loadOrderData();
+  }, [loadOrderData]);
+
   // Generate QR Code for QRIS payment
   const generateQRCode = async () => {
-    if (!orderData || !activeCustomer) return;
+    if (!orderData) return;
 
     setIsGeneratingQR(true);
     try {
@@ -86,7 +99,7 @@ export function DropPointPayment() {
       const qrPayload = {
         invoice_id: orderData.invoice_id,
         amount: orderData.total_price,
-        customer_id: activeCustomer.customer_id,
+        customer_id: orderData.customer_id,
         payment_method: "QRIS",
         merchant_name: "InspirasiNEE",
         timestamp: new Date().toISOString(),
@@ -132,22 +145,14 @@ export function DropPointPayment() {
     if (!orderData) return;
 
     try {
-      // In production, this would call your order processing API
-      const orderSubmission = {
-        ...orderData,
-        customer_id: activeCustomer?.customer_id,
-        customer_name: activeCustomer?.username,
-        customer_whatsapp: activeCustomer?.whatsapp,
-        payment_method: "QRIS",
-        payment_status: "paid",
-        status: "confirmed",
-        created_at: new Date().toISOString(),
-      };
+      // Update payment status in Supabase
+      const result = await DropPointCRUDService.updatePaymentStatus(orderData.invoice_id, 'paid');
 
-      console.log("Submitting drop-point order:", orderSubmission);
+      if (!result.success) {
+        throw new Error("Failed to update payment status");
+      }
 
-      // Clear localStorage
-      localStorage.removeItem("drop_point_order");
+      console.log("Payment completed for order:", orderData.invoice_id);
 
       // Redirect to success page after a short delay
       setTimeout(() => {
@@ -167,15 +172,14 @@ export function DropPointPayment() {
       return;
     }
 
-    localStorage.removeItem("drop_point_order");
     router.push("/admin/drop-point");
   };
 
-  if (!orderData || !activeCustomer) {
+  if (isLoading || !orderData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
           <p>Loading order data...</p>
         </div>
       </div>
@@ -221,15 +225,19 @@ export function DropPointPayment() {
           <CardContent className="pt-6 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="font-medium">Name:</span>
-              <span>{activeCustomer.username}</span>
+              <span>{orderData.customers?.username || '-'}</span>
             </div>
             <div className="flex justify-between">
               <span className="font-medium">WhatsApp:</span>
-              <span>{activeCustomer.whatsapp}</span>
+              <span>{orderData.customers?.whatsapp || '-'}</span>
             </div>
             <div className="flex justify-between">
               <span className="font-medium">Drop-Point ID:</span>
               <span className="font-mono">{orderData.customer_marking}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-medium">Location:</span>
+              <span>{orderData.drop_points?.name || '-'}</span>
             </div>
           </CardContent>
         </Card>
@@ -242,8 +250,8 @@ export function DropPointPayment() {
           <Separator />
           <CardContent className="pt-6">
             <div className="space-y-3">
-              {orderData.items.map((item, index) => (
-                <div key={index} className="border rounded-lg p-3 bg-gray-50">
+              {orderData.order_item?.map((item) => (
+                <div key={item.id} className="border rounded-lg p-3 bg-gray-50">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <div className="font-medium">Item #{item.item_number}</div>
@@ -251,7 +259,7 @@ export function DropPointPayment() {
                       <div className="text-sm">Color: {item.color} | Size: {item.size}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold">{formatedCurrency(item.total_price)}</div>
+                      <div className="font-semibold">{formatedCurrency(item.amount)}</div>
                       {item.has_white_treatment && (
                         <Badge variant="secondary" className="mt-1 text-xs">
                           + White Treatment
@@ -267,16 +275,16 @@ export function DropPointPayment() {
 
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Subtotal ({orderData.items.length} items)</span>
-                <span>{formatedCurrency(orderData.items.reduce((total, item) => total + item.base_price, 0))}</span>
+                <span>Subtotal ({orderData.order_item?.length || 0} items)</span>
+                <span>{formatedCurrency(orderData.subtotal || 0)}</span>
               </div>
 
-              {orderData.items.some(item => item.has_white_treatment) && (
+              {orderData.order_item?.some(item => item.has_white_treatment) && (
                 <div className="flex justify-between text-sm">
                   <span>White Treatment Add-ons</span>
-                  <span>{formatedCurrency(orderData.items
-                    .filter(item => item.has_white_treatment)
-                    .reduce((total, item) => total + 15000, 0))}</span>
+                  <span>{formatedCurrency(
+                    (orderData.order_item?.filter(item => item.has_white_treatment).length || 0) * 15000
+                  )}</span>
                 </div>
               )}
 

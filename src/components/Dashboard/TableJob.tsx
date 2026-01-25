@@ -329,6 +329,12 @@ export default function TableJob() {
               icon: Hourglass,
             },
             {
+              value: "pickup",
+              label: "Pickup",
+              className: "bg-orange-500 hover:bg-orange-500/80 text-white",
+              icon: MapPin,
+            },
+            {
               value: "cleaning",
               label: "Cleaning",
               variant: "default" as const,
@@ -387,6 +393,7 @@ export default function TableJob() {
           options: [
             { label: "Ongoing", value: "ongoing" },
             { label: "Pending", value: "pending" },
+            { label: "Pickup", value: "pickup" },
             { label: "Cleaning", value: "cleaning" },
             { label: "Finish", value: "finish" },
           ],
@@ -400,9 +407,14 @@ export default function TableJob() {
         cell: function Cell({ row }) {
           const statusPayment = [
             {
+              value: "QRIS - Paid",
+              label: "QRIS - Paid",
+              className: "bg-green-600 hover:bg-green-600/80 text-white",
+            },
+            {
               value: "QRIS",
               label: "QRIS",
-              className: "bg-green-600 hover:bg-green-600/80 text-white",
+              className: "bg-blue-600 hover:bg-blue-600/80 text-white",
             },
             {
               value: "Cash",

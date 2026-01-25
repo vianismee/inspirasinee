@@ -13,6 +13,7 @@ import { generateQRIS } from "@/lib/QRISUtils";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { setDropPointDataCookie } from "@/lib/cookieUtils";
+import { DropPointCRUDService } from "@/lib/client-services";
 
 // Types
 interface DropPointOrderData {
@@ -162,24 +163,66 @@ export function DropPointPayment() {
   const processOrderCompletion = async () => {
     if (!orderData) return;
 
-    // --- SIMULATION MODE (for demo purposes) ---
     try {
         setPaymentStatus("processing");
-        toast.info("Processing your order and assigning shelves...");
+        toast.info("Processing your order and saving to database...");
 
-        // Simulate processing time
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Calculate subtotal from items
+        const subtotal = orderData.items.reduce((total, item) => {
+          const servicesTotal = item.services?.reduce((sum, s) => sum + s.amount, 0) || 0;
+          return total + servicesTotal;
+        }, 0);
 
-        // Generate realistic shelf assignments (sequential A1, A2, A3, etc.)
-        const assignedShelves = orderData.items.map((item, index) => {
-            return {
-                item_number: item.item_number,
-                shelf_number: `${String.fromCharCode(65 + (index % 26))}${index + 1}`, // A1, A2, A3, ...
-                shoe_name: item.shoe_name
-            };
-        });
+        // Prepare order data for Supabase
+        const dbOrderData = {
+          invoice_id: orderData.invoice_id,
+          customer_id: orderData.customer_id,
+          customer_name: orderData.customer_name,
+          customer_whatsapp: orderData.customer_whatsapp,
+          customer_email: undefined,
+          drop_point_id: orderData.drop_point_id,
+          customer_marking: orderData.customer_marking,
+          items: orderData.items.map(item => ({
+            shoe_name: item.shoe_name,
+            color: item.color,
+            size: item.size,
+            item_number: item.item_number,
+            amount: item.total_price,
+            has_white_treatment: item.has_white_treatment,
+          })),
+          total_price: orderData.total_price,
+          subtotal: subtotal,
+        };
 
-        logger.info("Successfully assigned shelves", { assignedShelves }, "DropPointPayment");
+        // Create order in Supabase
+        logger.info("Creating drop-point order in database", { invoice_id: orderData.invoice_id }, "DropPointPayment");
+        const createResult = await DropPointCRUDService.createOrder(dbOrderData);
+
+        if (!createResult.success) {
+          throw new Error("Failed to create order in database");
+        }
+
+        // Update payment status to paid
+        const paymentResult = await DropPointCRUDService.updatePaymentStatus(orderData.invoice_id, 'paid');
+
+        if (!paymentResult.success) {
+          logger.warn("Order created but payment status update failed", { invoice_id: orderData.invoice_id }, "DropPointPayment");
+        }
+
+        // Fetch actual assigned shelves from database
+        let assignedShelves = await DropPointCRUDService.getAssignedShelves(orderData.invoice_id);
+        
+        // If no shelves found in DB (shelves not created), fallback to generated numbers
+        if (!assignedShelves || assignedShelves.length === 0) {
+          logger.warn("No shelves found in database, using generated shelf numbers", { invoice_id: orderData.invoice_id }, "DropPointPayment");
+          assignedShelves = orderData.items.map((item, index) => ({
+            item_number: item.item_number,
+            shelf_number: `${String.fromCharCode(65 + (index % 26))}${index + 1}`,
+            shoe_name: item.shoe_name
+          }));
+        }
+
+        logger.info("Successfully created order and fetched assigned shelves", { assignedShelves }, "DropPointPayment");
 
         // Store assignments for the Success Page
         localStorage.setItem("assigned_shelves", JSON.stringify(assignedShelves));
@@ -189,7 +232,7 @@ export function DropPointPayment() {
           customerName: orderData.customer_name,
           customerPhone: orderData.customer_whatsapp,
           items: orderData.items.map((item, index) => ({
-            code: assignedShelves[index]?.shelf_number || `${String.fromCharCode(65 + index)}${index + 1}`, // A1, A2, A3 format
+            code: assignedShelves[index]?.shelf_number || `${String.fromCharCode(65 + index)}${index + 1}`,
             shoeName: item.shoe_name,
             color: item.color,
             size: item.size,
@@ -202,7 +245,7 @@ export function DropPointPayment() {
         };
         setDropPointDataCookie(cookieData);
 
-        // Store completed order data (keep it, don't clear it yet)
+        // Store completed order data
         localStorage.setItem("completed_order", JSON.stringify({
             invoice_id: orderData.invoice_id,
             customer_name: orderData.customer_name,
@@ -214,15 +257,14 @@ export function DropPointPayment() {
         }));
 
         setPaymentStatus("completed");
-        toast.success("Payment successful! Your items have been assigned shelves.");
+        toast.success("Payment successful! Order saved to database.");
 
-        // Clear ONLY the pending order data (keep completed order for viewing)
+        // Clear pending order data
         localStorage.removeItem("drop_point_order");
         localStorage.removeItem("drop_point_customer");
 
-        // Direct to Success Page with location
+        // Direct to Success Page
         setTimeout(() => {
-            // Use a generic location slug since we don't have the location name
             const locationSlug = orderData.drop_point_id ? `location-${orderData.drop_point_id}` : 'success';
             router.push(`/drop-point/${locationSlug}/success?invoice=${orderData.invoice_id}`);
         }, 1500);

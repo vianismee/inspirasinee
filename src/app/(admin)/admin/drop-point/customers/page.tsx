@@ -3,9 +3,9 @@
 import { Suspense } from "react";
 import { Headers } from "@/components/MainComponent/Header";
 import { Users, BarChart3, Download } from "lucide-react";
-import { DropPointCustomerTable } from "@/components/Admin/DropPointCustomerTable";
-import { CustomerAnalytics } from "@/components/Admin/CustomerAnalytics";
-import { TableSkeleton } from "@/components/Dashboard/TableSekeleton";
+import { DropPointCustomerTable } from "@/components/admin/DropPointCustomerTable";
+import { CustomerAnalytics } from "@/components/admin/CustomerAnalytics";
+import TableSkeleton from "@/components/Dashboard/TableSekeleton";
 
 export default function DropPointCustomersPage() {
   return (

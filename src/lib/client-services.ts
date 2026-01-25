@@ -1586,12 +1586,18 @@ export const DropPointService = {
       if (error) throw error;
 
       // Calculate current capacity for each drop-point
-      const dropPointsWithCapacity = data.map(dropPoint => ({
-        ...dropPoint,
-        current_capacity: dropPoint.drop_point_shelves.filter((shelf: any) => shelf.is_occupied).length,
-        available_capacity: dropPoint.max_capacity - dropPoint.drop_point_shelves.filter((shelf: any) => shelf.is_occupied).length,
-        is_available: dropPoint.max_capacity > dropPoint.drop_point_shelves.filter((shelf: any) => shelf.is_occupied).length
-      }));
+      const dropPointsWithCapacity = (data || []).map(dropPoint => {
+        const shelves = dropPoint.drop_point_shelves || [];
+        const occupiedCount = shelves.filter((shelf: { is_occupied: boolean }) => shelf.is_occupied === true).length;
+        const maxCap = dropPoint.max_capacity || 0;
+        
+        return {
+          ...dropPoint,
+          current_capacity: occupiedCount,
+          available_capacity: maxCap - occupiedCount,
+          is_available: occupiedCount < maxCap
+        };
+      });
 
       return dropPointsWithCapacity;
     } catch (error) {
@@ -1760,18 +1766,15 @@ export const DropPointOrderService = {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .update({
-          status,
-          updated_at: new Date().toISOString()
-        })
+        .update({ status })
         .eq('invoice_id', invoiceId)
         .select()
         .single();
 
       if (error) throw error;
 
-      // If order is completed, release shelves
-      if (status === 'completed') {
+      // If order is finished/completed, release shelves
+      if (status === 'finish' || status === 'completed' || status === 'done') {
         await this.releaseOrderShelves(invoiceId);
       }
 
@@ -1787,19 +1790,69 @@ export const DropPointOrderService = {
   // Release shelves when order is completed
   async releaseOrderShelves(invoiceId: string) {
     try {
-      const { data, error } = await supabase.rpc('release_drop_point_shelf', {
-        p_order_invoice_id: invoiceId
-      });
+      logger.info("Releasing shelves for order", { invoiceId }, "DropPointService");
 
-      if (error) throw error;
+      // Get shelves for this order
+      const { data: shelves, error: fetchError } = await supabase
+        .from('drop_point_shelves')
+        .select('id, drop_point_id, shelf_number')
+        .eq('order_invoice_id', invoiceId);
 
-      logger.info("Shelves released for order", { invoiceId }, "DropPointOrderService");
-      return data;
+      if (fetchError) throw fetchError;
+
+      if (!shelves || shelves.length === 0) {
+        logger.info("No shelves found for order", { invoiceId }, "DropPointService");
+        return true;
+      }
+
+      logger.info("Found shelves to release", { invoiceId, shelves: shelves.map(s => s.shelf_number) }, "DropPointService");
+
+      // Release shelves
+      const { error: updateError } = await supabase
+        .from('drop_point_shelves')
+        .update({
+          is_occupied: false,
+          order_invoice_id: null,
+          item_number: null,
+          customer_id: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('order_invoice_id', invoiceId);
+
+      if (updateError) throw updateError;
+
+      // Update drop-point capacity
+      const dropPointIds = [...new Set(shelves.map(s => s.drop_point_id))];
+      for (const dpId of dropPointIds) {
+        const shelvesReleased = shelves.filter(s => s.drop_point_id === dpId).length;
+        
+        const { data: dp } = await supabase
+          .from('drop_points')
+          .select('current_capacity')
+          .eq('id', dpId)
+          .single();
+
+        if (dp) {
+          const newCapacity = Math.max(0, (dp.current_capacity || 0) - shelvesReleased);
+          await supabase
+            .from('drop_points')
+            .update({
+              current_capacity: newCapacity,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', dpId);
+          
+          logger.info("Updated drop point capacity", { dpId, oldCapacity: dp.current_capacity, newCapacity, shelvesReleased }, "DropPointService");
+        }
+      }
+
+      logger.info("Shelves released successfully", { invoiceId }, "DropPointService");
+      return true;
     } catch (error) {
       handleClientError(error, {
         customMessage: 'Failed to release order shelves'
       });
-      return null;
+      return false;
     }
   },
 
@@ -1848,6 +1901,773 @@ export const DropPointOrderService = {
     } catch (error) {
       handleClientError(error, {
         customMessage: 'Failed to update customer marker'
+      });
+      return null;
+    }
+  }
+};
+
+// === DROP-POINT ORDER CRUD SERVICES ===
+
+export const DropPointCRUDService = {
+  // Create a new drop-point order with customer and items
+  async createOrder(orderData: {
+    invoice_id: string;
+    customer_id: string;
+    customer_name: string;
+    customer_whatsapp: string;
+    customer_email?: string;
+    drop_point_id: number;
+    customer_marking: string;
+    items: Array<{
+      shoe_name: string;
+      color: string;
+      size: string;
+      item_number: number;
+      amount: number;
+      has_white_treatment: boolean;
+    }>;
+    total_price: number;
+    subtotal: number;
+  }) {
+    try {
+      logger.info("Creating drop-point order", { invoice_id: orderData.invoice_id }, "DropPointCRUDService");
+
+      // 1. Check if customer exists, if not create one
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('customer_id')
+        .eq('customer_id', orderData.customer_id)
+        .single();
+
+      if (!existingCustomer) {
+        const { error: customerError } = await supabase
+          .from('customers')
+          .insert({
+            customer_id: orderData.customer_id,
+            username: orderData.customer_name,
+            whatsapp: orderData.customer_whatsapp,
+            email: orderData.customer_email || null,
+          });
+
+        if (customerError && customerError.code !== '23505') {
+          throw customerError;
+        }
+      }
+
+      // 2. Create the order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          invoice_id: orderData.invoice_id,
+          customer_id: orderData.customer_id,
+          fulfillment_type: 'drop-point',
+          drop_point_id: orderData.drop_point_id,
+          customer_marking: orderData.customer_marking,
+          total_price: orderData.total_price,
+          subtotal: orderData.subtotal,
+          payment: 'QRIS',
+          status: 'pending',
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // 3. Create order items
+      const orderItems = orderData.items.map(item => ({
+        invoice_id: orderData.invoice_id,
+        shoe_name: item.shoe_name,
+        custom_shoe_name: item.shoe_name,
+        color: item.color,
+        size: item.size,
+        item_number: item.item_number,
+        amount: item.amount,
+        has_white_treatment: item.has_white_treatment,
+        service: 'Deep Cleaning',
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_item')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // 4. Assign shelves for each item (if shelves exist)
+      const { data: availableShelves, error: shelfQueryError } = await supabase
+        .from('drop_point_shelves')
+        .select('id, shelf_number')
+        .eq('drop_point_id', orderData.drop_point_id)
+        .eq('is_occupied', false)
+        .order('shelf_number')
+        .limit(orderData.items.length);
+
+      logger.info("Shelf assignment query result", { 
+        drop_point_id: orderData.drop_point_id,
+        items_count: orderData.items.length,
+        available_shelves: availableShelves?.length || 0,
+        shelf_numbers: availableShelves?.map(s => s.shelf_number) || [],
+        error: shelfQueryError 
+      }, "DropPointCRUDService");
+
+      if (availableShelves && availableShelves.length > 0) {
+        const assignedShelfIds: number[] = [];
+        for (let i = 0; i < orderData.items.length && i < availableShelves.length; i++) {
+          const item = orderData.items[i];
+          const shelf = availableShelves[i];
+          
+          const { error: updateError } = await supabase
+            .from('drop_point_shelves')
+            .update({
+              is_occupied: true,
+              order_invoice_id: orderData.invoice_id,
+              item_number: item.item_number,
+              customer_id: orderData.customer_id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', shelf.id);
+
+          if (updateError) {
+            logger.error("Failed to assign shelf", { shelf_id: shelf.id, shelf_number: shelf.shelf_number, error: updateError }, "DropPointCRUDService");
+          } else {
+            assignedShelfIds.push(shelf.shelf_number);
+            logger.info("Shelf assigned", { shelf_id: shelf.id, shelf_number: shelf.shelf_number, item_number: item.item_number }, "DropPointCRUDService");
+          }
+        }
+        logger.info("Shelves assigned successfully", { invoice_id: orderData.invoice_id, assigned_shelves: assignedShelfIds }, "DropPointCRUDService");
+      } else {
+        logger.warn("No shelves available for drop point - shelves may not be created in database", { 
+          drop_point_id: orderData.drop_point_id,
+          items_count: orderData.items.length 
+        }, "DropPointCRUDService");
+      }
+
+      // 5. Update drop-point capacity - get current then increment
+      const { data: currentDp } = await supabase
+        .from('drop_points')
+        .select('current_capacity')
+        .eq('id', orderData.drop_point_id)
+        .single();
+
+      if (currentDp) {
+        await supabase
+          .from('drop_points')
+          .update({
+            current_capacity: (currentDp.current_capacity || 0) + orderData.items.length,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', orderData.drop_point_id);
+      }
+
+      // 6. Create or update customer marker
+      const { data: existingMarker } = await supabase
+        .from('drop_point_customer_markers')
+        .select('id, total_orders, total_items')
+        .eq('customer_id', orderData.customer_id)
+        .eq('drop_point_id', orderData.drop_point_id)
+        .single();
+
+      if (existingMarker) {
+        await supabase
+          .from('drop_point_customer_markers')
+          .update({
+            total_orders: existingMarker.total_orders + 1,
+            total_items: existingMarker.total_items + orderData.items.length,
+            last_order_date: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingMarker.id);
+      } else {
+        await supabase
+          .from('drop_point_customer_markers')
+          .insert({
+            customer_id: orderData.customer_id,
+            drop_point_id: orderData.drop_point_id,
+            marker_id: orderData.customer_marking,
+            total_orders: 1,
+            total_items: orderData.items.length,
+            first_order_date: new Date().toISOString(),
+            last_order_date: new Date().toISOString(),
+          });
+      }
+
+      logger.info("Drop-point order created successfully", { order }, "DropPointCRUDService");
+      return { success: true, order };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to create drop-point order'
+      });
+      return { success: false, error };
+    }
+  },
+
+  // Update order payment status
+  async updatePaymentStatus(invoiceId: string, status: 'pending' | 'paid' | 'failed') {
+    try {
+      const orderStatus = status === 'paid' ? 'confirmed' : status === 'failed' ? 'cancelled' : 'pending';
+      
+      const { data, error } = await supabase
+        .from('orders')
+        .update({
+          payment: status === 'paid' ? 'QRIS - Paid' : 'QRIS',
+          status: orderStatus,
+        })
+        .eq('invoice_id', invoiceId)
+        .eq('fulfillment_type', 'drop-point')
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      logger.info("Payment status updated", { invoiceId, status }, "DropPointCRUDService");
+      return { success: true, order: data };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to update payment status'
+      });
+      return { success: false, error };
+    }
+  },
+
+  // Get order by invoice ID
+  async getOrderByInvoice(invoiceId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          customers (
+            customer_id,
+            username,
+            whatsapp,
+            email
+          ),
+          drop_points (
+            id,
+            name,
+            address
+          ),
+          order_item (
+            id,
+            shoe_name,
+            color,
+            size,
+            item_number,
+            amount,
+            has_white_treatment
+          )
+        `)
+        .eq('invoice_id', invoiceId)
+        .eq('fulfillment_type', 'drop-point')
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch order'
+      });
+      return null;
+    }
+  },
+
+  // Get assigned shelves for an order from database
+  async getAssignedShelves(invoiceId: string) {
+    try {
+      logger.info("Fetching assigned shelves", { invoiceId }, "DropPointCRUDService");
+
+      const { data, error } = await supabase
+        .from('drop_point_shelves')
+        .select('id, shelf_number, item_number, order_invoice_id')
+        .eq('order_invoice_id', invoiceId)
+        .order('item_number');
+
+      if (error) {
+        logger.error("Error fetching shelves", { invoiceId, error }, "DropPointCRUDService");
+        throw error;
+      }
+
+      logger.info("Shelves query result", { 
+        invoiceId, 
+        shelves_found: data?.length || 0,
+        raw_shelf_numbers: data?.map(s => s.shelf_number) || []
+      }, "DropPointCRUDService");
+
+      // Also get order items to match shelf with shoe name
+      const { data: orderItems } = await supabase
+        .from('order_item')
+        .select('item_number, shoe_name')
+        .eq('invoice_id', invoiceId);
+
+      // Helper function to convert shelf_number (integer) to display format
+      // Simple format: shelf 1 -> "A1", shelf 2 -> "A2", shelf 3 -> "A3", etc.
+      const formatShelfNumber = (num: number): string => {
+        // Just use "A" prefix with the actual shelf number
+        return `A${num}`;
+      };
+
+      // Map shelves with shoe names and formatted shelf numbers
+      const shelvesWithNames = (data || []).map(shelf => {
+        const item = orderItems?.find(oi => oi.item_number === shelf.item_number);
+        const formatted = formatShelfNumber(shelf.shelf_number);
+        logger.info("Formatting shelf", { raw: shelf.shelf_number, formatted }, "DropPointCRUDService");
+        return {
+          item_number: shelf.item_number,
+          shelf_number: formatted,
+          shoe_name: item?.shoe_name || 'Unknown'
+        };
+      });
+
+      logger.info("Final assigned shelves", { invoiceId, shelvesWithNames }, "DropPointCRUDService");
+      return shelvesWithNames;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch assigned shelves'
+      });
+      return [];
+    }
+  },
+};
+
+// === ADMIN DROP-POINT SERVICES ===
+
+export const AdminDropPointService = {
+  // Get all drop-point orders for admin dashboard (direct query, no views)
+  async getDropPointOrders(filters?: { 
+    drop_point_id?: number; 
+    status?: string; 
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    try {
+      const page = filters?.page || 1;
+      const limit = filters?.limit || 20;
+      const offset = (page - 1) * limit;
+
+      // First, get orders with basic info
+      let query = supabase
+        .from('orders')
+        .select('*', { count: 'exact' })
+        .eq('fulfillment_type', 'drop-point');
+
+      if (filters?.drop_point_id) {
+        query = query.eq('drop_point_id', filters.drop_point_id);
+      }
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      }
+      if (filters?.search) {
+        query = query.or(`invoice_id.ilike.%${filters.search}%,customer_marking.ilike.%${filters.search}%`);
+      }
+
+      query = query
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      const { data: orders, error: ordersError, count } = await query;
+
+      if (ordersError) throw ordersError;
+
+      // Enrich orders with related data
+      const enrichedOrders = await Promise.all((orders || []).map(async (order) => {
+        // Get customer
+        let customer = null;
+        if (order.customer_id) {
+          const { data: customerData } = await supabase
+            .from('customers')
+            .select('customer_id, username, whatsapp, email')
+            .eq('customer_id', order.customer_id)
+            .single();
+          customer = customerData;
+        }
+
+        // Get drop point
+        let dropPoint = null;
+        if (order.drop_point_id) {
+          const { data: dpData } = await supabase
+            .from('drop_points')
+            .select('id, name, address, max_capacity, current_capacity')
+            .eq('id', order.drop_point_id)
+            .single();
+          dropPoint = dpData;
+        }
+
+        // Get order items
+        const { data: items } = await supabase
+          .from('order_item')
+          .select('id, shoe_name, color, size, item_number, has_white_treatment, custom_shoe_name, service, amount')
+          .eq('invoice_id', order.invoice_id);
+
+        return {
+          ...order,
+          customers: customer,
+          drop_points: dropPoint,
+          order_item: items || []
+        };
+      }));
+
+      return {
+        orders: enrichedOrders,
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          pages: Math.ceil((count || 0) / limit)
+        }
+      };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch drop-point orders'
+      });
+      return {
+        orders: [],
+        pagination: { page: 1, limit: 20, total: 0, pages: 0 }
+      };
+    }
+  },
+
+  // Get drop-point dashboard statistics
+  async getDropPointStats() {
+    try {
+      // Get all drop-point orders
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('id, status, total_price, created_at, drop_point_id')
+        .eq('fulfillment_type', 'drop-point');
+
+      if (ordersError) throw ordersError;
+
+      // Get all drop-points with capacity info
+      const { data: dropPoints, error: dpError } = await supabase
+        .from('drop_points')
+        .select(`
+          *,
+          drop_point_shelves (
+            id,
+            is_occupied
+          )
+        `)
+        .eq('is_active', true);
+
+      if (dpError) throw dpError;
+
+      // Calculate stats
+      const totalOrders = orders?.length || 0;
+      const pendingOrders = orders?.filter(o => o.status === 'pending').length || 0;
+      const processingOrders = orders?.filter(o => o.status === 'processing' || o.status === 'in_progress').length || 0;
+      const completedOrders = orders?.filter(o => o.status === 'completed' || o.status === 'done').length || 0;
+      const totalRevenue = orders?.reduce((sum, o) => sum + (o.total_price || 0), 0) || 0;
+
+      // Calculate capacity stats per drop-point
+      const dropPointStats = dropPoints?.map(dp => ({
+        id: dp.id,
+        name: dp.name,
+        address: dp.address,
+        maxCapacity: dp.max_capacity,
+        currentCapacity: dp.drop_point_shelves?.filter((s: { is_occupied: boolean }) => s.is_occupied).length || 0,
+        availableCapacity: dp.max_capacity - (dp.drop_point_shelves?.filter((s: { is_occupied: boolean }) => s.is_occupied).length || 0),
+        occupancyPercentage: Math.round(((dp.drop_point_shelves?.filter((s: { is_occupied: boolean }) => s.is_occupied).length || 0) / dp.max_capacity) * 100)
+      })) || [];
+
+      const totalCapacity = dropPointStats.reduce((sum, dp) => sum + dp.maxCapacity, 0);
+      const usedCapacity = dropPointStats.reduce((sum, dp) => sum + dp.currentCapacity, 0);
+
+      return {
+        totalOrders,
+        pendingOrders,
+        processingOrders,
+        completedOrders,
+        totalRevenue,
+        dropPoints: dropPointStats,
+        capacitySummary: {
+          total: totalCapacity,
+          used: usedCapacity,
+          available: totalCapacity - usedCapacity,
+          percentage: totalCapacity > 0 ? Math.round((usedCapacity / totalCapacity) * 100) : 0
+        }
+      };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch drop-point statistics'
+      });
+      return {
+        totalOrders: 0,
+        pendingOrders: 0,
+        processingOrders: 0,
+        completedOrders: 0,
+        totalRevenue: 0,
+        dropPoints: [],
+        capacitySummary: { total: 0, used: 0, available: 0, percentage: 0 }
+      };
+    }
+  },
+
+  // Update drop-point order status
+  async updateOrderStatus(invoiceId: string, status: string) {
+    try {
+      logger.info("Updating order status", { invoiceId, status }, "AdminDropPointService");
+
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('invoice_id', invoiceId)
+        .select()
+        .single();
+
+      if (error) {
+        logger.error("Failed to update order status", { invoiceId, error }, "AdminDropPointService");
+        throw error;
+      }
+
+      // If order is finished/completed, release shelves
+      if (status === 'finish' || status === 'completed' || status === 'done') {
+        await this.releaseOrderShelves(invoiceId);
+      }
+
+      logger.info("Order status updated successfully", { invoiceId, status }, "AdminDropPointService");
+      return { success: true, data };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to update order status'
+      });
+      return { success: false, data: null };
+    }
+  },
+
+  // Release shelves for completed orders
+  async releaseOrderShelves(invoiceId: string) {
+    try {
+      // Get shelves for this order
+      const { data: shelves, error: fetchError } = await supabase
+        .from('drop_point_shelves')
+        .select('id, drop_point_id')
+        .eq('order_invoice_id', invoiceId);
+
+      if (fetchError) throw fetchError;
+
+      if (!shelves || shelves.length === 0) return true;
+
+      // Release shelves
+      const { error: updateError } = await supabase
+        .from('drop_point_shelves')
+        .update({
+          is_occupied: false,
+          order_invoice_id: null,
+          item_number: null,
+          customer_id: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('order_invoice_id', invoiceId);
+
+      if (updateError) throw updateError;
+
+      // Update drop-point capacity
+      const dropPointIds = [...new Set(shelves.map(s => s.drop_point_id))];
+      for (const dpId of dropPointIds) {
+        const shelvesReleased = shelves.filter(s => s.drop_point_id === dpId).length;
+        
+        const { data: dp } = await supabase
+          .from('drop_points')
+          .select('current_capacity')
+          .eq('id', dpId)
+          .single();
+
+        if (dp) {
+          await supabase
+            .from('drop_points')
+            .update({
+              current_capacity: Math.max(0, (dp.current_capacity || 0) - shelvesReleased),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', dpId);
+        }
+      }
+
+      return true;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to release order shelves'
+      });
+      return false;
+    }
+  },
+
+  // Delete drop-point order (releases shelves first)
+  async deleteOrder(invoiceId: string) {
+    try {
+      logger.info("Deleting drop-point order", { invoiceId }, "AdminDropPointService");
+
+      // 1. Release shelves first (this also updates capacity)
+      await this.releaseOrderShelves(invoiceId);
+
+      // 2. Delete order items
+      const { error: itemsError } = await supabase
+        .from('order_item')
+        .delete()
+        .eq('invoice_id', invoiceId);
+
+      if (itemsError) {
+        logger.error("Failed to delete order items", { invoiceId, error: itemsError }, "AdminDropPointService");
+        throw itemsError;
+      }
+
+      // 3. Delete the order
+      const { error: orderError } = await supabase
+        .from('orders')
+        .delete()
+        .eq('invoice_id', invoiceId);
+
+      if (orderError) {
+        logger.error("Failed to delete order", { invoiceId, error: orderError }, "AdminDropPointService");
+        throw orderError;
+      }
+
+      logger.info("Order deleted successfully", { invoiceId }, "AdminDropPointService");
+      return { success: true };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to delete order'
+      });
+      return { success: false };
+    }
+  },
+
+  // Get order details with all related data
+  async getOrderDetails(invoiceId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          customers (
+            customer_id,
+            username,
+            whatsapp,
+            email,
+            alamat
+          ),
+          drop_points (
+            id,
+            name,
+            address
+          ),
+          order_item (
+            id,
+            shoe_name,
+            color,
+            size,
+            item_number,
+            has_white_treatment,
+            custom_shoe_name,
+            service,
+            amount
+          )
+        `)
+        .eq('invoice_id', invoiceId)
+        .eq('fulfillment_type', 'drop-point')
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch order details'
+      });
+      return null;
+    }
+  },
+
+  // Get all drop-point locations for admin
+  async getAllDropPoints() {
+    try {
+      const { data, error } = await supabase
+        .from('drop_points')
+        .select(`
+          *,
+          drop_point_shelves (
+            id,
+            shelf_number,
+            is_occupied,
+            order_invoice_id,
+            customer_id
+          )
+        `)
+        .order('name');
+
+      if (error) throw error;
+
+      return data?.map(dp => ({
+        ...dp,
+        currentCapacity: dp.drop_point_shelves?.filter((s: { is_occupied: boolean }) => s.is_occupied).length || 0,
+        availableCapacity: dp.max_capacity - (dp.drop_point_shelves?.filter((s: { is_occupied: boolean }) => s.is_occupied).length || 0)
+      })) || [];
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch drop-points'
+      });
+      return [];
+    }
+  },
+
+  // Create new drop-point location
+  async createDropPoint(data: { name: string; address: string; max_capacity: number }) {
+    try {
+      // Create drop-point
+      const { data: dropPoint, error: dpError } = await supabase
+        .from('drop_points')
+        .insert({
+          name: data.name,
+          address: data.address,
+          max_capacity: data.max_capacity,
+          current_capacity: 0,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (dpError) throw dpError;
+
+      // Create shelves for the drop-point
+      const shelves = Array.from({ length: data.max_capacity }, (_, i) => ({
+        drop_point_id: dropPoint.id,
+        shelf_number: i + 1,
+        is_occupied: false
+      }));
+
+      const { error: shelvesError } = await supabase
+        .from('drop_point_shelves')
+        .insert(shelves);
+
+      if (shelvesError) throw shelvesError;
+
+      return dropPoint;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to create drop-point'
+      });
+      return null;
+    }
+  },
+
+  // Update drop-point location
+  async updateDropPoint(id: number, data: { name?: string; address?: string; is_active?: boolean }) {
+    try {
+      const { data: dropPoint, error } = await supabase
+        .from('drop_points')
+        .update({
+          ...data,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return dropPoint;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to update drop-point'
       });
       return null;
     }
