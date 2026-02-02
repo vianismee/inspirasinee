@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 import { supabase } from "@/utils/supabase/client";
 import type { User, AuthError } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
@@ -10,11 +16,19 @@ import { logger } from "@/utils/client/logger";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signIn: (
+    email: string,
+    password: string
+  ) => Promise<{ error: AuthError | null }>;
+  signUp: (
+    email: string,
+    password: string
+  ) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
+  redirectAfterLogin: boolean;
+  setRedirectAfterLogin: (value: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,13 +36,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [redirectAfterLogin, setRedirectAfterLogin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
         if (error) {
           logger.error("Error getting initial session", { error }, "Auth");
@@ -45,29 +63,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getInitialSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        logger.debug("Auth state changed", { event, email: session?.user?.email }, "Auth");
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      logger.debug(
+        "Auth state changed",
+        { event, email: session?.user?.email },
+        "Auth"
+      );
 
-        setUser(session?.user ?? null);
-        setLoading(false);
+      setUser(session?.user ?? null);
+      setLoading(false);
 
-        if (event === 'SIGNED_IN') {
-          // Toast handled by login form to avoid duplicate notifications
+      if (event === "SIGNED_IN") {
+        // Handle redirect after successful login
+        if (redirectAfterLogin) {
+          setRedirectAfterLogin(false);
+          // Use window.location for full page reload to ensure cookies are sent to server
+          window.location.href = "/admin";
+        } else {
           router.refresh();
-        } else if (event === 'SIGNED_OUT') {
-          toast.success("Successfully signed out!");
-          router.refresh();
-        } else if (event === 'TOKEN_REFRESHED') {
-          logger.debug("Token refreshed successfully", {}, "Auth");
-        } else if (event === 'USER_UPDATED') {
-          logger.debug("User updated", { userId: session?.user?.id }, "Auth");
         }
+      } else if (event === "SIGNED_OUT") {
+        toast.success("Successfully signed out!");
+        router.refresh();
+      } else if (event === "TOKEN_REFRESHED") {
+        logger.debug("Token refreshed successfully", {}, "Auth");
+      } else if (event === "USER_UPDATED") {
+        logger.debug("User updated", { userId: session?.user?.id }, "Auth");
       }
-    );
+    });
 
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, [router, redirectAfterLogin]);
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -79,10 +107,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error("Sign in error:", error);
         toast.error(error.message);
+        return { error };
       }
-      // Success toast handled by useAuthOperation to avoid duplicate notifications
 
-      return { error };
+      // Wait for session to be properly established before returning
+      // This prevents race condition with server-side middleware checks
+      await supabase.auth.getSession();
+
+      // Success toast handled by useAuthOperation to avoid duplicate notifications
+      return { error: null };
     } catch (error) {
       const authError = error as AuthError;
       console.error("Unexpected sign in error:", authError);
@@ -186,6 +219,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut,
     resetPassword,
     updatePassword,
+    redirectAfterLogin,
+    setRedirectAfterLogin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

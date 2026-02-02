@@ -18,12 +18,7 @@ import {
   QrCode,
 } from "lucide-react";
 // Impor dari nuqs untuk state di URL
-import {
-  parseAsArrayOf,
-  parseAsString,
-  useQueryState,
-  parseAsInteger,
-} from "nuqs";
+import { useQueryState, parseAsInteger } from "nuqs";
 import * as React from "react";
 
 // Impor komponen UI
@@ -72,14 +67,6 @@ interface OrderWithReferral extends Orders {
 import { useRouter } from "next/navigation";
 
 export default function TableJob() {
-  const [invoice_id] = useQueryState(
-    "invoice_id",
-    parseAsString.withDefault("")
-  );
-  const [status] = useQueryState(
-    "status",
-    parseAsArrayOf(parseAsString).withDefault([])
-  );
   const [page] = useQueryState("page", parseAsInteger.withDefault(1));
   const [perPage] = useQueryState("perPage", parseAsInteger.withDefault(10));
   const {
@@ -97,17 +84,6 @@ export default function TableJob() {
     const unsubscribe = subscribeToOrders();
     return () => unsubscribe();
   }, [fetchOrder, subscribeToOrders, page, perPage]);
-
-  const filteredData = React.useMemo(() => {
-    return orders.filter((project) => {
-      const matchesTitle =
-        invoice_id === "" ||
-        project.invoice_id.toLowerCase().includes(invoice_id.toLowerCase());
-      const matchesStatus =
-        status.length === 0 || status.includes(project.status);
-      return matchesTitle && matchesStatus;
-    });
-  }, [invoice_id, orders, status]);
 
   const columns = React.useMemo<ColumnDef<Orders>[]>(
     () => [
@@ -244,45 +220,58 @@ export default function TableJob() {
                       {formatedCurrency(order.subtotal)}
                     </span>
                   </div>
-                  {order.order_discounts && order.order_discounts.length > 0 &&
+                  {order.order_discounts &&
+                    order.order_discounts.length > 0 &&
                     order.order_discounts.map((discount, index) => (
                       <div
-                        key={(discount.discount_code || 'discount') + index}
+                        key={(discount.discount_code || "discount") + index}
                         className="flex justify-between items-center text-sm"
                       >
                         <span className="text-muted-foreground">
-                          Diskon ({discount.discount_code || 'Unknown'})
+                          Diskon ({discount.discount_code || "Unknown"})
                         </span>
                         <span className="font-mono text-green-600">
                           -{formatedCurrency(discount.discounted_amount || 0)}
                         </span>
                       </div>
-                    ))
-                  }
+                    ))}
 
                   {/* Referral Discount Display */}
-                  {(order as OrderWithReferral).referral_code && (order as OrderWithReferral).referral_discount_amount! > 0 && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">
-                        💰 Referral - {(order as OrderWithReferral).referral_code}
-                      </span>
-                      <span className="font-mono text-green-600">
-                        -{formatedCurrency((order as OrderWithReferral).referral_discount_amount!)}
-                      </span>
-                    </div>
-                  )}
+                  {(order as OrderWithReferral).referral_code &&
+                    (order as OrderWithReferral).referral_discount_amount! >
+                      0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">
+                          💰 Referral -{" "}
+                          {(order as OrderWithReferral).referral_code}
+                        </span>
+                        <span className="font-mono text-green-600">
+                          -
+                          {formatedCurrency(
+                            (order as OrderWithReferral)
+                              .referral_discount_amount!
+                          )}
+                        </span>
+                      </div>
+                    )}
 
                   {/* Points Redemption Display */}
-                  {(order as OrderWithReferral).points_used! > 0 && (order as OrderWithReferral).points_discount_amount! > 0 && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">
-                        🎯 Poin ({(order as OrderWithReferral).points_used} poin)
-                      </span>
-                      <span className="font-mono text-green-600">
-                        -{formatedCurrency((order as OrderWithReferral).points_discount_amount!)}
-                      </span>
-                    </div>
-                  )}
+                  {(order as OrderWithReferral).points_used! > 0 &&
+                    (order as OrderWithReferral).points_discount_amount! >
+                      0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">
+                          🎯 Poin ({(order as OrderWithReferral).points_used}{" "}
+                          poin)
+                        </span>
+                        <span className="font-mono text-green-600">
+                          -
+                          {formatedCurrency(
+                            (order as OrderWithReferral).points_discount_amount!
+                          )}
+                        </span>
+                      </div>
+                    )}
 
                   <div className="flex justify-between items-center text-md font-bold mt-2 pt-2 border-t">
                     <span>Total Pembayaran</span>
@@ -491,10 +480,15 @@ export default function TableJob() {
               totalPrice: order.total_price,
               payment: order.payment,
               discounts: formattedDiscounts,
-              referralCode: (order as OrderWithReferral).referral_code || undefined,
-              referralDiscount: (order as OrderWithReferral).referral_discount_amount || undefined,
+              referralCode:
+                (order as OrderWithReferral).referral_code || undefined,
+              referralDiscount:
+                (order as OrderWithReferral).referral_discount_amount ||
+                undefined,
               pointsUsed: (order as OrderWithReferral).points_used || undefined,
-              pointsDiscount: (order as OrderWithReferral).points_discount_amount || undefined,
+              pointsDiscount:
+                (order as OrderWithReferral).points_discount_amount ||
+                undefined,
             });
             const encodedText = encodeURIComponent(receiptText);
             const whatsappURL = `https://wa.me/${order.customers.whatsapp}?text=${encodedText}`;
@@ -557,7 +551,11 @@ export default function TableJob() {
                   <DropdownMenuItem
                     className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
                     onSelect={() => {
-                      if (window.confirm(`Apakah Anda yakin ingin menghapus invoice ${order.invoice_id}? Tindakan ini tidak dapat dibatalkan.`)) {
+                      if (
+                        window.confirm(
+                          `Apakah Anda yakin ingin menghapus invoice ${order.invoice_id}? Tindakan ini tidak dapat dibatalkan.`
+                        )
+                      ) {
                         deleteInvoice(order.invoice_id);
                       }
                     }}
@@ -583,7 +581,7 @@ export default function TableJob() {
   }, [count, perPage]);
 
   const { table } = useDataTable({
-    data: filteredData,
+    data: orders,
     columns,
     pageCount: pageCount,
     initialState: {

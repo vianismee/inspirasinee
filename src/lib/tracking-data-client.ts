@@ -59,21 +59,14 @@ export async function fetchCustomerPointsDataClient(customerId: string): Promise
 
 /**
  * Fetch customer referral data (client-side)
+ * Referral code is based on the customer's ID (User ID)
  */
 export async function fetchCustomerReferralDataClient(customerId: string): Promise<ReferralData | null> {
   try {
     const supabase = createClient();
 
-    // Fetch referral code
-    const { data: referralData, error: referralError } = await supabase
-      .from("referral_codes")
-      .select("code")
-      .eq("customer_id", customerId)
-      .maybeSingle();
-
-    if (referralError || !referralData) {
-      return null;
-    }
+    // Use customer_id directly as the referral code
+    const referralCode = customerId;
 
     // Fetch referral statistics
     const { data: referralsData } = await supabase
@@ -98,7 +91,7 @@ export async function fetchCustomerReferralDataClient(customerId: string): Promi
     }
 
     return {
-      code: referralData.code,
+      code: referralCode,
       totalReferrals,
       totalPointsEarned,
     };

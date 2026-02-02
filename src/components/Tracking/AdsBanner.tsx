@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { Button } from "../ui/button";
 import { AdConfig } from "@/types/tracking";
@@ -10,12 +10,19 @@ interface AdsBannerProps {
   ads: AdConfig[];
 }
 
-const AUTO_SLIDE_INTERVAL = 2000; // 2 seconds
+const AUTO_SLIDE_INTERVAL = 6000; // 6 seconds
+const SWIPE_THRESHOLD = 50; // Minimum distance to trigger swipe
 
 export function AdsBanner({ ads }: AdsBannerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartRef = useRef<number | null>(null);
+  const touchEndRef = useRef<number | null>(null);
+  const dragStartRef = useRef<number | null>(null);
+  const dragOffsetRef = useRef(0);
+  const bannerRef = useRef<HTMLDivElement>(null);
 
   // Filter active ads
   const activeAds = ads.filter((ad) => ad.isActive);
@@ -37,6 +44,18 @@ export function AdsBanner({ ads }: AdsBannerProps) {
     };
   }, [activeAds.length, isPaused]);
 
+  // Reset auto-slide timer when user manually navigates
+  const resetAutoSlide = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    if (activeAds.length > 1 && !isPaused) {
+      intervalRef.current = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % activeAds.length);
+      }, AUTO_SLIDE_INTERVAL);
+    }
+  }, [activeAds.length, isPaused]);
+
   if (activeAds.length === 0) {
     return null;
   }
@@ -44,6 +63,9 @@ export function AdsBanner({ ads }: AdsBannerProps) {
   const currentAd = activeAds[currentIndex];
 
   const handleAdClick = () => {
+    // Don't trigger click if user was dragging/swiping
+    if (isDragging || Math.abs(dragOffsetRef.current) > 10) return;
+
     if (currentAd?.linkUrl) {
       window.open(currentAd.linkUrl, "_blank", "noopener,noreferrer");
     }
@@ -51,24 +73,144 @@ export function AdsBanner({ ads }: AdsBannerProps) {
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % activeAds.length);
+    resetAutoSlide();
   };
 
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev - 1 + activeAds.length) % activeAds.length);
+    resetAutoSlide();
   };
 
   const goToSlide = (index: number) => {
     setCurrentIndex(index);
+    resetAutoSlide();
+  };
+
+  // Touch handlers for mobile swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setIsPaused(true);
+    touchStartRef.current = e.touches[0].clientX;
+    setIsDragging(false);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartRef.current === null) return;
+
+    const currentTouch = e.touches[0].clientX;
+    const diff = touchStartRef.current - currentTouch;
+
+    if (Math.abs(diff) > 10) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartRef.current === null || touchEndRef.current === null) return;
+
+    const touchEnd = e.changedTouches[0].clientX;
+    const diff = touchStartRef.current - touchEnd;
+
+    // Reset after delay
+    setTimeout(() => {
+      setIsPaused(false);
+      setIsDragging(false);
+    }, 100);
+
+    if (Math.abs(diff) > SWIPE_THRESHOLD) {
+      if (diff > 0) {
+        handleNext(); // Swipe left -> next
+      } else {
+        handlePrev(); // Swipe right -> prev
+      }
+    }
+
+    touchStartRef.current = null;
+    touchEndRef.current = null;
+  };
+
+  // Mouse handlers for desktop drag
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsPaused(true);
+    setIsDragging(false);
+    dragStartRef.current = e.clientX;
+    dragOffsetRef.current = 0;
+
+    if (bannerRef.current) {
+      bannerRef.current.style.cursor = "grabbing";
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (dragStartRef.current === null) return;
+
+    const currentX = e.clientX;
+    const diff = dragStartRef.current - currentX;
+    dragOffsetRef.current = diff;
+
+    if (Math.abs(diff) > 10) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (dragStartRef.current === null) return;
+
+    const diff = dragOffsetRef.current;
+
+    // Reset after delay
+    setTimeout(() => {
+      setIsPaused(false);
+      setIsDragging(false);
+      dragOffsetRef.current = 0;
+    }, 100);
+
+    if (bannerRef.current) {
+      bannerRef.current.style.cursor = "pointer";
+    }
+
+    if (Math.abs(diff) > SWIPE_THRESHOLD) {
+      if (diff > 0) {
+        handleNext(); // Drag left -> next
+      } else {
+        handlePrev(); // Drag right -> prev
+      }
+    }
+
+    dragStartRef.current = null;
+  };
+
+  const handleMouseLeave = () => {
+    if (dragStartRef.current !== null) {
+      dragStartRef.current = null;
+      setIsDragging(false);
+      dragOffsetRef.current = 0;
+      setIsPaused(false);
+
+      if (bannerRef.current) {
+        bannerRef.current.style.cursor = "pointer";
+      }
+    }
   };
 
   return (
     <div className="relative w-full mb-6 group md:max-w-4xl md:mx-auto">
       <div
+        ref={bannerRef}
         onClick={handleAdClick}
         onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-        className="relative w-full aspect-[2/1] rounded-xl overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+        onMouseLeave={() => {
+          setIsPaused(false);
+          handleMouseLeave();
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        className="relative w-full aspect-[2/1] rounded-xl overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300 select-none"
         role="banner"
+        style={{ userSelect: 'none' }}
       >
         {/* Banner Image using Next/Image for HD display */}
         <Image
@@ -78,6 +220,7 @@ export function AdsBanner({ ads }: AdsBannerProps) {
           className="object-contain"
           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
           priority={currentIndex === 0}
+          draggable={false}
         />
 
         {/* Navigation arrows (always visible if multiple ads) */}

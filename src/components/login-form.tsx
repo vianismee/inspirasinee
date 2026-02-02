@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,17 +22,11 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter();
-  const { signIn } = useAuth();
+  const { signIn, setRedirectAfterLogin } = useAuth();
 
   const { execute: handleLogin, loading } = useAuthOperation({
     successMessage: "Login successful! Redirecting to admin dashboard...",
     errorMessage: "Login failed. Please check your credentials.",
-    onSuccess: () => {
-      // Immediate redirect to admin dashboard
-      router.push("/admin");
-      router.refresh();
-    },
   });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -43,6 +36,10 @@ export function LoginForm({
       toast.error("Please fill in all fields");
       return;
     }
+
+    // Set the redirect flag before signing in
+    // The redirect will be handled by the auth state change listener
+    setRedirectAfterLogin(true);
 
     await handleLogin(() => signIn(email, password));
   };
