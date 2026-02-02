@@ -7,6 +7,8 @@ import {
   IconTicket,
   IconUsers,
   IconShare,
+  IconChartBar,
+  IconPhoto,
 } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -48,6 +50,16 @@ const data = {
       title: "Referral",
       url: "/admin/referral",
       icon: IconShare,
+    },
+    {
+      title: "Banner",
+      url: "/admin/banner",
+      icon: IconPhoto,
+    },
+    {
+      title: "Report",
+      url: "/admin/report",
+      icon: IconChartBar,
     },
   ],
   navSecondary: [],

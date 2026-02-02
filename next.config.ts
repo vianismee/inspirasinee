@@ -9,7 +9,16 @@ const withPWA = require("next-pwa")({
 
 // 2. Bungkus `nextConfig` Anda dengan `withPWA`
 const nextConfig: NextConfig = {
-  // Konfigurasi Next.js Anda yang lain bisa ditambahkan di sini jika ada
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: process.env.NEXT_PUBLIC_SUPABASE_URL?.replace("https://", "") || "yrknpwyindvfevhkionn.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
+  },
 };
 
 export default withPWA(nextConfig);
