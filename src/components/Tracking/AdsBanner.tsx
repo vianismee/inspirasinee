@@ -90,7 +90,7 @@ export function AdsBanner({ ads }: AdsBannerProps) {
                 e.stopPropagation();
                 handlePrev();
               }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 h-8 w-8 md:h-10 md:w-10"
+              className="absolute left-2 top-1/2 -translate-y-1/2  text-gray-800 h-8 w-8 md:h-10 md:w-10"
               aria-label="Previous ad"
             >
               <ChevronLeft className="h-4 w-4 md:h-5 md:w-5" />
@@ -102,7 +102,7 @@ export function AdsBanner({ ads }: AdsBannerProps) {
                 e.stopPropagation();
                 handleNext();
               }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-800 h-8 w-8 md:h-10 md:w-10"
+              className="absolute right-2 top-1/2 -translate-y-1/2  text-gray-800 h-8 w-8 md:h-10 md:w-10"
               aria-label="Next ad"
             >
               <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
