@@ -109,16 +109,35 @@ export async function fetchCustomerReferralDataClient(customerId: string): Promi
 }
 
 /**
- * Fetch active ads (using dummy data for now)
+ * Fetch active banners from database
  */
 export async function fetchActiveAds(): Promise<AdConfig[]> {
-  // In production, this would fetch from a database
-  // For now, return dummy ads
-  const now = new Date();
-  return DUMMY_ADS.filter((ad) => {
-    if (!ad.isActive) return false;
-    if (ad.startDate && now < ad.startDate) return false;
-    if (ad.endDate && now > ad.endDate) return false;
-    return true;
-  });
+  try {
+    const supabase = createClient();
+    const schema = process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
+
+    const { data: banners, error } = await supabase
+      .from("banners")
+      .select("*")
+      .eq("is_active", true)
+      .order("display_order", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching banners:", error);
+      return DUMMY_ADS;
+    }
+
+    // Convert Banner to AdConfig format
+    return (banners || []).map((banner) => ({
+      id: banner.id.toString(),
+      imageUrl: banner.image_url,
+      linkUrl: banner.link_url || "",
+      altText: "", // Empty alt text as requested
+      isActive: banner.is_active,
+    }));
+  } catch (error) {
+    console.error("Error fetching banners:", error);
+    // Return dummy ads as fallback
+    return DUMMY_ADS;
+  }
 }

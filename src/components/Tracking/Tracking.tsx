@@ -6,8 +6,8 @@ import { TrackingError } from "./TrackingError";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TrackingDesktop } from "./TrackingDesktop";
 import { TrackingMobile } from "./TrackingMobile";
-import { PointsData, ReferralData, AdConfig, DUMMY_ADS } from "@/types/tracking";
-import { fetchCustomerPointsDataClient, fetchCustomerReferralDataClient } from "@/lib/tracking-data-client";
+import { PointsData, ReferralData, AdConfig } from "@/types/tracking";
+import { fetchCustomerPointsDataClient, fetchCustomerReferralDataClient, fetchActiveAds } from "@/lib/tracking-data-client";
 import { Loader2 } from "lucide-react";
 
 interface TrackingPageProps {
@@ -23,6 +23,7 @@ export function TrackingApp({ params }: TrackingPageProps) {
   // Enrichment data states
   const [pointsData, setPointsData] = useState<PointsData | null>(null);
   const [referralData, setReferralData] = useState<ReferralData | null>(null);
+  const [ads, setAds] = useState<AdConfig[]>([]);
   const [enrichmentLoading, setEnrichmentLoading] = useState(true);
 
   // Fetch order data
@@ -42,14 +43,16 @@ export function TrackingApp({ params }: TrackingPageProps) {
       try {
         const customerId = singleOrders.customer_id;
 
-        // Fetch points and referral data in parallel
-        const [points, referral] = await Promise.all([
+        // Fetch points, referral data, and ads in parallel
+        const [points, referral, banners] = await Promise.all([
           fetchCustomerPointsDataClient(customerId),
           fetchCustomerReferralDataClient(customerId),
+          fetchActiveAds(),
         ]);
 
         setPointsData(points);
         setReferralData(referral);
+        setAds(banners);
       } catch (error) {
         console.error("Error fetching enrichment data:", error);
       } finally {
@@ -71,9 +74,6 @@ export function TrackingApp({ params }: TrackingPageProps) {
   if (!singleOrders) {
     return <TrackingError params={params} />;
   }
-
-  // Use dummy ads
-  const ads: AdConfig[] = DUMMY_ADS;
 
   // Pass enrichment data to components
   const commonProps = {
