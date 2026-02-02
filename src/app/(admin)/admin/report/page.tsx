@@ -43,7 +43,7 @@ export default function ReportPage() {
   // Apply preset date ranges
   const applyPreset = useCallback((presetValue: DateRangePreset) => {
     const now = new Date();
-    let startDate = new Date();
+    const startDate = new Date();
 
     switch (presetValue) {
       case "7days":

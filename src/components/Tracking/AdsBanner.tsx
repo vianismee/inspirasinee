@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { Button } from "../ui/button";
 import { AdConfig } from "@/types/tracking";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -9,11 +10,32 @@ interface AdsBannerProps {
   ads: AdConfig[];
 }
 
+const AUTO_SLIDE_INTERVAL = 2000; // 2 seconds
+
 export function AdsBanner({ ads }: AdsBannerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Filter active ads
   const activeAds = ads.filter((ad) => ad.isActive);
+
+  // Auto-slide effect
+  useEffect(() => {
+    if (activeAds.length <= 1 || isPaused) {
+      return;
+    }
+
+    intervalRef.current = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % activeAds.length);
+    }, AUTO_SLIDE_INTERVAL);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [activeAds.length, isPaused]);
 
   if (activeAds.length === 0) {
     return null;
@@ -23,7 +45,7 @@ export function AdsBanner({ ads }: AdsBannerProps) {
 
   const handleAdClick = () => {
     if (currentAd?.linkUrl) {
-      window.open(currentAd.linkUrl, '_blank', 'noopener,noreferrer');
+      window.open(currentAd.linkUrl, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -40,32 +62,23 @@ export function AdsBanner({ ads }: AdsBannerProps) {
   };
 
   return (
-    <div className="relative w-full mb-6 group">
+    <div className="relative w-full mb-6 group md:max-w-4xl md:mx-auto">
       <div
         onClick={handleAdClick}
-        className="relative w-full h-48 md:h-56 rounded-lg overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        className="relative w-full aspect-[2/1] rounded-xl overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-all duration-300"
         role="banner"
-        aria-label={currentAd.altText}
       >
-        {/* Ad Image */}
-        <img
+        {/* Banner Image using Next/Image for HD display */}
+        <Image
           src={currentAd.imageUrl}
-          alt={currentAd.altText}
-          className="w-full h-full object-cover"
+          alt=""
+          fill
+          className="object-contain"
+          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          priority={currentIndex === 0}
         />
-
-        {/* Overlay gradient for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-
-        {/* Ad content */}
-        <div className="absolute bottom-0 left-0 right-0 p-6">
-          <p className="text-white text-sm md:text-base font-medium drop-shadow-lg">
-            {currentAd.altText}
-          </p>
-          <p className="text-white/80 text-xs mt-1 drop-shadow-md">
-            Click to visit
-          </p>
-        </div>
 
         {/* Navigation arrows (always visible if multiple ads) */}
         {activeAds.length > 1 && (
