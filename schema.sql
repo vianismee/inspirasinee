@@ -19,6 +19,44 @@ CREATE TABLE public.admin_users (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT admin_users_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.banners (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  image_url text NOT NULL,
+  image_ratio text NOT NULL,
+  link_url text,
+  is_active boolean NOT NULL DEFAULT true,
+  display_order integer NOT NULL DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  name text,
+  CONSTRAINT banners_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.customer_membership_levels (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name text NOT NULL UNIQUE,
+  level_index integer NOT NULL UNIQUE CHECK (level_index > 0),
+  points_multiplier numeric NOT NULL DEFAULT 1.0 CHECK (points_multiplier > 0::numeric),
+  discount_percent integer NOT NULL DEFAULT 0 CHECK (discount_percent >= 0 AND discount_percent <= 100),
+  discount_max_amount integer NOT NULL DEFAULT 0 CHECK (discount_max_amount >= 0),
+  transaction_threshold integer NOT NULL DEFAULT 0,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT customer_membership_levels_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.customer_memberships (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  customer_id text NOT NULL UNIQUE,
+  membership_level_id bigint NOT NULL,
+  progress_percent integer NOT NULL DEFAULT 0 CHECK (progress_percent >= 0 AND progress_percent <= 100),
+  total_transactions integer NOT NULL DEFAULT 0 CHECK (total_transactions >= 0),
+  shine_points integer NOT NULL DEFAULT 0 CHECK (shine_points >= 0),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT customer_memberships_pkey PRIMARY KEY (id),
+  CONSTRAINT customer_memberships_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(customer_id),
+  CONSTRAINT customer_memberships_membership_level_id_fkey FOREIGN KEY (membership_level_id) REFERENCES public.customer_membership_levels(id)
+);
 CREATE TABLE public.customer_points (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   customer_id text NOT NULL UNIQUE,
@@ -113,6 +151,30 @@ CREATE TABLE public.drop_points (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT drop_points_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.membership_benefits (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  membership_level_id bigint NOT NULL,
+  icon_name text NOT NULL,
+  title text NOT NULL,
+  description text,
+  display_order integer NOT NULL DEFAULT 0 CHECK (display_order >= 0),
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT membership_benefits_pkey PRIMARY KEY (id),
+  CONSTRAINT membership_benefits_membership_level_id_fkey FOREIGN KEY (membership_level_id) REFERENCES public.customer_membership_levels(id)
+);
+CREATE TABLE public.membership_level_history (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  customer_id text NOT NULL,
+  from_level_id bigint,
+  to_level_id bigint NOT NULL,
+  changed_at timestamp with time zone DEFAULT now(),
+  trigger_reason text,
+  CONSTRAINT membership_level_history_pkey PRIMARY KEY (id),
+  CONSTRAINT membership_level_history_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(customer_id),
+  CONSTRAINT membership_level_history_from_level_id_fkey FOREIGN KEY (from_level_id) REFERENCES public.customer_membership_levels(id),
+  CONSTRAINT membership_level_history_to_level_id_fkey FOREIGN KEY (to_level_id) REFERENCES public.customer_membership_levels(id)
 );
 CREATE TABLE public.order_discounts (
   order_invoice_id text NOT NULL,

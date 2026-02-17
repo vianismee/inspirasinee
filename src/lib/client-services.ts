@@ -1564,6 +1564,410 @@ export const AdminReferralService = {
   }
 };
 
+// === MEMBERSHIP SERVICES ===
+
+export const MembershipService = {
+  // Get all membership levels
+  async getMembershipLevels() {
+    try {
+      const { data, error } = await supabase
+        .from('customer_membership_levels')
+        .select('*')
+        .order('level_index', { ascending: true });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch membership levels'
+      });
+      return [];
+    }
+  },
+
+  // Get membership levels with benefits
+  async getMembershipLevelsWithBenefits() {
+    try {
+      const { data, error } = await supabase
+        .from('customer_membership_levels')
+        .select(`
+          *,
+          benefits:membership_benefits(*)
+        `)
+        .order('level_index', { ascending: true });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch membership levels with benefits'
+      });
+      return [];
+    }
+  },
+
+  // Get a single membership level
+  async getMembershipLevel(id: number) {
+    try {
+      const { data, error } = await supabase
+        .from('customer_membership_levels')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch membership level'
+      });
+      return null;
+    }
+  },
+
+  // Update membership level
+  async updateMembershipLevel(id: number, updateData: {
+    points_multiplier?: number;
+    discount_percent?: number;
+    discount_max_amount?: number;
+    transaction_threshold?: number;
+    is_active?: boolean;
+  }) {
+    try {
+      const { data, error } = await supabase
+        .from('customer_membership_levels')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to update membership level'
+      });
+      return null;
+    }
+  },
+
+  // Get benefits for a specific level or all benefits
+  async getMembershipBenefits(levelId?: number) {
+    try {
+      let query = supabase
+        .from('membership_benefits')
+        .select('*')
+        .order('display_order', { ascending: true });
+
+      if (levelId !== undefined) {
+        query = query.eq('membership_level_id', levelId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch membership benefits'
+      });
+      return [];
+    }
+  },
+
+  // Create a new benefit
+  async createBenefit(benefitData: {
+    membership_level_id: number;
+    icon_name: string;
+    title: string;
+    description?: string;
+    display_order?: number;
+  }) {
+    try {
+      const { data, error } = await supabase
+        .from('membership_benefits')
+        .insert(benefitData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to create benefit'
+      });
+      return null;
+    }
+  },
+
+  // Update a benefit
+  async updateBenefit(id: number, updateData: {
+    icon_name?: string;
+    title?: string;
+    description?: string;
+    display_order?: number;
+  }) {
+    try {
+      const { data, error } = await supabase
+        .from('membership_benefits')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to update benefit'
+      });
+      return null;
+    }
+  },
+
+  // Delete a benefit
+  async deleteBenefit(id: number) {
+    try {
+      const { error } = await supabase
+        .from('membership_benefits')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to delete benefit'
+      });
+      return false;
+    }
+  },
+
+  // Get customer membership
+  async getCustomerMembership(customerId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('customer_memberships')
+        .select(`
+          *,
+          level:customer_membership_levels(*)
+        `)
+        .eq('customer_id', customerId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch customer membership'
+      });
+      return null;
+    }
+  },
+
+  // Get all customer memberships (admin view)
+  async getAllCustomerMemberships(params?: { page?: number; limit?: number; search?: string }) {
+    try {
+      const page = params?.page || 1;
+      const limit = params?.limit || 10;
+      const search = params?.search || "";
+      const offset = (page - 1) * limit;
+
+      let query = supabase
+        .from('customer_memberships')
+        .select(`
+          *,
+          level:customer_membership_levels(*),
+          customer:customer_id(username, email, whatsapp)
+        `)
+        .order('total_transactions', { ascending: false });
+
+      // Apply search filter if provided
+      if (search) {
+        query = query.or(`customer.username.ilike.%${search}%,customer.email.ilike.%${search}%,customer.whatsapp.ilike.%${search}%`);
+      }
+
+      const { data: customers, error } = await query.range(offset, offset + limit - 1);
+
+      if (error) throw error;
+
+      // Get total count for pagination
+      const { count: totalCount } = await supabase
+        .from('customer_memberships')
+        .select("*", { count: "exact", head: true });
+
+      return {
+        customers: customers || [],
+        pagination: {
+          page,
+          limit,
+          total: totalCount || 0,
+          pages: Math.ceil((totalCount || 0) / limit)
+        }
+      };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch customer memberships'
+      });
+      return {
+        customers: [],
+        pagination: { page: 1, limit: 10, total: 0, pages: 0 }
+      };
+    }
+  },
+
+  // Get customer membership history
+  async getCustomerMembershipHistory(customerId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('membership_level_history')
+        .select(`
+          *,
+          from_level:customer_membership_levels(id, name),
+          to_level:customer_membership_levels(id, name)
+        `)
+        .eq('customer_id', customerId)
+        .order('changed_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch membership history'
+      });
+      return [];
+    }
+  },
+
+  // Recalculate customer membership (manual trigger for admin)
+  async recalculateCustomerMembership(customerId: string) {
+    try {
+      // Count ALL orders (not just finished) to match customer page display
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .select('invoice_id')
+        .eq('customer_id', customerId);
+
+      if (orderError) throw orderError;
+
+      const totalTransactions = orderData?.length || 0;
+
+      // Get thresholds from membership levels
+      const { data: levels, error: levelsError } = await supabase
+        .from('customer_membership_levels')
+        .select('*')
+        .order('level_index', { ascending: true });
+
+      if (levelsError) throw levelsError;
+
+      // Find appropriate level based on transaction count
+      let newLevelId = levels?.[0]?.id;
+      for (const level of levels || []) {
+        if (totalTransactions >= level.transaction_threshold) {
+          newLevelId = level.id;
+        }
+      }
+
+      // Get current membership
+      const { data: currentMembership, error: membershipError } = await supabase
+        .from('customer_memberships')
+        .select('*')
+        .eq('customer_id', customerId)
+        .single();
+
+      if (membershipError && membershipError.code !== 'PGRST116') throw membershipError;
+
+      if (currentMembership) {
+        // Update existing membership
+        if (currentMembership.membership_level_id !== newLevelId) {
+          // Record history before updating
+          await supabase
+            .from('membership_level_history')
+            .insert({
+              customer_id: customerId,
+              from_level_id: currentMembership.membership_level_id,
+              to_level_id: newLevelId,
+              trigger_reason: 'admin_recalculation'
+            });
+        }
+
+        const { error: updateError } = await supabase
+          .from('customer_memberships')
+          .update({
+            membership_level_id: newLevelId,
+            total_transactions: totalTransactions,
+            updated_at: new Date().toISOString()
+          })
+          .eq('customer_id', customerId);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new membership record
+        const { error: insertError } = await supabase
+          .from('customer_memberships')
+          .insert({
+            customer_id: customerId,
+            membership_level_id: newLevelId || levels?.[0]?.id,
+            total_transactions: totalTransactions,
+            progress_percent: 0,
+            shine_points: 0
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      return { success: true, totalTransactions, newLevelId };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to recalculate customer membership'
+      });
+      return { success: false, error: String(error) };
+    }
+  },
+
+  // Calculate discount for a customer based on membership
+  async calculateMembershipDiscount(customerId: string, orderTotal: number) {
+    try {
+      const membership = await this.getCustomerMembership(customerId);
+
+      if (!membership) {
+        return { discount: 0, applied: false };
+      }
+
+      const level = membership.level;
+      if (!level || !level.is_active) {
+        return { discount: 0, applied: false };
+      }
+
+      // Calculate discount: MIN(orderTotal * discount%, max_amount)
+      const calculatedDiscount = Math.min(
+        Math.floor(orderTotal * (level.discount_percent / 100)),
+        level.discount_max_amount
+      );
+
+      return {
+        discount: calculatedDiscount,
+        applied: calculatedDiscount > 0,
+        level: level.name,
+        levelId: level.id,
+        discount_percent: level.discount_percent,
+        discount_max_amount: level.discount_max_amount
+      };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to calculate membership discount'
+      });
+      return { discount: 0, applied: false };
+    }
+  }
+};
+
 // === DATABASE HEALTH SERVICES ===
 
 export const DatabaseService = {

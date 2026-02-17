@@ -9,6 +9,7 @@ import {
   IconShare,
   IconChartBar,
   IconPhoto,
+  IconTrophy,
 } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -45,6 +46,11 @@ const data = {
       title: "Customer",
       url: "/admin/customer",
       icon: IconUsers,
+    },
+    {
+      title: "Membership",
+      url: "/admin/membership",
+      icon: IconTrophy,
     },
     {
       title: "Referral",

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { Discount } from "./serviceCatalogStore";
-import { OrderService, OrderItemService, CustomerService, DiscountService } from "@/lib/client-services";
+import { OrderService, OrderItemService, CustomerService, DiscountService, MembershipService } from "@/lib/client-services";
 import { useCustomerStore } from "./customerStore";
 import { toast } from "sonner";
 import { logger } from "@/utils/client/logger";
@@ -24,7 +24,8 @@ const recalculateTotals = (
   cart: CartItem[],
   activeDiscounts: Discount[],
   referralDiscount: number = 0,
-  pointsDiscount: number = 0
+  pointsDiscount: number = 0,
+  membershipDiscount: number = 0
 ) => {
   // Hitung subtotal dengan menjumlahkan semua harga layanan di setiap item
   const subTotal = cart.reduce((total, item) => {
@@ -46,7 +47,7 @@ const recalculateTotals = (
     return total;
   }, 0);
 
-  const totalPrice = Math.round(Math.max(0, subTotal - totalDiscountValue - referralDiscount - pointsDiscount));
+  const totalPrice = Math.round(Math.max(0, subTotal - totalDiscountValue - referralDiscount - pointsDiscount - membershipDiscount));
   return { subTotal, totalPrice };
 };
 
@@ -63,6 +64,20 @@ interface CartState {
   referralDiscount: number;
   pointsUsed: number;
   pointsDiscount: number;
+  // Membership state
+  membershipDiscount: number;
+  membershipLevel: string | null;
+  membershipLevelId: number | null;
+  membershipLevelData: {
+    id: number;
+    name: string;
+    level_index: number;
+    discount_percent: number;
+    discount_max_amount: number;
+    transaction_threshold: number;
+    is_active: boolean;
+  } | null; // Full membership level data
+  customerId: string | null; // Track current customer for recalculation
   // Existing methods
   setPayment: (payment: string) => void;
   setInvoice: (id: string) => void;
@@ -82,6 +97,20 @@ interface CartState {
   setPointsUsed: (points: number) => void;
   setPointsDiscount: (amount: number) => void;
   clearPointsDiscount: () => void;
+  // Membership methods
+  setMembershipLevel: (level: string, levelId: number, levelData: {
+    id: number;
+    name: string;
+    level_index: number;
+    discount_percent: number;
+    discount_max_amount: number;
+    transaction_threshold: number;
+    is_active: boolean;
+  } | null) => void;
+  setMembershipDiscount: (amount: number, level: string, levelId: number) => void;
+  clearMembershipDiscount: () => void;
+  fetchAndApplyMembershipDiscount: (customerId: string) => Promise<void>;
+  recalculateMembershipDiscount: () => Promise<void>;
   handleSubmit: () => Promise<boolean>;
   resetCart: () => void;
 }
@@ -105,6 +134,12 @@ export const useCartStore = create<CartState>((set, get) => ({
   referralDiscount: 0,
   pointsUsed: 0,
   pointsDiscount: 0,
+  // Membership state
+  membershipDiscount: 0,
+  membershipLevel: null,
+  membershipLevelId: null,
+  membershipLevelData: null,
+  customerId: null,
 
   // Aksi-aksi (actions)
   setInvoice: (id) => set({ invoice: id }),
@@ -118,7 +153,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       state.cart,
       state.activeDiscounts,
       amount,
-      state.pointsDiscount
+      state.pointsDiscount,
+      state.membershipDiscount
     );
     set({ referralDiscount: amount, totalPrice });
   },
@@ -128,7 +164,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       state.cart,
       state.activeDiscounts,
       0,
-      state.pointsDiscount
+      state.pointsDiscount,
+      state.membershipDiscount
     );
     set({ referralCode: "", referralDiscount: 0, totalPrice });
   },
@@ -139,7 +176,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       state.cart,
       state.activeDiscounts,
       state.referralDiscount,
-      amount
+      amount,
+      state.membershipDiscount
     );
     set({ pointsDiscount: amount, totalPrice });
   },
@@ -149,9 +187,128 @@ export const useCartStore = create<CartState>((set, get) => ({
       state.cart,
       state.activeDiscounts,
       state.referralDiscount,
-      0
+      0,
+      state.membershipDiscount
     );
     set({ pointsUsed: 0, pointsDiscount: 0, totalPrice });
+  },
+
+  // Membership methods
+  setMembershipLevel: (level, levelId, levelData) => {
+    set({ membershipLevel: level, membershipLevelId: levelId, membershipLevelData: levelData });
+  },
+
+  setMembershipDiscount: (amount, level, levelId) => {
+    const state = get();
+    const { totalPrice } = recalculateTotals(
+      state.cart,
+      state.activeDiscounts,
+      state.referralDiscount,
+      state.pointsDiscount,
+      amount
+    );
+    set({ membershipDiscount: amount, membershipLevel: level, membershipLevelId: levelId, totalPrice });
+  },
+
+  clearMembershipDiscount: () => {
+    const state = get();
+    const { totalPrice } = recalculateTotals(
+      state.cart,
+      state.activeDiscounts,
+      state.referralDiscount,
+      state.pointsDiscount,
+      0
+    );
+    set({ membershipDiscount: 0, totalPrice });
+    // Keep level info, just clear discount
+  },
+
+  fetchAndApplyMembershipDiscount: async (customerId: string) => {
+    try {
+      // Store customer ID for later recalculation
+      set({ customerId });
+
+      // First, fetch the customer's membership level info (even if discount is 0)
+      const membership = await MembershipService.getCustomerMembership(customerId);
+
+      if (membership && membership.level) {
+        get().setMembershipLevel(
+          membership.level.name,
+          membership.level.id,
+          membership.level
+        );
+        logger.info("Membership level fetched", { customerId, level: membership.level.name }, "CartStore");
+      }
+
+      // Get current subtotal for calculation
+      const state = get();
+      const subTotal = state.cart.reduce((total, item) => {
+        const itemTotal = item.services.reduce(
+          (itemSum, service) => itemSum + service.amount,
+          0
+        );
+        return total + itemTotal;
+      }, 0);
+
+      // Only calculate discount if there's a subtotal
+      if (subTotal > 0) {
+        // Calculate membership discount
+        const result = await MembershipService.calculateMembershipDiscount(customerId, subTotal);
+
+        if (result.applied && result.discount > 0) {
+          get().setMembershipDiscount(result.discount, result.level || "", result.levelId || 0);
+          logger.info("Membership discount applied", { customerId, discount: result.discount, level: result.level }, "CartStore");
+        } else {
+          // Clear discount but keep level info
+          set({ membershipDiscount: 0 });
+          logger.debug("No membership discount applied", { customerId, result }, "CartStore");
+        }
+      }
+    } catch (error) {
+      logger.error("Error fetching membership discount", { error, customerId }, "CartStore");
+      // Don't throw - allow order to proceed without membership discount
+    }
+  },
+
+  recalculateMembershipDiscount: async () => {
+    const state = get();
+    if (!state.customerId) return;
+
+    try {
+      const subTotal = state.cart.reduce((total, item) => {
+        const itemTotal = item.services.reduce(
+          (itemSum, service) => itemSum + service.amount,
+          0
+        );
+        return total + itemTotal;
+      }, 0);
+
+      if (subTotal > 0 && state.membershipLevelData) {
+        const level = state.membershipLevelData;
+        const discountPercent = level.discount_percent || 0;
+        const maxAmount = level.discount_max_amount || 0;
+
+        if (discountPercent > 0) {
+          const calculatedDiscount = Math.min(
+            Math.floor(subTotal * (discountPercent / 100)),
+            maxAmount
+          );
+
+          const { totalPrice } = recalculateTotals(
+            state.cart,
+            state.activeDiscounts,
+            state.referralDiscount,
+            state.pointsDiscount,
+            calculatedDiscount
+          );
+
+          set({ membershipDiscount: calculatedDiscount, totalPrice });
+          logger.info("Membership discount recalculated", { discount: calculatedDiscount, level: level.name }, "CartStore");
+        }
+      }
+    } catch (error) {
+      logger.error("Error recalculating membership discount", { error }, "CartStore");
+    }
   },
 
   addItem: () =>
@@ -169,7 +326,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         newCart,
         state.activeDiscounts,
         state.referralDiscount,
-        state.pointsDiscount
+        state.pointsDiscount,
+        state.membershipDiscount
       );
       return { cart: newCart, ...totals };
     }),
@@ -206,7 +364,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         newCart,
         state.activeDiscounts,
         state.referralDiscount,
-        state.pointsDiscount
+        state.pointsDiscount,
+        state.membershipDiscount
       );
       return { cart: newCart, ...totals };
     }),
@@ -227,7 +386,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         newCart,
         state.activeDiscounts,
         state.referralDiscount,
-        state.pointsDiscount
+        state.pointsDiscount,
+        state.membershipDiscount
       );
       return { cart: newCart, ...totals };
     }),
@@ -277,7 +437,9 @@ export const useCartStore = create<CartState>((set, get) => ({
       referralCode,
       referralDiscount,
       pointsUsed,
-      pointsDiscount
+      pointsDiscount,
+      membershipDiscount,
+      membershipLevelId
     } = get();
 
     // Debug: Log current state
@@ -335,6 +497,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         referral_discount_amount: referralDiscount,
         points_used: pointsUsed,
         points_discount_amount: pointsDiscount, // Now save the points discount amount
+        membership_discount_amount: membershipDiscount || 0,
+        membership_level_id: membershipLevelId || null,
       };
 
       // Debug: Log order data
@@ -475,5 +639,11 @@ export const useCartStore = create<CartState>((set, get) => ({
       referralDiscount: 0,
       pointsUsed: 0,
       pointsDiscount: 0,
+      // Reset membership state
+      membershipDiscount: 0,
+      membershipLevel: null,
+      membershipLevelId: null,
+      membershipLevelData: null,
+      customerId: null,
     }),
 }));

@@ -178,9 +178,6 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
 
   subscribeToOrders: (invoice_id) => {
     const supabase = createClient();
-    // TAMBAHKAN BARIS INI
-    const schema =
-      process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
 
     const channel = supabase
       .channel(`orders-realtime-channel-${invoice_id || "all"}`)
@@ -188,7 +185,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         "postgres_changes",
         {
           event: "*",
-          schema: schema, // UBAH INI
+          schema: "public",
           table: "orders",
           filter: invoice_id ? `invoice_id=eq.${invoice_id}` : undefined,
         },

@@ -153,8 +153,6 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
   subscribeToCustomerChanges: () => {
     const supabase = createClient();
-    const schema =
-      process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
 
     const channel = supabase
       .channel("customer-db-changes")
@@ -162,7 +160,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         "postgres_changes",
         {
           event: "*",
-          schema: schema,
+          schema: "public",
           table: "customers",
         },
         () => {

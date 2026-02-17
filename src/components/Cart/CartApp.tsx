@@ -17,12 +17,15 @@ import { Payment } from "./Payment";
 import { Button } from "../ui/button";
 import { PointsService } from "@/lib/client-services";
 import { logger } from "@/utils/client/logger";
+import { MembershipDisplay } from "./MembershipDisplay";
+import { Badge } from "../ui/badge";
+import { MEMBERSHIP_LEVEL_COLORS } from "@/types/membership";
 
 export function CartApp() {
   const invoiceId = useInvoiceID();
   const activeCustomer = useCustomerStore((state) => state.activeCustomer);
   const { clearCustomer } = useCustomerStore();
-  const { totalPrice, setInvoice, resetCart } = useCartStore();
+  const { totalPrice, setInvoice, resetCart, membershipLevel, membershipDiscount, fetchAndApplyMembershipDiscount, recalculateMembershipDiscount, cart } = useCartStore();
   const router = useRouter();
   const [customerPoints, setCustomerPoints] = useState<number>(0);
 
@@ -46,6 +49,40 @@ export function CartApp() {
 
     fetchPoints();
   }, [activeCustomer]);
+
+  // Fetch and apply membership discount for existing customers
+  useEffect(() => {
+    const applyMembershipDiscount = async () => {
+      if (activeCustomer && !activeCustomer.isNew) {
+        try {
+          await fetchAndApplyMembershipDiscount(activeCustomer.customer_id);
+          logger.info("Membership discount fetched for customer", { customerId: activeCustomer.customer_id }, "CartApp");
+        } catch (error) {
+          logger.error("Error fetching membership discount", { error, customerId: activeCustomer.customer_id }, "CartApp");
+          // Don't block the flow if membership discount fails
+        }
+      }
+    };
+
+    applyMembershipDiscount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCustomer?.customer_id]); // Only re-run when customer changes
+
+  // Recalculate membership discount when cart items change
+  useEffect(() => {
+    const recalculateDiscount = async () => {
+      if (activeCustomer && !activeCustomer.isNew && membershipLevel) {
+        try {
+          await recalculateMembershipDiscount();
+        } catch (error) {
+          logger.error("Error recalculating membership discount", { error }, "CartApp");
+        }
+      }
+    };
+
+    recalculateDiscount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart]); // Only re-run when cart changes
 
   useEffect(() => {
     if (!activeCustomer) {
@@ -80,7 +117,17 @@ export function CartApp() {
               label="ID Customer"
               value={activeCustomer?.customer_id}
             />
-            <InfoCustomer label="Customer" value={activeCustomer?.username} />
+            <div className="flex justify-between items-center">
+              <p className="text-muted-foreground">Customer</p>
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-right">{activeCustomer?.username}</p>
+                {membershipLevel && (
+                  <Badge className={`${MEMBERSHIP_LEVEL_COLORS[membershipLevel as keyof typeof MEMBERSHIP_LEVEL_COLORS]?.bg || "bg-gray-100"} ${MEMBERSHIP_LEVEL_COLORS[membershipLevel as keyof typeof MEMBERSHIP_LEVEL_COLORS]?.primary || "text-gray-600"} border-0 text-xs`}>
+                    {membershipLevel}
+                  </Badge>
+                )}
+              </div>
+            </div>
             <InfoCustomer label="WhatsApp" value={activeCustomer?.whatsapp} />
             {activeCustomer?.alamat && (
               <InfoCustomer
@@ -91,6 +138,7 @@ export function CartApp() {
           </CardContent>
         </Card>
         <Services />
+        <MembershipDisplay />
         <Discount />
 
         {/* Simple conditional redemption logic */}

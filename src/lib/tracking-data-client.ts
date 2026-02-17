@@ -107,7 +107,6 @@ export async function fetchCustomerReferralDataClient(customerId: string): Promi
 export async function fetchActiveAds(): Promise<AdConfig[]> {
   try {
     const supabase = createClient();
-    const schema = process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
 
     const { data: banners, error } = await supabase
       .from("banners")
