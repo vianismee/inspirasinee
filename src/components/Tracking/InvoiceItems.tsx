@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Package, ChevronDown, ChevronUp, Wrench } from "lucide-react";
+import { Package, ChevronDown, ChevronUp, Wrench, Crown, Flame } from "lucide-react";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
 import { Orders } from "@/types/index";
@@ -14,6 +14,9 @@ interface OrderWithReferral extends Orders {
   referral_discount_amount?: number;
   points_used?: number;
   points_discount_amount?: number;
+  membership_discount_amount?: number;
+  membership_level_id?: number;
+  shine_points_discount_amount?: number;
 }
 
 interface InvoiceItemsProps {
@@ -225,6 +228,34 @@ export function InvoiceItems({ order }: InvoiceItemsProps) {
                   </span>
                   <span className="font-mono font-bold text-orange-700 dark:text-orange-400">
                     -{formatedCurrency((order as OrderWithReferral).points_discount_amount || 0)}
+                  </span>
+                </div>
+              )}
+
+            {/* Membership Discount Display */}
+            {(order as OrderWithReferral).membership_discount_amount &&
+              ((order as OrderWithReferral).membership_discount_amount || 0) > 0 && (
+                <div className="flex justify-between text-sm items-center bg-purple-50 dark:bg-purple-950 p-2 rounded">
+                  <span className="text-purple-700 dark:text-purple-400 flex items-center gap-1">
+                    <Crown className="h-3.5 w-3.5" />
+                    Membership Discount
+                  </span>
+                  <span className="font-mono font-bold text-purple-700 dark:text-purple-400">
+                    -{formatedCurrency((order as OrderWithReferral).membership_discount_amount || 0)}
+                  </span>
+                </div>
+              )}
+
+            {/* Shine Points Redemption Display */}
+            {(order as OrderWithReferral).shine_points_discount_amount &&
+              ((order as OrderWithReferral).shine_points_discount_amount || 0) > 0 && (
+                <div className="flex justify-between text-sm items-center bg-pink-50 dark:bg-pink-950 p-2 rounded">
+                  <span className="text-pink-700 dark:text-pink-400 flex items-center gap-1">
+                    <Flame className="h-3.5 w-3.5" />
+                    Shine Points Redemption
+                  </span>
+                  <span className="font-mono font-bold text-pink-700 dark:text-pink-400">
+                    -{formatedCurrency((order as OrderWithReferral).shine_points_discount_amount || 0)}
                   </span>
                 </div>
               )}

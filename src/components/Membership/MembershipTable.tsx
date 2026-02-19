@@ -9,10 +9,10 @@ import {
   Trash2,
   Flame,
   Percent,
-  Sparkles,
   Cake,
   Gift,
   Crown,
+  Settings,
 } from "lucide-react";
 import { formatedCurrency } from "@/lib/utils";
 
@@ -51,7 +51,9 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Badge } from "../ui/badge";
-import { MembershipService } from "@/lib/client-services";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Separator } from "../ui/separator";
+import { MembershipService, AdminReferralService } from "@/lib/client-services";
 import type {
   MembershipLevel,
   MembershipBenefit,
@@ -64,7 +66,6 @@ import { MEMBERSHIP_LEVEL_COLORS, MEMBERSHIP_ICON_NAMES } from "@/types/membersh
 const ICON_COMPONENTS: Record<string, React.ElementType> = {
   Flame,
   Percent,
-  Sparkles,
   Cake,
   Gift,
   Crown,
@@ -80,8 +81,15 @@ type MembershipLevelWithBenefitsAndRow = MembershipLevelWithBenefits & {
 
 export function MembershipTable() {
   const [isMounted, setIsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"levels" | "benefits">("levels");
+  const [activeTab, setActiveTab] = useState<"levels" | "benefits" | "shine-points">("levels");
   const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>("all");
+
+  // Shine Points Settings state
+  const [shinePointsSettings, setShinePointsSettings] = useState({
+    shine_points_redemption_minimum: 50,
+    shine_points_redemption_value: 1000,
+  });
+  const [savingShinePointsSettings, setSavingShinePointsSettings] = useState(false);
 
   // Level management state
   const [levels, setLevels] = useState<MembershipLevelWithBenefitsAndRow[]>([]);
@@ -95,7 +103,7 @@ export function MembershipTable() {
 
   // Form state
   const [levelForm, setLevelForm] = useState({
-    points_multiplier: 1.0,
+    points_per_transaction: 1,
     discount_percent: 0,
     discount_max_amount: 0,
     transaction_threshold: 0,
@@ -124,8 +132,48 @@ export function MembershipTable() {
   useEffect(() => {
     fetchLevels();
     fetchBenefits();
+    fetchShinePointsSettings();
     setIsMounted(true);
   }, [fetchLevels, fetchBenefits]);
+
+  // Fetch Shine Points Settings
+  const fetchShinePointsSettings = useCallback(async () => {
+    try {
+      const settings = await AdminReferralService.getReferralSettings();
+      setShinePointsSettings({
+        shine_points_redemption_minimum: settings.shine_points_redemption_minimum || 50,
+        shine_points_redemption_value: settings.shine_points_redemption_value || 1000,
+      });
+    } catch (error) {
+      console.error("Error fetching shine points settings:", error);
+    }
+  }, []);
+
+  // Handle Shine Points Settings change
+  const handleShinePointsSettingsChange = (field: string, value: number) => {
+    setShinePointsSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Save Shine Points Settings
+  const handleSaveShinePointsSettings = async () => {
+    setSavingShinePointsSettings(true);
+    try {
+      const result = await AdminReferralService.updateReferralSettings(shinePointsSettings);
+      if (result) {
+        toast.success("Shine Points settings updated successfully");
+      } else {
+        toast.error("Failed to update settings");
+      }
+    } catch (error) {
+      console.error("Error updating settings:", error);
+      toast.error("Failed to update shine points settings");
+    } finally {
+      setSavingShinePointsSettings(false);
+    }
+  };
 
   // Level columns
   const levelColumns = useMemo<ColumnDef<MembershipLevelWithBenefitsAndRow>[]>(
@@ -151,10 +199,10 @@ export function MembershipTable() {
         },
       },
       {
-        accessorKey: "points_multiplier",
-        header: "Points Multiplier",
+        accessorKey: "points_per_transaction",
+        header: "Points Per Transaction",
         cell: ({ row }) => (
-          <span>{row.original.points_multiplier}x</span>
+          <span>{row.original.points_per_transaction} pt</span>
         ),
       },
       {
@@ -209,7 +257,7 @@ export function MembershipTable() {
                     onClick={() => {
                       setEditingLevel(level);
                       setLevelForm({
-                        points_multiplier: level.points_multiplier,
+                        points_per_transaction: level.points_per_transaction || 1,
                         discount_percent: level.discount_percent,
                         discount_max_amount: level.discount_max_amount,
                         transaction_threshold: level.transaction_threshold,
@@ -356,7 +404,7 @@ export function MembershipTable() {
     if (!open) {
       setEditingLevel(null);
       setLevelForm({
-        points_multiplier: 1.0,
+        points_per_transaction: 1,
         discount_percent: 0,
         discount_max_amount: 0,
         transaction_threshold: 0,
@@ -437,10 +485,11 @@ export function MembershipTable() {
 
   return (
     <>
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "levels" | "benefits")} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "levels" | "benefits" | "shine-points")} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="levels">Level Configuration</TabsTrigger>
           <TabsTrigger value="benefits">Benefits Management</TabsTrigger>
+          <TabsTrigger value="shine-points">Shine Points Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="levels">
@@ -459,17 +508,17 @@ export function MembershipTable() {
               <form onSubmit={handleLevelSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="points_multiplier">Points Multiplier</Label>
+                    <Label htmlFor="points_per_transaction">Points Per Transaction</Label>
                     <Input
-                      id="points_multiplier"
+                      id="points_per_transaction"
                       type="number"
-                      step="0.1"
-                      min="0.1"
-                      value={levelForm.points_multiplier}
-                      onChange={(e) => setLevelForm({ ...levelForm, points_multiplier: parseFloat(e.target.value) || 0 })}
+                      step="1"
+                      min="1"
+                      value={levelForm.points_per_transaction}
+                      onChange={(e) => setLevelForm({ ...levelForm, points_per_transaction: parseInt(e.target.value) || 1 })}
                       required
                     />
-                    <p className="text-xs text-gray-500">e.g., 1.5 for 1.5x points</p>
+                    <p className="text-xs text-gray-500">Points earned for each transaction (e.g., 1, 2, 3)</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="discount_percent">Discount Percent (%)</Label>
@@ -641,6 +690,78 @@ export function MembershipTable() {
               </form>
             </DialogContent>
           </Dialog>
+        </TabsContent>
+
+        <TabsContent value="shine-points">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Flame className="h-5 w-5 text-purple-600" />
+                Shine Points Settings
+              </CardTitle>
+              <CardDescription>
+                Configure the redemption rate and minimum requirements for Shine Points (Membership Points)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={(e) => { e.preventDefault(); handleSaveShinePointsSettings(); }} className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="shine_points_redemption_minimum">
+                      Minimum Shine Points to Redeem
+                    </Label>
+                    <Input
+                      id="shine_points_redemption_minimum"
+                      type="number"
+                      min="1"
+                      value={shinePointsSettings.shine_points_redemption_minimum}
+                      onChange={(e) => handleShinePointsSettingsChange("shine_points_redemption_minimum", parseInt(e.target.value) || 0)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Minimum shine points required for redemption
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="shine_points_redemption_value">
+                      Shine Point Redemption Value (Rp)
+                    </Label>
+                    <Input
+                      id="shine_points_redemption_value"
+                      type="number"
+                      min="1"
+                      value={shinePointsSettings.shine_points_redemption_value}
+                      onChange={(e) => handleShinePointsSettingsChange("shine_points_redemption_value", parseInt(e.target.value) || 0)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Discount amount per shine point redeemed
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="rounded-md border border-purple-200 bg-purple-50 p-4">
+                  <p className="text-sm font-medium text-purple-900 mb-2">Preview</p>
+                  <p className="text-sm text-purple-700">
+                    Customers will need at least <span className="font-bold">{shinePointsSettings.shine_points_redemption_minimum}</span> shine points to redeem.
+                  </p>
+                  <p className="text-sm text-purple-700">
+                    Each shine point will be worth <span className="font-bold">{formatedCurrency(shinePointsSettings.shine_points_redemption_value)}</span> in discount.
+                  </p>
+                  <p className="text-xs text-purple-600 mt-2">
+                    Example: 100 shine points = {formatedCurrency(100 * shinePointsSettings.shine_points_redemption_value)} discount
+                  </p>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={savingShinePointsSettings}>
+                    {savingShinePointsSettings ? "Saving..." : "Save Settings"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </>

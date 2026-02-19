@@ -5,6 +5,7 @@ export interface MembershipLevel {
   name: 'Bronze' | 'Silver' | 'Gold';
   level_index: number;
   points_multiplier: number;
+  points_per_transaction: number;
   discount_percent: number;
   discount_max_amount: number;
   transaction_threshold: number;
@@ -60,6 +61,7 @@ export interface CustomerMembershipWithDetails extends CustomerMembership {
 // Form input types
 export interface MembershipLevelUpdateInput {
   points_multiplier?: number;
+  points_per_transaction?: number;
   discount_percent?: number;
   discount_max_amount?: number;
   transaction_threshold?: number;
@@ -85,7 +87,6 @@ export interface MembershipBenefitUpdateInput {
 export const MEMBERSHIP_ICON_NAMES = [
   'Flame',
   'Percent',
-  'Sparkles',
   'Cake',
   'Gift',
   'Crown'

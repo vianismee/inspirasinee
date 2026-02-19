@@ -36,6 +36,7 @@ CREATE TABLE public.customer_membership_levels (
   name text NOT NULL UNIQUE,
   level_index integer NOT NULL UNIQUE CHECK (level_index > 0),
   points_multiplier numeric NOT NULL DEFAULT 1.0 CHECK (points_multiplier > 0::numeric),
+  points_per_transaction integer NOT NULL DEFAULT 1 CHECK (points_per_transaction > 0),
   discount_percent integer NOT NULL DEFAULT 0 CHECK (discount_percent >= 0 AND discount_percent <= 100),
   discount_max_amount integer NOT NULL DEFAULT 0 CHECK (discount_max_amount >= 0),
   transaction_threshold integer NOT NULL DEFAULT 0,
@@ -226,8 +227,12 @@ CREATE TABLE public.orders (
   drop_point_id bigint,
   customer_marking text,
   drop_point_capacity_used integer DEFAULT 0,
+  membership_discount_amount numeric DEFAULT 0,
+  membership_level_id bigint,
+  shine_points_discount_amount numeric DEFAULT 0,
   CONSTRAINT orders_pkey PRIMARY KEY (id),
-  CONSTRAINT orders_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(customer_id)
+  CONSTRAINT orders_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(customer_id),
+  CONSTRAINT orders_membership_level_id_fkey FOREIGN KEY (membership_level_id) REFERENCES public.customer_membership_levels(id)
 );
 CREATE TABLE public.points_transactions (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -251,6 +256,8 @@ CREATE TABLE public.referral_settings (
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  shine_points_redemption_value integer NOT NULL DEFAULT 1000,
+  shine_points_redemption_minimum integer NOT NULL DEFAULT 50,
   CONSTRAINT referral_settings_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.referral_usage (

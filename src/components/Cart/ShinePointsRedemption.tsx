@@ -10,19 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Gift, CheckCircle, AlertCircle, Info } from "lucide-react";
+import { Flame, CheckCircle, AlertCircle, Info } from "lucide-react";
 import { formatedCurrency } from "@/lib/utils";
 import { toast } from "sonner";
-import { PointsService, AdminReferralService } from "@/lib/client-services";
+import { ShinePointsService, AdminReferralService } from "@/lib/client-services";
 import { logger } from "@/utils/client/logger";
 
-interface CustomerPoints {
-  current_balance: number;
-  total_earned: number;
-  total_redeemed: number;
-}
-
-interface PointsRedemptionResult {
+interface ShinePointsRedemptionResult {
   valid: boolean;
   discount_amount?: number;
   points_used?: number;
@@ -31,59 +25,55 @@ interface PointsRedemptionResult {
 }
 
 interface ReferralSettings {
-  points_redemption_minimum: number;
-  points_redemption_value: number;
+  shine_points_redemption_minimum: number;
+  shine_points_redemption_value: number;
 }
 
-export function PointsRedemption() {
+export function ShinePointsRedemption() {
   const [pointsToRedeem, setPointsToRedeem] = useState("");
   const [isValidating, setIsValidating] = useState(false);
-  const [customerPoints, setCustomerPoints] = useState<CustomerPoints | null>(null);
-  const [redemptionResult, setRedemptionResult] = useState<PointsRedemptionResult | null>(null);
+  const [shinePoints, setShinePoints] = useState<number>(0);
+  const [redemptionResult, setRedemptionResult] = useState<ShinePointsRedemptionResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [referralSettings, setReferralSettings] = useState<ReferralSettings>({
-    points_redemption_minimum: 50,
-    points_redemption_value: 100
+    shine_points_redemption_minimum: 50,
+    shine_points_redemption_value: 1000
   });
 
   const activeCustomer = useCustomerStore((state) => state.activeCustomer);
   const refreshTrigger = usePointsRefreshStore((state) => state.timestamp);
   const {
-    pointsDiscount,
-    setPointsUsed,
-    setPointsDiscount,
-    clearPointsDiscount,
-    pointsUsed: appliedPoints
+    shinePointsDiscount,
+    setShinePointsUsed,
+    setShinePointsDiscount,
+    clearShinePointsDiscount,
+    membershipLevel,
+    membershipLevelData
   } = useCartStore();
 
   const fetchReferralSettings = useCallback(async () => {
     try {
       const settings = await AdminReferralService.getReferralSettings();
       setReferralSettings({
-        points_redemption_minimum: settings.points_redemption_minimum || 50,
-        points_redemption_value: settings.points_redemption_value || 100
+        shine_points_redemption_minimum: settings.shine_points_redemption_minimum || 50,
+        shine_points_redemption_value: settings.shine_points_redemption_value || 1000
       });
     } catch (error) {
-      logger.error("Error fetching referral settings", { error }, "PointsRedemption");
+      logger.error("Error fetching referral settings", { error }, "ShinePointsRedemption");
       // Keep default values on error
     }
   }, []);
 
-  const fetchCustomerPoints = useCallback(async () => {
+  const fetchCustomerShinePoints = useCallback(async () => {
     if (!activeCustomer) return;
 
     setLoading(true);
     try {
-      const points = await PointsService.getCustomerBalance(activeCustomer.customer_id);
-      setCustomerPoints(points);
+      const points = await ShinePointsService.getCustomerShinePoints(activeCustomer.customer_id);
+      setShinePoints(points);
     } catch (error) {
-      logger.error("Error fetching customer points", { error, customerId: activeCustomer?.customer_id }, "PointsRedemption");
-      // Set default points on error to avoid breaking the UI
-      setCustomerPoints({
-        current_balance: 0,
-        total_earned: 0,
-        total_redeemed: 0
-      });
+      logger.error("Error fetching customer shine points", { error, customerId: activeCustomer?.customer_id }, "ShinePointsRedemption");
+      setShinePoints(0);
     } finally {
       setLoading(false);
     }
@@ -94,9 +84,9 @@ export function PointsRedemption() {
     fetchReferralSettings();
 
     if (activeCustomer) {
-      fetchCustomerPoints();
+      fetchCustomerShinePoints();
     }
-  }, [activeCustomer, fetchCustomerPoints, fetchReferralSettings, refreshTrigger]);
+  }, [activeCustomer, fetchCustomerShinePoints, fetchReferralSettings, refreshTrigger]);
 
   const validatePointsRedemption = async () => {
     if (!pointsToRedeem || !activeCustomer) {
@@ -112,22 +102,22 @@ export function PointsRedemption() {
 
     setIsValidating(true);
     try {
-      const result = await PointsService.validatePointsRedemption(activeCustomer.customer_id, points);
+      const result = await ShinePointsService.validateShinePointsRedemption(activeCustomer.customer_id, points);
 
       if (result.valid) {
         setRedemptionResult(result);
-        setPointsUsed(result.points_used || 0);
-        setPointsDiscount(result.discount_amount || 0);
+        setShinePointsUsed(points);
+        setShinePointsDiscount(result.discount_amount || 0);
         toast.success(
-          `Points redeemed! You saved ${formatedCurrency(result.discount_amount || 0)}`
+          `Shine Points redeemed! You saved ${formatedCurrency(result.discount_amount || 0)}`
         );
       } else {
         setRedemptionResult(result);
-        toast.error(result.error || "Cannot redeem points");
+        toast.error(result.error || "Cannot redeem shine points");
       }
     } catch (error) {
-      logger.error("Error redeeming points", { error, pointsToRedeem, customerId: activeCustomer?.customer_id }, "PointsRedemption");
-      toast.error("Failed to redeem points");
+      logger.error("Error redeeming shine points", { error, pointsToRedeem, customerId: activeCustomer?.customer_id }, "ShinePointsRedemption");
+      toast.error("Failed to redeem shine points");
     } finally {
       setIsValidating(false);
     }
@@ -136,7 +126,7 @@ export function PointsRedemption() {
   const clearPointsRedemption = () => {
     setPointsToRedeem("");
     setRedemptionResult(null);
-    clearPointsDiscount();
+    clearShinePointsDiscount();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -146,40 +136,38 @@ export function PointsRedemption() {
   };
 
   const redeemMaximumPoints = () => {
-    if (customerPoints && customerPoints.current_balance > 0) {
-      setPointsToRedeem(customerPoints.current_balance.toString());
+    if (shinePoints > 0) {
+      setPointsToRedeem(shinePoints.toString());
     }
   };
 
   // If points are already applied, show applied state
-  if (appliedPoints > 0 && pointsDiscount > 0) {
+  if (shinePointsDiscount > 0 && redemptionResult?.valid) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Gift className="h-5 w-5" />
-            Points Redemption
+            <Flame className="h-5 w-5 text-purple-600" />
+            Shine Points Redemption
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50 p-3">
+          <div className="flex items-center justify-between rounded-md border border-purple-200 bg-purple-50 p-3">
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-blue-600" />
+              <CheckCircle className="h-4 w-4 text-purple-600" />
               <div>
-                <p className="font-semibold text-blue-800">
-                  Points Applied
+                <p className="font-semibold text-purple-800">
+                  Shine Points Applied
                 </p>
-                <p className="text-sm text-blue-600">
-                  {appliedPoints} points redeemed
+                <p className="text-sm text-purple-600">
+                  {redemptionResult.points_used} shine points redeemed
                 </p>
-                <p className="text-sm text-blue-600">
-                  Discount: {formatedCurrency(pointsDiscount)}
+                <p className="text-sm text-purple-600">
+                  Discount: {formatedCurrency(shinePointsDiscount)}
                 </p>
-                {customerPoints && (
-                  <p className="text-xs text-blue-500">
-                    Remaining balance: {customerPoints.current_balance - appliedPoints} points
-                  </p>
-                )}
+                <p className="text-xs text-purple-500">
+                  Remaining balance: {redemptionResult.new_balance} shine points
+                </p>
               </div>
             </div>
             <Button
@@ -201,8 +189,8 @@ export function PointsRedemption() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Gift className="h-5 w-5" />
-            Points Redemption
+            <Flame className="h-5 w-5 text-purple-600" />
+            Shine Points Redemption
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -215,20 +203,20 @@ export function PointsRedemption() {
     );
   }
 
-  if (!customerPoints || customerPoints.current_balance === 0) {
+  if (shinePoints === 0) {
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Gift className="h-5 w-5" />
-            Points Redemption
+            <Flame className="h-5 w-5 text-purple-600" />
+            Shine Points Redemption
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              You don&apos;t have any points available for redemption. Earn points by referring friends!
+              You don&apos;t have any Shine Points available. Earn points by completing orders and leveling up your membership!
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -240,47 +228,46 @@ export function PointsRedemption() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Gift className="h-5 w-5" />
-          Points Redemption
+          <Flame className="h-5 w-5 text-purple-600" />
+          Shine Points Redemption
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Current Points Balance */}
-        <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+        {/* Current Shine Points Balance */}
+        <div className="rounded-md border border-purple-200 bg-purple-50 p-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-blue-800">Available Points</p>
-              <p className="text-2xl font-bold text-blue-900">
-                {customerPoints.current_balance}
+              <p className="text-sm font-medium text-purple-800">Available Shine Points</p>
+              <p className="text-2xl font-bold text-purple-900">
+                {shinePoints}
               </p>
-              <p className="text-xs text-blue-600">
-                Total earned: {customerPoints.total_earned} |
-                Total redeemed: {customerPoints.total_redeemed}
+              <p className="text-xs text-purple-600">
+                Membership Level: {membershipLevel || "Bronze"}
               </p>
             </div>
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-              {formatedCurrency(Math.floor(customerPoints.current_balance * referralSettings.points_redemption_value))}*
+            <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+              {formatedCurrency(Math.floor(shinePoints * referralSettings.shine_points_redemption_value))}*
             </Badge>
           </div>
-          <p className="text-xs text-blue-600 mt-2">
-            *Estimated value (1 point = Rp {referralSettings.points_redemption_value})
+          <p className="text-xs text-purple-600 mt-2">
+            *Estimated value (1 shine point = Rp {referralSettings.shine_points_redemption_value})
           </p>
         </div>
 
-        {/* Points Redemption Input */}
+        {/* Shine Points Redemption Input */}
         <div className="space-y-2">
-          <Label htmlFor="pointsToRedeem">Redeem Points (Minimum {referralSettings.points_redemption_minimum})</Label>
+          <Label htmlFor="shinePointsToRedeem">Redeem Shine Points (Minimum {referralSettings.shine_points_redemption_minimum})</Label>
           <div className="flex gap-2">
             <Input
-              id="pointsToRedeem"
+              id="shinePointsToRedeem"
               type="number"
               placeholder="Enter points to redeem..."
               value={pointsToRedeem}
               onChange={(e) => setPointsToRedeem(e.target.value)}
               onKeyPress={handleKeyPress}
               disabled={isValidating}
-              min={referralSettings.points_redemption_minimum}
-              max={customerPoints.current_balance}
+              min={referralSettings.shine_points_redemption_minimum}
+              max={shinePoints}
             />
             <Button
               variant="outline"
@@ -297,7 +284,7 @@ export function PointsRedemption() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            You have {customerPoints.current_balance} points available
+            You have {shinePoints} shine points available
           </p>
         </div>
 
@@ -318,13 +305,13 @@ export function PointsRedemption() {
                 {redemptionResult.valid ? (
                   <>
                     <p className="font-semibold text-green-800">
-                      Points Ready to Redeem!
+                      Shine Points Ready to Redeem!
                     </p>
                     <p className="text-sm text-green-600">
-                      {redemptionResult.points_used} points → {formatedCurrency(redemptionResult.discount_amount || 0)} discount
+                      {redemptionResult.points_used} shine points → {formatedCurrency(redemptionResult.discount_amount || 0)} discount
                     </p>
                     <p className="text-xs text-green-500">
-                      New balance will be: {redemptionResult.new_balance} points
+                      New balance will be: {redemptionResult.new_balance} shine points
                     </p>
                     <p className="text-xs text-green-500 mt-2">
                       This will be applied when you complete your order
@@ -333,10 +320,10 @@ export function PointsRedemption() {
                 ) : (
                   <>
                     <p className="font-semibold text-red-800">
-                      Cannot Redeem Points
+                      Cannot Redeem Shine Points
                     </p>
                     <p className="text-sm text-red-600">
-                      {redemptionResult.error || "Unable to redeem points"}
+                      {redemptionResult.error || "Unable to redeem shine points"}
                     </p>
                   </>
                 )}
@@ -345,12 +332,12 @@ export function PointsRedemption() {
           </div>
         )}
 
-        {/* Info about points system */}
+        {/* Info about shine points system */}
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Points are earned through referrals and can be redeemed for discounts on future orders.
-            Minimum {referralSettings.points_redemption_minimum} points required for redemption.
+            Shine Points are earned through membership activities and can be redeemed for discounts on orders.
+            Minimum {referralSettings.shine_points_redemption_minimum} shine points required for redemption.
           </AlertDescription>
         </Alert>
       </CardContent>

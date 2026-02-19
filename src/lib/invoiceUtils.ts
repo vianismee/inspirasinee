@@ -17,6 +17,8 @@ interface ReceiptData {
   referralDiscount?: number;
   pointsUsed?: number;
   pointsDiscount?: number;
+  membershipDiscount?: number;
+  shinePointsDiscount?: number;
 }
 
 export const generateReceiptText = ({
@@ -31,6 +33,8 @@ export const generateReceiptText = ({
   referralDiscount,
   pointsUsed,
   pointsDiscount,
+  membershipDiscount,
+  shinePointsDiscount,
 }: ReceiptData): string => {
   // Format tanggal menjadi D/M/YYYY
   const today = new Date();
@@ -89,6 +93,16 @@ export const generateReceiptText = ({
   // Points redemption
   if (pointsUsed && pointsUsed > 0 && pointsDiscount && pointsDiscount > 0) {
     discountLines.push(`- 🎯 Poin (${pointsUsed} poin): -${formatedCurrency(pointsDiscount)}`);
+  }
+
+  // Membership discount
+  if (membershipDiscount && membershipDiscount > 0) {
+    discountLines.push(`- 👑 Membership Discount: -${formatedCurrency(membershipDiscount)}`);
+  }
+
+  // Shine points redemption
+  if (shinePointsDiscount && shinePointsDiscount > 0) {
+    discountLines.push(`- 🔥 Shine Points Redemption: -${formatedCurrency(shinePointsDiscount)}`);
   }
 
   const discountsText = discountLines.length > 0 ? "\n" + discountLines.join("\n") : "";

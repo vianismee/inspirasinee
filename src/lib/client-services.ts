@@ -103,7 +103,29 @@ export const OrderService = {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = error.message || JSON.stringify(error);
+        // Check if the error is due to missing columns (migration not run yet)
+        if (errorMessage.includes('shine_points_discount_amount') ||
+            errorMessage.includes('membership_level_id') ||
+            error.code === '42P01') { // undefined_column error code
+          // Try again without the problematic fields
+          const { shine_points_discount_amount, membership_level_id, ...orderDataWithoutNewFields } = orderData;
+          const retryResult = await supabase
+            .from('orders')
+            .insert(orderDataWithoutNewFields)
+            .select()
+            .single();
+
+          if (retryResult.error) {
+            console.error('Order creation failed on retry:', retryResult.error);
+            throw retryResult.error;
+          }
+          console.warn('Order created without new fields (migration not run):', { orderDataWithoutNewFields });
+          return retryResult.data;
+        }
+        throw error;
+      }
       return data;
     } catch (error) {
       handleClientError(error, {
@@ -396,6 +418,180 @@ export const PointsService = {
         valid: false,
         error: "Failed to validate points redemption"
       };
+    }
+  }
+};
+
+// === SHINE POINTS SERVICES (MEMBERSHIP) ===
+
+export const ShinePointsService = {
+  async getCustomerShinePoints(customerId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('customer_memberships')
+        .select('shine_points')
+        .eq('customer_id', customerId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data?.shine_points || 0;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to fetch customer shine points'
+      });
+      return 0;
+    }
+  },
+
+  async deductShinePoints(customerId: string, points: number, referenceType: string, referenceId?: string, description?: string) {
+    try {
+      // Get current shine points balance
+      const currentBalance = await this.getCustomerShinePoints(customerId);
+      if (currentBalance < points) {
+        throw new Error('Insufficient shine points balance');
+      }
+
+      const newBalance = currentBalance - points;
+
+      // Update customer memberships shine points
+      const { error: pointsError } = await supabase
+        .from('customer_memberships')
+        .update({ shine_points: newBalance, updated_at: new Date().toISOString() })
+        .eq('customer_id', customerId);
+
+      if (pointsError) throw pointsError;
+
+      // Record transaction in points_transactions table
+      const { error: transactionError } = await supabase
+        .from('points_transactions')
+        .insert({
+          customer_id: customerId,
+          transaction_type: 'shine_points_redeemed',
+          points_change: -points,
+          balance_after: newBalance,
+          reference_type: referenceType,
+          reference_id: referenceId,
+          description: description || `Shine points redeemed: ${points}`
+        });
+
+      if (transactionError) throw transactionError;
+
+      return newBalance;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to deduct shine points'
+      });
+      return null;
+    }
+  },
+
+  async validateShinePointsRedemption(customerId: string, pointsToRedeem: number) {
+    try {
+      // Validate input
+      if (pointsToRedeem <= 0) {
+        return {
+          valid: false,
+          error: "Points to redeem must be a positive number"
+        };
+      }
+
+      // Get current shine points balance
+      const currentBalance = await this.getCustomerShinePoints(customerId);
+      if (currentBalance === 0) {
+        return {
+          valid: false,
+          error: "You don't have any shine points"
+        };
+      }
+
+      // Get referral settings for proper values
+      let settings;
+      try {
+        settings = await AdminReferralService.getReferralSettings();
+      } catch (error) {
+        logger.warn('Could not fetch referral settings, using defaults', { error }, 'ShinePointsService');
+        // Fallback to default settings
+        settings = {
+          shine_points_redemption_minimum: 50,
+          shine_points_redemption_value: 1000
+        };
+      }
+
+      const minimumPoints = settings.shine_points_redemption_minimum || 50;
+      const pointsValue = settings.shine_points_redemption_value || 1000;
+
+      // Check minimum redemption requirement
+      if (pointsToRedeem < minimumPoints) {
+        return {
+          valid: false,
+          error: `Minimum ${minimumPoints} shine points required for redemption`
+        };
+      }
+
+      // Check sufficient balance
+      if (currentBalance < pointsToRedeem) {
+        return {
+          valid: false,
+          error: "Insufficient shine points balance"
+        };
+      }
+
+      // Calculate discount using actual settings
+      const discountAmount = Math.floor(pointsToRedeem * pointsValue);
+      const newBalance = currentBalance - pointsToRedeem;
+
+      return {
+        valid: true,
+        points_used: pointsToRedeem,
+        discount_amount: discountAmount,
+        new_balance: newBalance
+      };
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to validate shine points redemption'
+      });
+      return {
+        valid: false,
+        error: "Failed to validate shine points redemption"
+      };
+    }
+  },
+
+  async addShinePoints(customerId: string, points: number, referenceType: string, referenceId?: string, description?: string) {
+    try {
+      // Get current shine points balance
+      const currentBalance = await this.getCustomerShinePoints(customerId);
+      const newBalance = currentBalance + points;
+
+      // Update customer memberships shine points
+      const { error: pointsError } = await supabase
+        .from('customer_memberships')
+        .update({ shine_points: newBalance, updated_at: new Date().toISOString() })
+        .eq('customer_id', customerId);
+
+      if (pointsError) throw pointsError;
+
+      // Record transaction in points_transactions table
+      const { error: transactionError } = await supabase
+        .from('points_transactions')
+        .insert({
+          customer_id: customerId,
+          transaction_type: 'shine_points_earned',
+          points_change: points,
+          balance_after: newBalance,
+          reference_type: referenceType,
+          reference_id: referenceId,
+          description: description || `Shine points earned: ${points}`
+        });
+
+      if (transactionError) throw transactionError;
+
+      return newBalance;
+    } catch (error) {
+      handleClientError(error, {
+        customMessage: 'Failed to add shine points'
+      });
+      return null;
     }
   }
 };
@@ -1455,6 +1651,8 @@ export const AdminReferralService = {
           referrer_points_earned: 10,
           points_redemption_minimum: 50,
           points_redemption_value: 100,
+          shine_points_redemption_minimum: 50,
+          shine_points_redemption_value: 1000,
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -1481,6 +1679,8 @@ export const AdminReferralService = {
         referrer_points_earned: 10,
         points_redemption_minimum: 50,
         points_redemption_value: 100,
+        shine_points_redemption_minimum: 50,
+        shine_points_redemption_value: 1000,
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -1493,6 +1693,8 @@ export const AdminReferralService = {
     referrer_points_earned?: number;
     points_redemption_minimum?: number;
     points_redemption_value?: number;
+    shine_points_redemption_minimum?: number;
+    shine_points_redemption_value?: number;
     is_active?: boolean;
   }) {
     try {
@@ -1588,16 +1790,32 @@ export const MembershipService = {
   // Get membership levels with benefits
   async getMembershipLevelsWithBenefits() {
     try {
-      const { data, error } = await supabase
+      const { data: levels, error } = await supabase
         .from('customer_membership_levels')
-        .select(`
-          *,
-          benefits:membership_benefits(*)
-        `)
+        .select('*')
         .order('level_index', { ascending: true });
 
       if (error) throw error;
-      return data;
+
+      // Fetch benefits for each level separately
+      const levelsWithBenefits = await Promise.all(
+        (levels || []).map(async (level) => {
+          try {
+            const { data: benefits } = await supabase
+              .from('membership_benefits')
+              .select('*')
+              .eq('membership_level_id', level.id)
+              .order('display_order', { ascending: true });
+
+            return { ...level, benefits: benefits || [] };
+          } catch (e) {
+            console.warn('Could not fetch benefits for level', level.id, e);
+            return { ...level, benefits: [] };
+          }
+        })
+      );
+
+      return levelsWithBenefits;
     } catch (error) {
       handleClientError(error, {
         customMessage: 'Failed to fetch membership levels with benefits'
@@ -1628,6 +1846,7 @@ export const MembershipService = {
   // Update membership level
   async updateMembershipLevel(id: number, updateData: {
     points_multiplier?: number;
+    points_per_transaction?: number;
     discount_percent?: number;
     discount_max_amount?: number;
     transaction_threshold?: number;
@@ -1754,12 +1973,27 @@ export const MembershipService = {
     try {
       const { data, error } = await supabase
         .from('customer_memberships')
-        .select(`
-          *,
-          level:customer_membership_levels(*)
-        `)
+        .select('*')
         .eq('customer_id', customerId)
-        .single();
+        .maybeSingle();
+
+      // If membership exists, fetch the level details separately
+      if (data && data.membership_level_id) {
+        try {
+          const { data: levelData, error: levelError } = await supabase
+            .from('customer_membership_levels')
+            .select('*')
+            .eq('id', data.membership_level_id)
+            .single();
+
+          if (!levelError && levelData) {
+            return { ...data, level: levelData };
+          }
+        } catch (e) {
+          // If level fetch fails, return membership without level details
+          console.warn('Could not fetch membership level details', e);
+        }
+      }
 
       if (error && error.code !== 'PGRST116') throw error;
       return data;
@@ -1779,18 +2013,15 @@ export const MembershipService = {
       const search = params?.search || "";
       const offset = (page - 1) * limit;
 
+      // First get customer memberships without JOIN
       let query = supabase
         .from('customer_memberships')
-        .select(`
-          *,
-          level:customer_membership_levels(*),
-          customer:customer_id(username, email, whatsapp)
-        `)
+        .select('*')
         .order('total_transactions', { ascending: false });
 
       // Apply search filter if provided
       if (search) {
-        query = query.or(`customer.username.ilike.%${search}%,customer.email.ilike.%${search}%,customer.whatsapp.ilike.%${search}%`);
+        query = query.or(`customer_id.ilike.%${search}%,customer_id.ilike.%${search}%`);
       }
 
       const { data: customers, error } = await query.range(offset, offset + limit - 1);
@@ -1802,8 +2033,29 @@ export const MembershipService = {
         .from('customer_memberships')
         .select("*", { count: "exact", head: true });
 
+      // Fetch level details separately for each membership
+      const customersWithLevels = await Promise.all(
+        (customers || []).map(async (customer) => {
+          if (customer.membership_level_id) {
+            try {
+              const { data: levelData } = await supabase
+                .from('customer_membership_levels')
+                .select('*')
+                .eq('id', customer.membership_level_id)
+                .single();
+
+              return { ...customer, level: levelData };
+            } catch (e) {
+              console.warn('Could not fetch level for membership', e);
+              return { ...customer, level: null };
+            }
+          }
+          return { ...customer, level: null };
+        })
+      );
+
       return {
-        customers: customers || [],
+        customers: customersWithLevels || [],
         pagination: {
           page,
           limit,
@@ -1827,11 +2079,7 @@ export const MembershipService = {
     try {
       const { data, error } = await supabase
         .from('membership_level_history')
-        .select(`
-          *,
-          from_level:customer_membership_levels(id, name),
-          to_level:customer_membership_levels(id, name)
-        `)
+        .select('*')
         .eq('customer_id', customerId)
         .order('changed_at', { ascending: false });
 

@@ -11,6 +11,7 @@ import { useInvoiceID } from "@/hooks/useNanoID";
 import { Discount } from "./Discount";
 import { Referral } from "./Referral";
 import { PointsRedemption } from "./PointsRedemption";
+import { ShinePointsRedemption } from "./ShinePointsRedemption";
 import { formatedCurrency } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { Payment } from "./Payment";
@@ -145,7 +146,10 @@ export function CartApp() {
         {isNewCustomer ? (
           <Referral />
         ) : (
-          <PointsRedemption />
+          <>
+            <PointsRedemption />
+            <ShinePointsRedemption />
+          </>
         )}
       </div>
       <div className="fixed md:sticky w-full bottom-0 flex-shrink-0 flex justify-between items-center px-5 py-3 bg-white border-t">

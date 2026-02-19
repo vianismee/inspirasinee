@@ -172,18 +172,18 @@ CREATE POLICY "Allow authenticated users to manage membership history"
 -- 5. INSERT DEFAULT MEMBERSHIP LEVELS
 -- =====================================================
 -- Bronze Level (Starting level - 0 transactions)
-INSERT INTO public.customer_membership_levels (name, level_index, points_multiplier, discount_percent, discount_max_amount, transaction_threshold)
-VALUES ('Bronze', 1, 1.0, 0, 0, 0)
+INSERT INTO public.customer_membership_levels (name, level_index, points_multiplier, points_per_transaction, discount_percent, discount_max_amount, transaction_threshold)
+VALUES ('Bronze', 1, 1.0, 1, 0, 0, 0)
 ON CONFLICT (name) DO NOTHING;
 
 -- Silver Level (3 transactions needed)
-INSERT INTO public.customer_membership_levels (name, level_index, points_multiplier, discount_percent, discount_max_amount, transaction_threshold)
-VALUES ('Silver', 2, 1.2, 5, 5000, 3)
+INSERT INTO public.customer_membership_levels (name, level_index, points_multiplier, points_per_transaction, discount_percent, discount_max_amount, transaction_threshold)
+VALUES ('Silver', 2, 1.2, 2, 5, 5000, 3)
 ON CONFLICT (name) DO NOTHING;
 
 -- Gold Level (10 transactions needed)
-INSERT INTO public.customer_membership_levels (name, level_index, points_multiplier, discount_percent, discount_max_amount, transaction_threshold)
-VALUES ('Gold', 3, 1.5, 10, 10000, 10)
+INSERT INTO public.customer_membership_levels (name, level_index, points_multiplier, points_per_transaction, discount_percent, discount_max_amount, transaction_threshold)
+VALUES ('Gold', 3, 1.5, 3, 10, 10000, 10)
 ON CONFLICT (name) DO NOTHING;
 
 -- =====================================================
@@ -195,7 +195,7 @@ SELECT
   id,
   'Flame',
   'Earn Points',
-  'Earn 1 point for every Rp 1.000 spent',
+  'Earn 1 point for every transaction',
   1
 FROM public.customer_membership_levels WHERE name = 'Bronze'
 ON CONFLICT DO NOTHING;
@@ -226,7 +226,7 @@ SELECT
   id,
   'Flame',
   'Bonus Points',
-  'Earn 1.2x points on every transaction',
+  'Earn 2 points for every transaction',
   2
 FROM public.customer_membership_levels WHERE name = 'Silver'
 ON CONFLICT DO NOTHING;
@@ -257,7 +257,7 @@ SELECT
   id,
   'Flame',
   'Super Points',
-  'Earn 1.5x points on every transaction',
+  'Earn 3 points for every transaction',
   2
 FROM public.customer_membership_levels WHERE name = 'Gold'
 ON CONFLICT DO NOTHING;

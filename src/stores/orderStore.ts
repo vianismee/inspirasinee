@@ -69,6 +69,16 @@ interface Orders {
   total_price: number;
   payment: string;
   created_at: string;
+  // Referral and points fields
+  referral_code?: string;
+  referral_discount_amount?: number;
+  points_used?: number;
+  points_discount_amount?: number;
+  // Membership fields
+  membership_discount_amount?: number;
+  membership_level_id?: number;
+  // Shine points redemption
+  shine_points_discount_amount?: number;
 }
 
 interface OrdersState {
@@ -119,7 +129,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
         );
         const processedData = { ...singleData, order_item: groupedItems };
 
-        set({ singleOrders: processedData });
+        set({ singleOrders: processedData as Orders });
         return true;
       }
 
@@ -141,7 +151,7 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       // 3. Lakukan grouping untuk setiap order SEBELUM menyimpan ke state
       const processedData = (data || []).map((order) => ({
         ...order,
-        order_item: groupOrderItems(order.order_item as OrderItem[]),
+        order_item: groupOrderItems(order.order_item as OrderItem[])
       }));
 
       set({ orders: processedData as Orders[], count: count || 0 });

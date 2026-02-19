@@ -25,7 +25,8 @@ const recalculateTotals = (
   activeDiscounts: Discount[],
   referralDiscount: number = 0,
   pointsDiscount: number = 0,
-  membershipDiscount: number = 0
+  membershipDiscount: number = 0,
+  shinePointsDiscount: number = 0
 ) => {
   // Hitung subtotal dengan menjumlahkan semua harga layanan di setiap item
   const subTotal = cart.reduce((total, item) => {
@@ -47,7 +48,7 @@ const recalculateTotals = (
     return total;
   }, 0);
 
-  const totalPrice = Math.round(Math.max(0, subTotal - totalDiscountValue - referralDiscount - pointsDiscount - membershipDiscount));
+  const totalPrice = Math.round(Math.max(0, subTotal - totalDiscountValue - referralDiscount - pointsDiscount - membershipDiscount - shinePointsDiscount));
   return { subTotal, totalPrice };
 };
 
@@ -77,6 +78,9 @@ interface CartState {
     transaction_threshold: number;
     is_active: boolean;
   } | null; // Full membership level data
+  // Shine Points Redemption state
+  shinePointsUsed: number;
+  shinePointsDiscount: number;
   customerId: string | null; // Track current customer for recalculation
   // Existing methods
   setPayment: (payment: string) => void;
@@ -111,6 +115,10 @@ interface CartState {
   clearMembershipDiscount: () => void;
   fetchAndApplyMembershipDiscount: (customerId: string) => Promise<void>;
   recalculateMembershipDiscount: () => Promise<void>;
+  // Shine Points Redemption methods
+  setShinePointsUsed: (points: number) => void;
+  setShinePointsDiscount: (amount: number) => void;
+  clearShinePointsDiscount: () => void;
   handleSubmit: () => Promise<boolean>;
   resetCart: () => void;
 }
@@ -139,6 +147,9 @@ export const useCartStore = create<CartState>((set, get) => ({
   membershipLevel: null,
   membershipLevelId: null,
   membershipLevelData: null,
+  // Shine Points Redemption state
+  shinePointsUsed: 0,
+  shinePointsDiscount: 0,
   customerId: null,
 
   // Aksi-aksi (actions)
@@ -154,7 +165,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       state.activeDiscounts,
       amount,
       state.pointsDiscount,
-      state.membershipDiscount
+      state.membershipDiscount,
+      state.shinePointsDiscount
     );
     set({ referralDiscount: amount, totalPrice });
   },
@@ -165,7 +177,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       state.activeDiscounts,
       0,
       state.pointsDiscount,
-      state.membershipDiscount
+      state.membershipDiscount,
+      state.shinePointsDiscount
     );
     set({ referralCode: "", referralDiscount: 0, totalPrice });
   },
@@ -177,7 +190,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       state.activeDiscounts,
       state.referralDiscount,
       amount,
-      state.membershipDiscount
+      state.membershipDiscount,
+      state.shinePointsDiscount
     );
     set({ pointsDiscount: amount, totalPrice });
   },
@@ -188,7 +202,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       state.activeDiscounts,
       state.referralDiscount,
       0,
-      state.membershipDiscount
+      state.membershipDiscount,
+      state.shinePointsDiscount
     );
     set({ pointsUsed: 0, pointsDiscount: 0, totalPrice });
   },
@@ -205,7 +220,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       state.activeDiscounts,
       state.referralDiscount,
       state.pointsDiscount,
-      amount
+      amount,
+      state.shinePointsDiscount
     );
     set({ membershipDiscount: amount, membershipLevel: level, membershipLevelId: levelId, totalPrice });
   },
@@ -299,7 +315,8 @@ export const useCartStore = create<CartState>((set, get) => ({
             state.activeDiscounts,
             state.referralDiscount,
             state.pointsDiscount,
-            calculatedDiscount
+            calculatedDiscount,
+            state.shinePointsDiscount
           );
 
           set({ membershipDiscount: calculatedDiscount, totalPrice });
@@ -309,6 +326,33 @@ export const useCartStore = create<CartState>((set, get) => ({
     } catch (error) {
       logger.error("Error recalculating membership discount", { error }, "CartStore");
     }
+  },
+
+  // Shine Points Redemption methods
+  setShinePointsUsed: (points) => set({ shinePointsUsed: points }),
+  setShinePointsDiscount: (amount) => {
+    const state = get();
+    const { totalPrice } = recalculateTotals(
+      state.cart,
+      state.activeDiscounts,
+      state.referralDiscount,
+      state.pointsDiscount,
+      state.membershipDiscount,
+      amount
+    );
+    set({ shinePointsDiscount: amount, totalPrice });
+  },
+  clearShinePointsDiscount: () => {
+    const state = get();
+    const { totalPrice } = recalculateTotals(
+      state.cart,
+      state.activeDiscounts,
+      state.referralDiscount,
+      state.pointsDiscount,
+      state.membershipDiscount,
+      0
+    );
+    set({ shinePointsUsed: 0, shinePointsDiscount: 0, totalPrice });
   },
 
   addItem: () =>
@@ -327,7 +371,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         state.activeDiscounts,
         state.referralDiscount,
         state.pointsDiscount,
-        state.membershipDiscount
+        state.membershipDiscount,
+        state.shinePointsDiscount
       );
       return { cart: newCart, ...totals };
     }),
@@ -365,7 +410,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         state.activeDiscounts,
         state.referralDiscount,
         state.pointsDiscount,
-        state.membershipDiscount
+        state.membershipDiscount,
+        state.shinePointsDiscount
       );
       return { cart: newCart, ...totals };
     }),
@@ -387,7 +433,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         state.activeDiscounts,
         state.referralDiscount,
         state.pointsDiscount,
-        state.membershipDiscount
+        state.membershipDiscount,
+        state.shinePointsDiscount
       );
       return { cart: newCart, ...totals };
     }),
@@ -404,7 +451,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         state.cart,
         newActiveDiscounts,
         state.referralDiscount,
-        state.pointsDiscount
+        state.pointsDiscount,
+        state.membershipDiscount,
+        state.shinePointsDiscount
       );
       toast.success(`Diskon "${discount.label}" berhasil diterapkan.`);
       return { activeDiscounts: newActiveDiscounts, totalPrice };
@@ -420,7 +469,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         state.cart,
         newActiveDiscounts,
         state.referralDiscount,
-        state.pointsDiscount
+        state.pointsDiscount,
+        state.membershipDiscount,
+        state.shinePointsDiscount
       );
       toast.info(`Diskon "${discountName}" telah dihapus.`);
       return { activeDiscounts: newActiveDiscounts, totalPrice };
@@ -439,7 +490,9 @@ export const useCartStore = create<CartState>((set, get) => ({
       pointsUsed,
       pointsDiscount,
       membershipDiscount,
-      membershipLevelId
+      membershipLevelId,
+      shinePointsUsed,
+      shinePointsDiscount
     } = get();
 
     // Debug: Log current state
@@ -486,20 +539,27 @@ export const useCartStore = create<CartState>((set, get) => ({
         customerIdToUse = newCustomer.customer_id;
       }
 
-      const orderData = {
+      // Build base order data
+      const orderData: any = {
         invoice_id: invoice,
         status: "ongoing",
         customer_id: customerIdToUse,
         subtotal: subTotal,
-        total_price: totalPrice, // Use actual field name
+        total_price: totalPrice,
         payment: payment,
         referral_code: referralCode || null,
         referral_discount_amount: referralDiscount,
         points_used: pointsUsed,
-        points_discount_amount: pointsDiscount, // Now save the points discount amount
+        points_discount_amount: pointsDiscount,
         membership_discount_amount: membershipDiscount || 0,
         membership_level_id: membershipLevelId || null,
       };
+
+      // Conditionally add shine_points_discount_amount only if there's a discount
+      // This prevents 400 error if the column doesn't exist in the database yet
+      if (shinePointsDiscount && shinePointsDiscount > 0) {
+        orderData.shine_points_discount_amount = shinePointsDiscount;
+      }
 
       // Debug: Log order data
       logger.debug("Order data to be saved", { orderData }, "CartStore");
@@ -596,26 +656,67 @@ export const useCartStore = create<CartState>((set, get) => ({
             );
             toast.success(`Points deducted! You used ${pointsUsed} points`);
           }
+
+          // Handle shine points deduction
+          if (shinePointsUsed && shinePointsUsed > 0) {
+            const { ShinePointsService } = await import("@/lib/client-services");
+            await ShinePointsService.deductShinePoints(
+              customerIdToUse,
+              shinePointsUsed,
+              'order',
+              invoice,
+              `Shine points used for order ${invoice}`
+            );
+            toast.success(`Shine points deducted! You used ${shinePointsUsed} shine points`);
+          }
         } catch (error) {
           logger.error("Error recording referral usage", { error, referralCode, invoice }, "CartStore");
           toast.warning("Order successful, but referral recording failed");
         }
-      } else if (pointsUsed && pointsUsed > 0) {
+      } else {
         // Handle points deduction even if no referral code was used
-        try {
-          const { PointsService } = await import("@/lib/client-services");
-          await PointsService.deductPoints(
-            customerIdToUse,
-            pointsUsed,
-            'order',
-            invoice,
-            `Points used for order ${invoice}`
-          );
-          toast.success(`Points deducted! You used ${pointsUsed} points`);
-        } catch (error) {
-          logger.error("Error deducting points", { error, pointsUsed, invoice }, "CartStore");
-          toast.warning("Order successful, but points deduction failed");
+        if (pointsUsed && pointsUsed > 0) {
+          try {
+            const { PointsService } = await import("@/lib/client-services");
+            await PointsService.deductPoints(
+              customerIdToUse,
+              pointsUsed,
+              'order',
+              invoice,
+              `Points used for order ${invoice}`
+            );
+            toast.success(`Points deducted! You used ${pointsUsed} points`);
+          } catch (error) {
+            logger.error("Error deducting points", { error, pointsUsed, invoice }, "CartStore");
+            toast.warning("Order successful, but points deduction failed");
+          }
         }
+
+        // Handle shine points deduction even if no referral code was used
+        if (shinePointsUsed && shinePointsUsed > 0) {
+          try {
+            const { ShinePointsService } = await import("@/lib/client-services");
+            await ShinePointsService.deductShinePoints(
+              customerIdToUse,
+              shinePointsUsed,
+              'order',
+              invoice,
+              `Shine points used for order ${invoice}`
+            );
+            toast.success(`Shine points deducted! You used ${shinePointsUsed} shine points`);
+          } catch (error) {
+            logger.error("Error deducting shine points", { error, shinePointsUsed, invoice }, "CartStore");
+            toast.warning("Order successful, but shine points deduction failed");
+          }
+        }
+      }
+
+      // Trigger points refresh for components to update their display
+      try {
+        const { usePointsRefreshStore } = await import("@/hooks/use-points-refresh");
+        usePointsRefreshStore.getState().triggerRefresh();
+      } catch (error) {
+        // Ignore if store doesn't exist yet
       }
 
       return true;
@@ -644,6 +745,9 @@ export const useCartStore = create<CartState>((set, get) => ({
       membershipLevel: null,
       membershipLevelId: null,
       membershipLevelData: null,
+      // Reset shine points state
+      shinePointsUsed: 0,
+      shinePointsDiscount: 0,
       customerId: null,
     }),
 }));

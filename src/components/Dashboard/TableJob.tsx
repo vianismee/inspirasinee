@@ -9,7 +9,8 @@ import {
   Trash2,
   Hourglass,
   CircleDashed,
-  Sparkles,
+  Flame,
+  Crown,
   CheckCircle2,
   User,
   Phone,
@@ -63,6 +64,9 @@ interface OrderWithReferral extends Orders {
   referral_discount_amount?: number;
   points_used?: number;
   points_discount_amount?: number;
+  membership_discount_amount?: number;
+  membership_level_id?: number;
+  shine_points_discount_amount?: number;
 }
 import { useRouter } from "next/navigation";
 
@@ -273,6 +277,42 @@ export default function TableJob() {
                       </div>
                     )}
 
+                  {/* Membership Discount Display */}
+                  {(order as OrderWithReferral).membership_discount_amount &&
+                    ((order as OrderWithReferral).membership_discount_amount || 0) >
+                      0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Crown className="h-3.5 w-3.5 text-purple-600" />
+                          Membership Discount
+                        </span>
+                        <span className="font-mono text-purple-600">
+                          -
+                          {formatedCurrency(
+                            (order as OrderWithReferral).membership_discount_amount!
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                  {/* Shine Points Redemption Display */}
+                  {(order as OrderWithReferral).shine_points_discount_amount &&
+                    ((order as OrderWithReferral).shine_points_discount_amount || 0) >
+                      0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Flame className="h-3.5 w-3.5 text-pink-600" />
+                          Shine Points Redemption
+                        </span>
+                        <span className="font-mono text-pink-600">
+                          -
+                          {formatedCurrency(
+                            (order as OrderWithReferral).shine_points_discount_amount!
+                          )}
+                        </span>
+                      </div>
+                    )}
+
                   <div className="flex justify-between items-center text-md font-bold mt-2 pt-2 border-t">
                     <span>Total Pembayaran</span>
                     <span className="font-mono">
@@ -321,7 +361,7 @@ export default function TableJob() {
               value: "cleaning",
               label: "Cleaning",
               variant: "default" as const,
-              icon: Sparkles,
+              icon: Flame,
             },
             {
               value: "finish",
@@ -488,6 +528,12 @@ export default function TableJob() {
               pointsUsed: (order as OrderWithReferral).points_used || undefined,
               pointsDiscount:
                 (order as OrderWithReferral).points_discount_amount ||
+                undefined,
+              membershipDiscount:
+                (order as OrderWithReferral).membership_discount_amount ||
+                undefined,
+              shinePointsDiscount:
+                (order as OrderWithReferral).shine_points_discount_amount ||
                 undefined,
             });
             const encodedText = encodeURIComponent(receiptText);
