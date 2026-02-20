@@ -1,68 +1,16 @@
 -- =====================================================
--- MIGRATION: POINTS PER TRANSACTION SYSTEM
+-- MIGRATION: FIX SHINE POINTS TRIGGER SYNTAX ERROR
 -- =====================================================
--- Description: Change from amount-based points to transaction-based points
---
--- OLD SYSTEM: Points based on transaction amount (subtotal / 1000 * multiplier)
--- NEW SYSTEM: Fixed points per transaction based on membership level
---
--- Bronze: 1 point per transaction
--- Silver: 2 points per transaction
--- Gold: 3 points per transaction
+-- Description: Fix syntax error in award_shine_points_after_order function
+-- Bug: Missing || concatenation operator in line 136
+-- Error: type "v_level_name" does not exist (code: 42704)
 -- =====================================================
 
--- =====================================================
--- 1. ADD NEW COLUMN FOR POINTS PER TRANSACTION
--- =====================================================
-ALTER TABLE public.customer_membership_levels
-ADD COLUMN IF NOT EXISTS points_per_transaction INTEGER NOT NULL DEFAULT 1;
-
--- =====================================================
--- 2. SET DEFAULT VALUES FOR EACH LEVEL
--- =====================================================
-UPDATE public.customer_membership_levels
-SET points_per_transaction = CASE
-  WHEN level_index = 1 THEN 1  -- Bronze: 1 point per transaction
-  WHEN level_index = 2 THEN 2  -- Silver: 2 points per transaction
-  WHEN level_index = 3 THEN 3  -- Gold: 3 points per transaction
-  ELSE 1  -- Default fallback
-END;
-
--- =====================================================
--- 3. (OPTIONAL) MIGRATE EXISTING DATA FROM OLD SYSTEM
--- =====================================================
--- This section is commented out - keeping for reference if needed
--- Uncomment and run ONLY if you want to migrate existing balances
-/*
--- Calculate what the balances would be under new system for reference
-DO $$
-DECLARE
-  v_total_transactions INTEGER;
-  v_new_balance INTEGER;
-BEGIN
-  -- For each customer membership, show the old vs new calculation
-  FOR rec IN SELECT customer_id, membership_level_id, total_transactions, shine_points
-              FROM public.customer_memberships
-  LOOP
-    -- New balance: total_transactions * points_per_transaction
-    SELECT total_transactions * points_per_transaction INTO v_new_balance
-    FROM public.customer_membership_levels
-    WHERE id = rec.membership_level_id;
-
-    RAISE NOTICE 'Customer % (Level %): Old balance = %, New calculated balance = %',
-      rec.customer_id, rec.membership_level_id, rec.shine_points, v_new_balance;
-  END LOOP;
-END $$;
-*/
-
--- =====================================================
--- 4. UPDATE THE AWARD FUNCTION TO USE NEW SYSTEM
--- =====================================================
--- Drop existing trigger and function
+-- Drop existing trigger and function if they exist
 DROP TRIGGER IF EXISTS award_shine_points_trigger ON public.orders;
 DROP FUNCTION IF EXISTS public.award_shine_points_after_order();
 
--- Create new function with transaction-based points
+-- Recreate the function with correct syntax
 CREATE OR REPLACE FUNCTION public.award_shine_points_after_order()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -142,28 +90,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create the trigger for awarding shine points
+-- Recreate the trigger
 CREATE TRIGGER award_shine_points_trigger
   AFTER INSERT ON public.orders
   FOR EACH ROW
   EXECUTE FUNCTION public.award_shine_points_after_order();
 
 -- =====================================================
--- 5. VERIFICATION QUERIES
+-- VERIFICATION
 -- =====================================================
--- Check the new column
+-- Check that the function was created correctly
 SELECT
-  name,
-  level_index,
-  points_per_transaction,
-  points_multiplier, -- Old column, can be dropped later
-  discount_percent,
-  discount_max_amount,
-  is_active
-FROM public.customer_membership_levels
-ORDER BY level_index;
+  routine_name,
+  routine_type
+FROM information_schema.routines
+WHERE routine_schema = 'public'
+  AND routine_name = 'award_shine_points_after_order';
 
--- Check if trigger is created correctly
+-- Check that the trigger was created correctly
 SELECT
   trigger_name,
   event_object_table,
@@ -173,13 +117,3 @@ FROM information_schema.triggers
 WHERE trigger_name = 'award_shine_points_trigger'
   AND event_object_schema = 'public'
   AND event_object_table = 'orders';
-
--- =====================================================
--- NOTES FOR ADMIN
--- =====================================================
--- After migration, you can optionally drop the old points_multiplier column:
--- ALTER TABLE public.customer_membership_levels DROP COLUMN points_multiplier;
---
--- Benefits display should be updated to say:
--- "Earn X point(s) for every transaction"
--- instead of "Earn 1 point for every Rp 1.000 spent"

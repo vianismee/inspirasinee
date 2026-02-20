@@ -9,6 +9,7 @@ import {
   Trash2,
   Hourglass,
   CircleDashed,
+  Sparkles,
   Flame,
   Crown,
   CheckCircle2,
@@ -361,7 +362,7 @@ export default function TableJob() {
               value: "cleaning",
               label: "Cleaning",
               variant: "default" as const,
-              icon: Flame,
+              icon: Sparkles,
             },
             {
               value: "finish",

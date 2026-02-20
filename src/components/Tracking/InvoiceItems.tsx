@@ -71,7 +71,9 @@ export function InvoiceItems({ order }: InvoiceItemsProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {order.order_item.length === 0 ? (
+        {/* Scrollable items container - responsive height */}
+        <div className="max-h-[250px] sm:max-h-[300px] md:max-h-[350px] lg:max-h-[400px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+          {order.order_item.length === 0 ? (
           // Empty state
           <div className="text-center py-8">
             <Package className="w-12 h-12 mx-auto mb-3 text-gray-400" />
@@ -171,6 +173,7 @@ export function InvoiceItems({ order }: InvoiceItemsProps) {
             );
           })
         )}
+        </div>
 
         {/* Order Summary */}
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 rounded-lg p-6 border border-indigo-200 dark:border-indigo-800">
