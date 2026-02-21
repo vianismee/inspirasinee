@@ -19,6 +19,23 @@ interface CartItem {
   services: ServiceItem[]; // Setiap item punya array layanan
 }
 
+// Tipe data untuk membuat order baru
+interface CreateOrderData {
+  invoice_id: string;
+  status: string;
+  customer_id: string;
+  subtotal: number;
+  total_price: number;
+  payment: string;
+  referral_code: string | null;
+  referral_discount_amount: number;
+  points_used: number;
+  points_discount_amount: number;
+  membership_discount_amount: number;
+  membership_level_id: number | null;
+  shine_points_discount_amount?: number;
+}
+
 // UBAH: Fungsi untuk menghitung ulang subtotal dan total harga
 const recalculateTotals = (
   cart: CartItem[],
@@ -540,7 +557,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
 
       // Build base order data
-      const orderData: any = {
+      const orderData: CreateOrderData = {
         invoice_id: invoice,
         status: "ongoing",
         customer_id: customerIdToUse,
