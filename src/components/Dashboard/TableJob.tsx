@@ -57,6 +57,7 @@ import {
 } from "@/lib/invoiceUtils";
 import { formatedCurrency } from "@/lib/utils";
 import { useOrderStore } from "@/stores/orderStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { Orders } from "@/types";
 
 // Extended interface for orders with referral properties
@@ -83,12 +84,14 @@ export default function TableJob() {
     updateOrderStep,
     updatePayment,
   } = useOrderStore();
+  const { invoiceTemplate, fetchInvoiceTemplate } = useSettingsStore();
 
   React.useEffect(() => {
     fetchOrder({ page, pageSize: perPage });
+    fetchInvoiceTemplate();
     const unsubscribe = subscribeToOrders();
     return () => unsubscribe();
-  }, [fetchOrder, subscribeToOrders, page, perPage]);
+  }, [fetchOrder, subscribeToOrders, page, perPage, fetchInvoiceTemplate]);
 
   const columns = React.useMemo<ColumnDef<Orders>[]>(
     () => [
@@ -536,6 +539,7 @@ export default function TableJob() {
               shinePointsDiscount:
                 (order as OrderWithReferral).shine_points_discount_amount ||
                 undefined,
+              template: invoiceTemplate || undefined,
             });
             const encodedText = encodeURIComponent(receiptText);
             const whatsappURL = `https://wa.me/${order.customers.whatsapp}?text=${encodedText}`;
@@ -619,7 +623,7 @@ export default function TableJob() {
         enableHiding: false,
       },
     ],
-    [deleteInvoice, updateOrderStep, updatePayment]
+    [deleteInvoice, updateOrderStep, updatePayment, invoiceTemplate]
   );
 
   const pageCount = React.useMemo(() => {

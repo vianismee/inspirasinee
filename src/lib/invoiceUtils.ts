@@ -19,6 +19,7 @@ interface ReceiptData {
   pointsDiscount?: number;
   membershipDiscount?: number;
   shinePointsDiscount?: number;
+  template?: string; // NEW parameter
 }
 
 export const generateReceiptText = ({
@@ -35,22 +36,8 @@ export const generateReceiptText = ({
   pointsDiscount,
   membershipDiscount,
   shinePointsDiscount,
+  template,
 }: ReceiptData): string => {
-  // Format tanggal menjadi D/M/YYYY
-  const today = new Date();
-  const formattedDate = `${today.getDate()}/${
-    today.getMonth() + 1
-  }/${today.getFullYear()}`;
-
-  const greeting = `Hallo kak *${customer.username}*\n\nBerikut Invoice Order\n\n`;
-
-  const invoiceDetails =
-    `Invoice No. *${invoice}*\n` + `Tanggal: ${formattedDate}\n`;
-
-  const separator = `-----------------------------------\n\n`;
-
-  const orderDetailsHeader = `Detail Service:\n\n`;
-
   // BARU: Logika untuk mengelompokkan dan memformat detail order
   const groupedCart = cart.reduce((acc, item) => {
     if (!acc[item.shoe_name]) {
@@ -110,10 +97,50 @@ export const generateReceiptText = ({
   const totalText = `\n*Total Pembayaran: ${formatedCurrency(totalPrice)}*`;
   const paymentMethod = `\nMetode Pembayaran: ${payment}`;
 
+  const trackingLink = `https://www.inspirasinee.my.id/invoice/${invoice}`;
+
+  if (template) {
+    const itemTextForTemplate = 
+      orderDetails +
+      `\n\n-----------------------------------\n` +
+      `Subtotal: ${formatedCurrency(subTotal)}` +
+      discountsText +
+      `\nTotal Pembayaran: ${formatedCurrency(totalPrice)}` +
+      `\nMetode Pembayaran: ${payment}`;
+
+    let result = template;
+    result = result.replace(/\[customer\]/g, customer.username || "");
+    result = result.replace(/\[code\]/g, invoice);
+    result = result.replace(/\[item\]/g, itemTextForTemplate);
+    result = result.replace(/\[link\]/g, trackingLink);
+    return result;
+  }
+
+  const allItemsInfo = 
+    `Detail Service:\n\n` +
+    orderDetails +
+    summaryHeader +
+    subTotalText +
+    discountsText +
+    totalText +
+    paymentMethod;
+
+  // Fallback to original hardcoded format if no template provided
+  const today = new Date();
+  const formattedDate = `${today.getDate()}/${
+    today.getMonth() + 1
+  }/${today.getFullYear()}`;
+
+  const greeting = `Hallo kak *${customer.username}*\n\nBerikut Invoice Order\n\n`;
+
+  const invoiceDetails =
+    `Invoice No. *${invoice}*\n` + `Tanggal: ${formattedDate}\n`;
+
+  const separator = `-----------------------------------\n\n`;
+
   const trackingInfo =
     `\n\n-----------------------------------\n\n` +
-    `Tracking Order kamu di:\n` +
-    `https://inspirasinee.vercel.app/tracking/${invoice}`;
+    `Tracking Order kamu di:\n${trackingLink}`;
 
   const footer = `\nTerimakasih atas Kepercayaannya`;
 
@@ -121,13 +148,7 @@ export const generateReceiptText = ({
     greeting +
     invoiceDetails +
     separator +
-    orderDetailsHeader +
-    orderDetails +
-    summaryHeader +
-    subTotalText +
-    discountsText +
-    totalText +
-    paymentMethod +
+    allItemsInfo +
     trackingInfo +
     footer
   );

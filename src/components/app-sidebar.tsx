@@ -67,6 +67,11 @@ const data = {
       url: "/admin/report",
       icon: IconChartBar,
     },
+    {
+      title: "Settings",
+      url: "/admin/settings/invoice-template",
+      icon: IconListDetails, // Or another suitable icon
+    },
   ],
   navSecondary: [],
 };
