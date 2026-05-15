@@ -254,8 +254,8 @@ export function EditInvoiceSheet({
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0">
-        <SheetHeader className="px-6 pt-6 pb-4 border-b">
+      <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col gap-0 p-0">
+        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <SheetTitle className="text-lg font-bold">
             Edit Invoice — {order.invoice_id}
           </SheetTitle>
@@ -264,7 +264,7 @@ export function EditInvoiceSheet({
           </p>
         </SheetHeader>
 
-        <ScrollArea className="flex-1 px-6">
+        <ScrollArea className="flex-1 min-h-0 px-6">
           <div className="py-5 space-y-6">
             {/* ── Items ─────────────────────────────────────── */}
             <section className="space-y-4">
@@ -512,7 +512,7 @@ export function EditInvoiceSheet({
           </div>
         </ScrollArea>
 
-        <SheetFooter className="px-6 py-4 border-t gap-2 flex-row">
+        <SheetFooter className="px-6 py-4 border-t gap-2 flex-row shrink-0">
           <Button variant="outline" onClick={onClose} className="flex-1">
             Batal
           </Button>
