@@ -30,6 +30,12 @@ interface CustomerTableProps {
   onView: (customer: ICustomers) => void;
 }
 
+// PostgREST v12+ returns one-to-one as object; older versions return array. Handle both.
+function resolveMembership(raw: ICustomers["customer_memberships"]) {
+  if (!raw) return null;
+  return Array.isArray(raw) ? raw[0] ?? null : raw;
+}
+
 function getMemberBadgeClass(name: string) {
   switch (name.toLowerCase()) {
     case "bronze":
@@ -104,14 +110,13 @@ export function CustomerTable({ onEdit, onView }: CustomerTableProps) {
       {
         id: "member",
         accessorFn: (row) =>
-          row.customer_memberships?.[0]?.customer_membership_levels?.name ?? "",
+          resolveMembership(row.customer_memberships)?.customer_membership_levels?.name ?? "",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Member" />
         ),
         cell: ({ row }) => {
-          const membership = row.original.customer_memberships?.[0];
-          const levelName =
-            membership?.customer_membership_levels?.name ?? null;
+          const membership = resolveMembership(row.original.customer_memberships);
+          const levelName = membership?.customer_membership_levels?.name ?? null;
 
           if (!levelName) {
             return (
@@ -145,8 +150,8 @@ export function CustomerTable({ onEdit, onView }: CustomerTableProps) {
         filterFn: (row, _columnId, filterValue: string[]) => {
           if (!filterValue || filterValue.length === 0) return true;
           const levelName =
-            row.original.customer_memberships?.[0]?.customer_membership_levels
-              ?.name ?? "";
+            resolveMembership(row.original.customer_memberships)
+              ?.customer_membership_levels?.name ?? "";
           return filterValue.includes(levelName);
         },
         enableColumnFilter: true,

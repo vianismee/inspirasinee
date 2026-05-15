@@ -635,11 +635,7 @@ export default function TableJob() {
         enableHiding: false,
       },
     ],
-<<<<<<< HEAD
-    [deleteInvoice, updateOrderStep, updatePayment, invoiceTemplate]
-=======
-    [deleteInvoice, updateOrderStep, updatePayment, handleOpenEdit]
->>>>>>> 5ff163d (feat: add edit invoice sheet and customer membership display)
+    [deleteInvoice, updateOrderStep, updatePayment, handleOpenEdit, invoiceTemplate]
   );
 
   const pageCount = React.useMemo(() => {

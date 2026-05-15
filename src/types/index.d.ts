@@ -38,7 +38,8 @@ export type ICustomers = {
   totalSpent?: number;
   has_orders?: boolean;
   total_orders?: number;
-  customer_memberships?: CustomerMembership[];
+  // PostgREST v12+ returns one-to-one (UNIQUE FK) as object, not array
+  customer_memberships?: CustomerMembership | CustomerMembership[] | null;
 };
 
 export type IDiscount = {
