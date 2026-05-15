@@ -20,7 +20,7 @@ interface CustomerState {
   isLoading: boolean;
   totalCount: number;
   membershipCounts: Record<string, number>;
-  fetchCustomers: (options?: { customerId?: string; page?: number; pageSize?: number }) => Promise<void>;
+  fetchCustomers: (options?: { customerId?: string; page?: number; pageSize?: number; membershipLevels?: string[] }) => Promise<void>;
   fetchMembershipCounts: () => Promise<void>;
   deleteCustomer: (customerId: string) => Promise<void>;
   subscribeToCustomerChanges: () => () => void;
@@ -73,7 +73,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   clearCustomer: () => set({ activeCustomer: null }),
 
   fetchCustomers: async (options = {}) => {
-    const { customerId, page = 1, pageSize = 10 } = options;
+    const { customerId, page = 1, pageSize = 10, membershipLevels } = options;
     set({ isLoading: true });
     const supabase = createClient();
     try {
@@ -95,21 +95,50 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
         set({ singleCustomer: data ? { ...data, totalSpent } : null });
       } else {
-        // Fetch customers with pagination
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
+        const hasFilter = membershipLevels && membershipLevels.length > 0;
 
-        // Get paginated data and total count
-        const [{ data, error }, { count: totalCount, error: countError }] = await Promise.all([
-          supabase
-            .from("customers")
-            .select("*, orders(*), customer_memberships(membership_level_id, customer_membership_levels(name, level_index))")
-            .order("username", { ascending: true })
-            .range(from, to),
-          supabase
-            .from("customers")
-            .select("*", { count: "exact", head: true })
-        ]);
+        // When a membership filter is active, resolve matching customer IDs first.
+        // We fetch all membership rows client-side (small table) to avoid
+        // PostgREST two-level nested filter syntax issues.
+        let filteredIds: string[] | null = null;
+        if (hasFilter) {
+          const { data: memberRows } = await supabase
+            .from("customer_memberships")
+            .select("customer_id, customer_membership_levels(name)");
+
+          filteredIds = (memberRows || [])
+            .filter((m) => {
+              const name = (m.customer_membership_levels as unknown as { name: string } | null)?.name;
+              return name ? membershipLevels!.includes(name) : false;
+            })
+            .map((m) => m.customer_id);
+
+          if (filteredIds.length === 0) {
+            set({ customers: [], totalCount: 0 });
+            return;
+          }
+        }
+
+        // Build data + count queries, optionally scoped to filteredIds
+        let dataQuery = supabase
+          .from("customers")
+          .select("*, orders(*), customer_memberships(membership_level_id, customer_membership_levels(name, level_index))")
+          .order("username", { ascending: true })
+          .range(from, to);
+
+        let countQuery = supabase
+          .from("customers")
+          .select("*", { count: "exact", head: true });
+
+        if (filteredIds) {
+          dataQuery = dataQuery.in("customer_id", filteredIds);
+          countQuery = countQuery.in("customer_id", filteredIds);
+        }
+
+        const [{ data, error }, { count: totalCount, error: countError }] =
+          await Promise.all([dataQuery, countQuery]);
 
         if (error) throw error;
         if (countError) logger.warn("Could not get total count", { error: countError }, "CustomerStore");
@@ -125,7 +154,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
         set({
           customers: customersWithTotalSpent,
-          totalCount: totalCount || 0
+          totalCount: totalCount || 0,
         });
       }
     } catch (error) {
