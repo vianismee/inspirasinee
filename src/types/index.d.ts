@@ -20,6 +20,14 @@ export type IItems = {
   amount: string;
 };
 
+export type CustomerMembership = {
+  membership_level_id: number;
+  customer_membership_levels: {
+    name: string;
+    level_index: number;
+  };
+};
+
 export type ICustomers = {
   customer_id: string;
   username: string;
@@ -30,6 +38,7 @@ export type ICustomers = {
   totalSpent?: number;
   has_orders?: boolean;
   total_orders?: number;
+  customer_memberships?: CustomerMembership[];
 };
 
 export type IDiscount = {
@@ -49,4 +58,14 @@ export type Orders = {
   total_price: number;
   payment: string;
   created_at: string;
+};
+
+export type OrderWithReferral = Orders & {
+  referral_code?: string | null;
+  referral_discount_amount?: number | null;
+  points_used?: number | null;
+  points_discount_amount?: number | null;
+  membership_discount_amount?: number | null;
+  membership_level_id?: number | null;
+  shine_points_discount_amount?: number | null;
 };

@@ -18,6 +18,7 @@ import {
   MapPin,
   CheckCheck,
   QrCode,
+  Pencil,
 } from "lucide-react";
 // Impor dari nuqs untuk state di URL
 import { useQueryState, parseAsInteger } from "nuqs";
@@ -58,19 +59,9 @@ import {
 import { formatedCurrency } from "@/lib/utils";
 import { useOrderStore } from "@/stores/orderStore";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { Orders } from "@/types";
-
-// Extended interface for orders with referral properties
-interface OrderWithReferral extends Orders {
-  referral_code?: string;
-  referral_discount_amount?: number;
-  points_used?: number;
-  points_discount_amount?: number;
-  membership_discount_amount?: number;
-  membership_level_id?: number;
-  shine_points_discount_amount?: number;
-}
+import { Orders, OrderWithReferral } from "@/types";
 import { useRouter } from "next/navigation";
+import { EditInvoiceSheet } from "@/components/Invoice/EditInvoiceSheet";
 
 export default function TableJob() {
   const [page] = useQueryState("page", parseAsInteger.withDefault(1));
@@ -85,6 +76,19 @@ export default function TableJob() {
     updatePayment,
   } = useOrderStore();
   const { invoiceTemplate, fetchInvoiceTemplate } = useSettingsStore();
+
+  const [editSheetOpen, setEditSheetOpen] = React.useState(false);
+  const [editingOrder, setEditingOrder] = React.useState<OrderWithReferral | null>(null);
+
+  const handleOpenEdit = React.useCallback((order: OrderWithReferral) => {
+    setEditingOrder(order);
+    setEditSheetOpen(true);
+  }, []);
+
+  const handleCloseEdit = React.useCallback(() => {
+    setEditSheetOpen(false);
+    setEditingOrder(null);
+  }, []);
 
   React.useEffect(() => {
     fetchOrder({ page, pageSize: perPage });
@@ -568,6 +572,14 @@ export default function TableJob() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={() => handleOpenEdit(order as OrderWithReferral)}
+                    className="flex items-center gap-2"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Invoice
+                  </DropdownMenuItem>
+
                   <DropdownMenuSeparator />
 
                   {order.payment === "Pending" && (
@@ -623,7 +635,11 @@ export default function TableJob() {
         enableHiding: false,
       },
     ],
+<<<<<<< HEAD
     [deleteInvoice, updateOrderStep, updatePayment, invoiceTemplate]
+=======
+    [deleteInvoice, updateOrderStep, updatePayment, handleOpenEdit]
+>>>>>>> 5ff163d (feat: add edit invoice sheet and customer membership display)
   );
 
   const pageCount = React.useMemo(() => {
@@ -643,10 +659,19 @@ export default function TableJob() {
   });
 
   return (
-    <div className="data-table-container">
-      <DataTable table={table}>
-        <DataTableToolbar table={table} />
-      </DataTable>
-    </div>
+    <>
+      <div className="data-table-container">
+        <DataTable table={table}>
+          <DataTableToolbar table={table} />
+        </DataTable>
+      </div>
+
+      <EditInvoiceSheet
+        open={editSheetOpen}
+        order={editingOrder}
+        onClose={handleCloseEdit}
+        onSuccess={() => fetchOrder({ page, pageSize: perPage })}
+      />
+    </>
   );
 }

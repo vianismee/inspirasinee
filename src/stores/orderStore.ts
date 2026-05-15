@@ -81,6 +81,13 @@ interface Orders {
   shine_points_discount_amount?: number;
 }
 
+interface UpdateInvoicePayload {
+  items: { invoice_id: string; shoe_name: string; service: string; amount: number }[];
+  discounts: { order_invoice_id: string; discount_code: string; discounted_amount: number }[];
+  subTotal: number;
+  totalPrice: number;
+}
+
 interface OrdersState {
   orders: Orders[];
   count: number;
@@ -94,6 +101,7 @@ interface OrdersState {
   updateOrderStep: (invoice_id: string, newStep: string) => Promise<void>;
   deleteInvoice: (invoice_id: string) => Promise<void>;
   updatePayment: (invoice_id: string, newPayment: string) => Promise<void>;
+  updateInvoice: (invoice_id: string, payload: UpdateInvoicePayload) => Promise<boolean>;
   subscribeToOrders: (invoice_id?: string) => () => void;
 }
 
@@ -243,6 +251,68 @@ export const useOrderStore = create<OrdersState>((set, get) => ({
       const errorMessage = (error as Error).message;
       // logger.error("Unexpected error during invoice deletion", { error, invoice_id }, "OrderStore");
       toast.error(`Terjadi kesalahan: ${errorMessage}`);
+    }
+  },
+
+  updateInvoice: async (invoice_id, payload) => {
+    const supabase = createClient();
+    const { items, discounts, subTotal, totalPrice } = payload;
+
+    try {
+      // 1. Get old item IDs so we can delete specifically after inserting new ones
+      const { data: oldItemData, error: fetchError } = await supabase
+        .from("order_item")
+        .select("id")
+        .eq("invoice_id", invoice_id);
+
+      if (fetchError) throw fetchError;
+      const oldIds = (oldItemData || []).map((i) => i.id);
+
+      // 2. Insert new items first (safe: duplicates are fine since no unique constraint)
+      const { error: insertItemsError } = await supabase
+        .from("order_item")
+        .insert(items);
+      if (insertItemsError) throw insertItemsError;
+
+      // 3. Delete old items by ID
+      if (oldIds.length > 0) {
+        const { error: deleteItemsError } = await supabase
+          .from("order_item")
+          .delete()
+          .in("id", oldIds);
+        if (deleteItemsError) throw deleteItemsError;
+      }
+
+      // 4. Delete old discounts (must happen before insert due to composite PK)
+      const { error: deleteDiscountsError } = await supabase
+        .from("order_discounts")
+        .delete()
+        .eq("order_invoice_id", invoice_id);
+      if (deleteDiscountsError) throw deleteDiscountsError;
+
+      // 5. Insert new discounts
+      if (discounts.length > 0) {
+        const { error: insertDiscountsError } = await supabase
+          .from("order_discounts")
+          .insert(discounts);
+        if (insertDiscountsError) throw insertDiscountsError;
+      }
+
+      // 6. Update order totals
+      const { error: updateOrderError } = await supabase
+        .from("orders")
+        .update({ subtotal: subTotal, total_price: totalPrice })
+        .eq("invoice_id", invoice_id);
+      if (updateOrderError) throw updateOrderError;
+
+      // Refresh local state
+      await get().fetchOrder({ page: 1, pageSize: 10 });
+      toast.success(`Invoice ${invoice_id} berhasil diperbarui.`);
+      return true;
+    } catch (error) {
+      const errorMessage = (error as Error).message;
+      toast.error(`Gagal memperbarui invoice: ${errorMessage}`);
+      return false;
     }
   },
 
