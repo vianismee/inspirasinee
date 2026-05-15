@@ -32,6 +32,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -79,6 +80,8 @@ export default function TableJob() {
 
   const [editSheetOpen, setEditSheetOpen] = React.useState(false);
   const [editingOrder, setEditingOrder] = React.useState<OrderWithReferral | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [deletingInvoiceId, setDeletingInvoiceId] = React.useState<string | null>(null);
 
   const handleOpenEdit = React.useCallback((order: OrderWithReferral) => {
     setEditingOrder(order);
@@ -286,9 +289,7 @@ export default function TableJob() {
                     )}
 
                   {/* Membership Discount Display */}
-                  {(order as OrderWithReferral).membership_discount_amount &&
-                    ((order as OrderWithReferral).membership_discount_amount || 0) >
-                      0 && (
+                  {((order as OrderWithReferral).membership_discount_amount ?? 0) > 0 && (
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground flex items-center gap-1">
                           <Crown className="h-3.5 w-3.5 text-purple-600" />
@@ -304,9 +305,7 @@ export default function TableJob() {
                     )}
 
                   {/* Shine Points Redemption Display */}
-                  {(order as OrderWithReferral).shine_points_discount_amount &&
-                    ((order as OrderWithReferral).shine_points_discount_amount || 0) >
-                      0 && (
+                  {((order as OrderWithReferral).shine_points_discount_amount ?? 0) > 0 && (
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground flex items-center gap-1">
                           <Flame className="h-3.5 w-3.5 text-pink-600" />
@@ -614,13 +613,8 @@ export default function TableJob() {
                   <DropdownMenuItem
                     className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
                     onSelect={() => {
-                      if (
-                        window.confirm(
-                          `Apakah Anda yakin ingin menghapus invoice ${order.invoice_id}? Tindakan ini tidak dapat dibatalkan.`
-                        )
-                      ) {
-                        deleteInvoice(order.invoice_id);
-                      }
+                      setDeletingInvoiceId(order.invoice_id);
+                      setDeleteDialogOpen(true);
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -668,6 +662,45 @@ export default function TableJob() {
         onClose={handleCloseEdit}
         onSuccess={() => fetchOrder({ page, pageSize: perPage })}
       />
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(v) => {
+          setDeleteDialogOpen(v);
+          if (!v) setDeletingInvoiceId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Hapus Invoice</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus invoice{" "}
+              <span className="font-semibold text-foreground">
+                {deletingInvoiceId}
+              </span>
+              ? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deletingInvoiceId) deleteInvoice(deletingInvoiceId);
+                setDeleteDialogOpen(false);
+                setDeletingInvoiceId(null);
+              }}
+            >
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

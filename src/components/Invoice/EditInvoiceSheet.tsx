@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { toast } from "sonner";
-import { ChevronDown, Trash, X } from "lucide-react";
+import { Trash, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,21 +20,12 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Combobox,
-  ComboboxAnchor,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxGroup,
-  ComboboxGroupLabel,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxTrigger,
-} from "@/components/ui/combobox";
 
 import { useOrderStore } from "@/stores/orderStore";
 import { useServiceCatalogStore, type Discount } from "@/stores/serviceCatalogStore";
@@ -120,6 +111,12 @@ export function EditInvoiceSheet({
     [allServicesCatalog]
   );
 
+  const getAvailableServices = (item: EditCartItem) =>
+    Object.entries(groupedServices).map(([cat, services]) => ({
+      category: cat,
+      services: services.filter((s) => !item.services.some((is) => is.name === s.name)),
+    })).filter((g) => g.services.length > 0);
+
   // ── Totals ──────────────────────────────────────────────────
   const subTotal = React.useMemo(
     () =>
@@ -142,9 +139,11 @@ export function EditInvoiceSheet({
 
   const referralDiscount = order?.referral_discount_amount ?? 0;
   const pointsDiscount = order?.points_discount_amount ?? 0;
+  const membershipDiscount = order?.membership_discount_amount ?? 0;
+  const shinePointsDiscount = order?.shine_points_discount_amount ?? 0;
   const totalPrice = Math.max(
     0,
-    subTotal - discountTotal - referralDiscount - pointsDiscount
+    subTotal - discountTotal - referralDiscount - pointsDiscount - membershipDiscount - shinePointsDiscount
   );
 
   // ── Cart actions ────────────────────────────────────────────
@@ -338,53 +337,37 @@ export function EditInvoiceSheet({
                         )}
                       </div>
 
-                      <Combobox
+                      <Select
                         onValueChange={(val) => addService(item.id, val)}
                         value=""
                       >
-                        <ComboboxAnchor>
-                          <ComboboxTrigger>
-                            <ComboboxInput
-                              placeholder="+ Tambah layanan"
-                              className="w-full border-zinc-400"
-                              readOnly
-                            />
-                            <ChevronDown className="h-4 w-4" />
-                          </ComboboxTrigger>
-                        </ComboboxAnchor>
-                        <ComboboxContent>
-                          <ComboboxEmpty>Layanan tidak ditemukan.</ComboboxEmpty>
-                          <ScrollArea className="h-[220px]">
-                            {Object.entries(groupedServices).map(
-                              ([category, services], idx, arr) => (
-                                <React.Fragment key={category}>
-                                  <ComboboxGroup>
-                                    <ComboboxGroupLabel>
-                                      {category}
-                                    </ComboboxGroupLabel>
-                                    {services.map((svc) => (
-                                      <ComboboxItem
-                                        key={svc.id}
-                                        value={svc.name}
-                                      >
-                                        <div className="flex items-center justify-between w-full gap-2">
-                                          <span>{svc.name}</span>
-                                          <span className="text-xs text-muted-foreground">
-                                            {formatedCurrency(svc.amount)}
-                                          </span>
-                                        </div>
-                                      </ComboboxItem>
-                                    ))}
-                                  </ComboboxGroup>
-                                  {idx < arr.length - 1 && (
-                                    <Separator className="my-1" />
-                                  )}
-                                </React.Fragment>
-                              )
-                            )}
-                          </ScrollArea>
-                        </ComboboxContent>
-                      </Combobox>
+                        <SelectTrigger className="w-full border-zinc-400">
+                          <SelectValue placeholder="+ Tambah layanan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAvailableServices(item).length === 0 ? (
+                            <SelectItem value="__none__" disabled>
+                              Semua layanan sudah ditambahkan.
+                            </SelectItem>
+                          ) : (
+                            getAvailableServices(item).map(({ category, services }) => (
+                              <SelectGroup key={category}>
+                                <SelectLabel>{category}</SelectLabel>
+                                {services.map((svc) => (
+                                  <SelectItem key={svc.id} value={svc.name}>
+                                    <span className="flex items-center justify-between w-full gap-4">
+                                      <span>{svc.name}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {formatedCurrency(svc.amount)}
+                                      </span>
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 );
@@ -498,6 +481,30 @@ export function EditInvoiceSheet({
                   </span>
                   <span className="text-green-600">
                     -{formatedCurrency(pointsDiscount)}
+                  </span>
+                </div>
+              )}
+
+              {membershipDiscount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    👑 Potongan Membership
+                    <span className="ml-1 text-xs text-amber-600">[tetap]</span>
+                  </span>
+                  <span className="text-green-600">
+                    -{formatedCurrency(membershipDiscount)}
+                  </span>
+                </div>
+              )}
+
+              {shinePointsDiscount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    ✨ Potongan Poin Shine
+                    <span className="ml-1 text-xs text-amber-600">[tetap]</span>
+                  </span>
+                  <span className="text-green-600">
+                    -{formatedCurrency(shinePointsDiscount)}
                   </span>
                 </div>
               )}
