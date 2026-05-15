@@ -9,7 +9,7 @@ import { useDataTable } from "@/hooks/use-data-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { useQueryState, parseAsInteger } from "nuqs";
+import { useQueryState, parseAsInteger, parseAsArrayOf, parseAsString } from "nuqs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,13 +64,22 @@ export function CustomerTable({ onEdit, onView }: CustomerTableProps) {
 
   const [page] = useQueryState("page", parseAsInteger.withDefault(1));
   const [perPage] = useQueryState("perPage", parseAsInteger.withDefault(10));
+  // Same key & separator that useDataTable writes (?member=Silver,Gold)
+  const [memberFilter] = useQueryState(
+    "member",
+    parseAsArrayOf(parseAsString, ",").withDefault([])
+  );
 
   useEffect(() => {
-    fetchCustomers({ page, pageSize: perPage });
+    fetchCustomers({
+      page,
+      pageSize: perPage,
+      membershipLevels: memberFilter.length > 0 ? memberFilter : undefined,
+    });
     fetchMembershipCounts();
     const unsubscribe = subscribeToCustomerChanges();
     return () => unsubscribe();
-  }, [fetchCustomers, fetchMembershipCounts, subscribeToCustomerChanges, page, perPage]);
+  }, [fetchCustomers, fetchMembershipCounts, subscribeToCustomerChanges, page, perPage, memberFilter]);
 
   const handleSendMessage = (customer: ICustomers) => {
     const message = generateChatCustomer(customer);
