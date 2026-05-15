@@ -3,7 +3,7 @@
 
 import React, { useMemo, useEffect } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal, Trash2, Pencil, Send } from "lucide-react";
+import { MoreHorizontal, Trash2, Pencil, Send, Medal } from "lucide-react";
 
 import { useDataTable } from "@/hooks/use-data-table";
 import { DataTable } from "@/components/data-table/data-table";
@@ -19,15 +19,37 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useCustomerStore } from "@/stores/customerStore";
 import { ICustomers } from "@/types";
-import { Badge } from "../ui/badge";
 import { generateChatCustomer } from "@/lib/invoiceUtils";
+import { cn } from "@/lib/utils";
 
 interface CustomerTableProps {
   onEdit: (customer: ICustomers) => void;
-  onView: (customer: ICustomers) => void; // <-- Prop baru untuk melihat detail
+  onView: (customer: ICustomers) => void;
 }
+
+// PostgREST v12+ returns one-to-one as object; older versions return array. Handle both.
+function resolveMembership(raw: ICustomers["customer_memberships"]) {
+  if (!raw) return null;
+  return Array.isArray(raw) ? raw[0] ?? null : raw;
+}
+
+function getMemberBadgeClass(name: string) {
+  switch (name.toLowerCase()) {
+    case "bronze":
+      return "bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-100";
+    case "silver":
+      return "bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-100";
+    case "gold":
+      return "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100";
+    default:
+      return "";
+  }
+}
+
+const MEMBERSHIP_LEVELS = ["Bronze", "Silver", "Gold"];
 
 export function CustomerTable({ onEdit, onView }: CustomerTableProps) {
   const {
@@ -36,17 +58,19 @@ export function CustomerTable({ onEdit, onView }: CustomerTableProps) {
     deleteCustomer,
     subscribeToCustomerChanges,
     totalCount,
+    membershipCounts,
+    fetchMembershipCounts,
   } = useCustomerStore();
 
-  // Get pagination state from URL
   const [page] = useQueryState("page", parseAsInteger.withDefault(1));
   const [perPage] = useQueryState("perPage", parseAsInteger.withDefault(10));
 
   useEffect(() => {
     fetchCustomers({ page, pageSize: perPage });
+    fetchMembershipCounts();
     const unsubscribe = subscribeToCustomerChanges();
     return () => unsubscribe();
-  }, [fetchCustomers, subscribeToCustomerChanges, page, perPage]);
+  }, [fetchCustomers, fetchMembershipCounts, subscribeToCustomerChanges, page, perPage]);
 
   const handleSendMessage = (customer: ICustomers) => {
     const message = generateChatCustomer(customer);
@@ -80,6 +104,55 @@ export function CustomerTable({ onEdit, onView }: CustomerTableProps) {
           label: "Nama",
           placeholder: "Cari nama...",
           variant: "text",
+        },
+        enableColumnFilter: true,
+      },
+      {
+        id: "member",
+        accessorFn: (row) =>
+          resolveMembership(row.customer_memberships)?.customer_membership_levels?.name ?? "",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Member" />
+        ),
+        cell: ({ row }) => {
+          const membership = resolveMembership(row.original.customer_memberships);
+          const levelName = membership?.customer_membership_levels?.name ?? null;
+
+          if (!levelName) {
+            return (
+              <Badge variant="outline" className="text-muted-foreground">
+                Tidak Ada
+              </Badge>
+            );
+          }
+
+          return (
+            <Badge
+              variant="outline"
+              className={cn(
+                "flex items-center gap-1 w-fit",
+                getMemberBadgeClass(levelName)
+              )}
+            >
+              <Medal className="h-3 w-3" />
+              {levelName}
+            </Badge>
+          );
+        },
+        meta: {
+          label: "Member",
+          variant: "multiSelect",
+          options: MEMBERSHIP_LEVELS.map((level) => ({
+            label: level,
+            value: level,
+          })),
+        },
+        filterFn: (row, _columnId, filterValue: string[]) => {
+          if (!filterValue || filterValue.length === 0) return true;
+          const levelName =
+            resolveMembership(row.original.customer_memberships)
+              ?.customer_membership_levels?.name ?? "";
+          return filterValue.includes(levelName);
         },
         enableColumnFilter: true,
       },
@@ -141,7 +214,6 @@ export function CustomerTable({ onEdit, onView }: CustomerTableProps) {
     [deleteCustomer, onEdit, onView]
   );
 
-  // Calculate page count based on total count and page size
   const pageCount = Math.ceil(totalCount / perPage);
 
   const { table } = useDataTable({
@@ -152,14 +224,45 @@ export function CustomerTable({ onEdit, onView }: CustomerTableProps) {
       sorting: [{ id: "username", desc: false }],
       pagination: {
         pageSize: perPage,
-        pageIndex: page - 1, // zero-based index
+        pageIndex: page - 1,
       },
     },
   });
 
+  const totalMemberCount = MEMBERSHIP_LEVELS.reduce(
+    (sum, level) => sum + (membershipCounts[level] || 0),
+    0
+  );
+
   return (
-    <DataTable table={table}>
-      <DataTableToolbar table={table} />
-    </DataTable>
+    <div className="space-y-4">
+      {/* Member stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-lg border bg-card p-3 text-center space-y-0.5">
+          <p className="text-2xl font-bold">{totalMemberCount}</p>
+          <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+            <Medal className="h-3 w-3" /> Total Member
+          </p>
+        </div>
+        {MEMBERSHIP_LEVELS.map((level) => (
+          <div
+            key={level}
+            className={cn(
+              "rounded-lg border p-3 text-center space-y-0.5",
+              getMemberBadgeClass(level)
+            )}
+          >
+            <p className="text-2xl font-bold">
+              {membershipCounts[level] || 0}
+            </p>
+            <p className="text-xs font-medium">{level}</p>
+          </div>
+        ))}
+      </div>
+
+      <DataTable table={table}>
+        <DataTableToolbar table={table} />
+      </DataTable>
+    </div>
   );
 }

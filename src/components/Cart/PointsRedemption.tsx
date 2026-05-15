@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useCartStore } from "@/stores/cartStore";
+import { usePointsRefreshStore } from "@/hooks/use-points-refresh";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ export function PointsRedemption() {
   });
 
   const activeCustomer = useCustomerStore((state) => state.activeCustomer);
+  const refreshTrigger = usePointsRefreshStore((state) => state.timestamp);
   const {
     pointsDiscount,
     setPointsUsed,
@@ -94,7 +96,7 @@ export function PointsRedemption() {
     if (activeCustomer) {
       fetchCustomerPoints();
     }
-  }, [activeCustomer, fetchCustomerPoints, fetchReferralSettings]);
+  }, [activeCustomer, fetchCustomerPoints, fetchReferralSettings, refreshTrigger]);
 
   const validatePointsRedemption = async () => {
     if (!pointsToRedeem || !activeCustomer) {
@@ -261,7 +263,7 @@ export function PointsRedemption() {
             </Badge>
           </div>
           <p className="text-xs text-blue-600 mt-2">
-            *Estimated value ({referralSettings.points_redemption_value} points = Rp {referralSettings.points_redemption_value})
+            *Estimated value (1 point = Rp {referralSettings.points_redemption_value})
           </p>
         </div>
 

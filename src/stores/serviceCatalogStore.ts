@@ -224,14 +224,12 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         get().fetchCatalog();
         get().fetchAllCatalog();
       };
-      const schema =
-        process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
 
       const serviceChannel = supabase
         .channel("service_catalog_changes")
         .on(
           "postgres_changes",
-          { event: "*", schema: schema, table: "service_catalog" },
+          { event: "*", schema: "public", table: "service_catalog" },
           refreshData
         )
         .subscribe();
@@ -240,7 +238,7 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         .channel("service_category_changes")
         .on(
           "postgres_changes",
-          { event: "*", schema: schema, table: "service_category" },
+          { event: "*", schema: "public", table: "service_category" },
           refreshData
         )
         .subscribe();
@@ -249,7 +247,7 @@ export const useServiceCatalogStore = create<ServiceCatalogState>(
         .channel("discount_changes")
         .on(
           "postgres_changes",
-          { event: "*", schema: schema, table: "discount" },
+          { event: "*", schema: "public", table: "discount" },
           refreshData
         )
         .subscribe();

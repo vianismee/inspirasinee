@@ -1,4 +1,4 @@
-import { ScrollText, Star, ClockFading, BrushCleaning } from "lucide-react";
+import { ScrollText, Star, ClockFading, Sparkles } from "lucide-react";
 
 import {
   Timeline,
@@ -30,7 +30,7 @@ const items = [
     id: 3,
     title: "Proses Oleh Technician",
     description: "Sepatumu dalam tahap Cleaning oleh Technician kami",
-    icon: BrushCleaning,
+    icon: Sparkles,
   },
   {
     id: 4,

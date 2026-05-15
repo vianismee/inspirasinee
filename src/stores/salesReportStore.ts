@@ -27,8 +27,6 @@ export const useSalesReportStore = create<SalesReportState>((set) => ({
   fetchSalesReport: async (startDate, endDate) => {
     set({ isLoading: true });
     const supabase = createClient();
-    const schema =
-      process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
 
     try {
       // Fetch orders within the date range
@@ -36,7 +34,7 @@ export const useSalesReportStore = create<SalesReportState>((set) => ({
       const endDateWithTime = endDate + "T23:59:59.999Z";
 
       const { data, error } = await supabase
-        .schema(schema)
+        .schema("public")
         .from("orders")
         .select("invoice_id, total_price, created_at")
         .gte("created_at", startDate)

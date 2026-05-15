@@ -353,14 +353,12 @@ export const useBannerStore = create<BannerState>((set, get) => ({
     const refreshData = () => {
       get().fetchBanners();
     };
-    const schema =
-      process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
 
     const channel = supabase
       .channel("banners_changes")
       .on(
         "postgres_changes",
-        { event: "*", schema: schema, table: "banners" },
+        { event: "*", schema: "public", table: "banners" },
         refreshData
       )
       .subscribe();

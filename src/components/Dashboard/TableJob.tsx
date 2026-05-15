@@ -10,12 +10,15 @@ import {
   Hourglass,
   CircleDashed,
   Sparkles,
+  Flame,
+  Crown,
   CheckCircle2,
   User,
   Phone,
   MapPin,
   CheckCheck,
   QrCode,
+  Pencil,
 } from "lucide-react";
 // Impor dari nuqs untuk state di URL
 import { useQueryState, parseAsInteger } from "nuqs";
@@ -29,6 +32,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -55,16 +59,10 @@ import {
 } from "@/lib/invoiceUtils";
 import { formatedCurrency } from "@/lib/utils";
 import { useOrderStore } from "@/stores/orderStore";
-import { Orders } from "@/types";
-
-// Extended interface for orders with referral properties
-interface OrderWithReferral extends Orders {
-  referral_code?: string;
-  referral_discount_amount?: number;
-  points_used?: number;
-  points_discount_amount?: number;
-}
+import { useSettingsStore } from "@/stores/settingsStore";
+import { Orders, OrderWithReferral } from "@/types";
 import { useRouter } from "next/navigation";
+import { EditInvoiceSheet } from "@/components/Invoice/EditInvoiceSheet";
 
 export default function TableJob() {
   const [page] = useQueryState("page", parseAsInteger.withDefault(1));
@@ -78,12 +76,29 @@ export default function TableJob() {
     updateOrderStep,
     updatePayment,
   } = useOrderStore();
+  const { invoiceTemplate, fetchInvoiceTemplate } = useSettingsStore();
+
+  const [editSheetOpen, setEditSheetOpen] = React.useState(false);
+  const [editingOrder, setEditingOrder] = React.useState<OrderWithReferral | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [deletingInvoiceId, setDeletingInvoiceId] = React.useState<string | null>(null);
+
+  const handleOpenEdit = React.useCallback((order: OrderWithReferral) => {
+    setEditingOrder(order);
+    setEditSheetOpen(true);
+  }, []);
+
+  const handleCloseEdit = React.useCallback(() => {
+    setEditSheetOpen(false);
+    setEditingOrder(null);
+  }, []);
 
   React.useEffect(() => {
     fetchOrder({ page, pageSize: perPage });
+    fetchInvoiceTemplate();
     const unsubscribe = subscribeToOrders();
     return () => unsubscribe();
-  }, [fetchOrder, subscribeToOrders, page, perPage]);
+  }, [fetchOrder, subscribeToOrders, page, perPage, fetchInvoiceTemplate]);
 
   const columns = React.useMemo<ColumnDef<Orders>[]>(
     () => [
@@ -268,6 +283,38 @@ export default function TableJob() {
                           -
                           {formatedCurrency(
                             (order as OrderWithReferral).points_discount_amount!
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                  {/* Membership Discount Display */}
+                  {((order as OrderWithReferral).membership_discount_amount ?? 0) > 0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Crown className="h-3.5 w-3.5 text-purple-600" />
+                          Membership Discount
+                        </span>
+                        <span className="font-mono text-purple-600">
+                          -
+                          {formatedCurrency(
+                            (order as OrderWithReferral).membership_discount_amount!
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                  {/* Shine Points Redemption Display */}
+                  {((order as OrderWithReferral).shine_points_discount_amount ?? 0) > 0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Flame className="h-3.5 w-3.5 text-pink-600" />
+                          Shine Points Redemption
+                        </span>
+                        <span className="font-mono text-pink-600">
+                          -
+                          {formatedCurrency(
+                            (order as OrderWithReferral).shine_points_discount_amount!
                           )}
                         </span>
                       </div>
@@ -489,6 +536,13 @@ export default function TableJob() {
               pointsDiscount:
                 (order as OrderWithReferral).points_discount_amount ||
                 undefined,
+              membershipDiscount:
+                (order as OrderWithReferral).membership_discount_amount ||
+                undefined,
+              shinePointsDiscount:
+                (order as OrderWithReferral).shine_points_discount_amount ||
+                undefined,
+              template: invoiceTemplate || undefined,
             });
             const encodedText = encodeURIComponent(receiptText);
             const whatsappURL = `https://wa.me/${order.customers.whatsapp}?text=${encodedText}`;
@@ -517,6 +571,14 @@ export default function TableJob() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={() => handleOpenEdit(order as OrderWithReferral)}
+                    className="flex items-center gap-2"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Invoice
+                  </DropdownMenuItem>
+
                   <DropdownMenuSeparator />
 
                   {order.payment === "Pending" && (
@@ -551,13 +613,8 @@ export default function TableJob() {
                   <DropdownMenuItem
                     className="flex items-center gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
                     onSelect={() => {
-                      if (
-                        window.confirm(
-                          `Apakah Anda yakin ingin menghapus invoice ${order.invoice_id}? Tindakan ini tidak dapat dibatalkan.`
-                        )
-                      ) {
-                        deleteInvoice(order.invoice_id);
-                      }
+                      setDeletingInvoiceId(order.invoice_id);
+                      setDeleteDialogOpen(true);
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -572,7 +629,7 @@ export default function TableJob() {
         enableHiding: false,
       },
     ],
-    [deleteInvoice, updateOrderStep, updatePayment]
+    [deleteInvoice, updateOrderStep, updatePayment, handleOpenEdit, invoiceTemplate]
   );
 
   const pageCount = React.useMemo(() => {
@@ -592,10 +649,58 @@ export default function TableJob() {
   });
 
   return (
-    <div className="data-table-container">
-      <DataTable table={table}>
-        <DataTableToolbar table={table} />
-      </DataTable>
-    </div>
+    <>
+      <div className="data-table-container">
+        <DataTable table={table}>
+          <DataTableToolbar table={table} />
+        </DataTable>
+      </div>
+
+      <EditInvoiceSheet
+        open={editSheetOpen}
+        order={editingOrder}
+        onClose={handleCloseEdit}
+        onSuccess={() => fetchOrder({ page, pageSize: perPage })}
+      />
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(v) => {
+          setDeleteDialogOpen(v);
+          if (!v) setDeletingInvoiceId(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Hapus Invoice</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus invoice{" "}
+              <span className="font-semibold text-foreground">
+                {deletingInvoiceId}
+              </span>
+              ? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deletingInvoiceId) deleteInvoice(deletingInvoiceId);
+                setDeleteDialogOpen(false);
+                setDeletingInvoiceId(null);
+              }}
+            >
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

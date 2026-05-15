@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { Wallet2 } from "lucide-react";
 import { formatedCurrency } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { generateReceiptText } from "@/lib/invoiceUtils";
 import { IItems } from "@/types";
 import { useRouter } from "next/navigation"; // 1. Impor useRouter
@@ -45,6 +46,11 @@ export function Payment() {
     pointsDiscount,
   } = useCartStore();
   const { activeCustomer, clearCustomer } = useCustomerStore();
+  const { invoiceTemplate, fetchInvoiceTemplate } = useSettingsStore();
+
+  useEffect(() => {
+    fetchInvoiceTemplate();
+  }, [fetchInvoiceTemplate]);
 
   const formattedCart: IItems[] = cart.flatMap((item) =>
     item.services.map((service) => ({
@@ -77,6 +83,7 @@ export function Payment() {
         referralDiscount: referralDiscount || undefined,
         pointsUsed: pointsUsed || undefined,
         pointsDiscount: pointsDiscount || undefined,
+        template: invoiceTemplate || undefined,
       })
     : "";
 

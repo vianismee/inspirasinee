@@ -4,16 +4,12 @@ import { cookies } from "next/headers";
 export async function createClient() {
   const cookieStore = await cookies();
 
-  // Tentukan skema berdasarkan environment variable
-  const schema =
-    process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
-
+  // Always use public schema
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, // Use service key if available
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
-        // ... (kode cookies tidak berubah)
         getAll() {
           return cookieStore.getAll();
         },
@@ -30,7 +26,7 @@ export async function createClient() {
         },
       },
       db: {
-        schema: schema, // <-- TAMBAHKAN OPSI INI
+        schema: "public",
       },
     }
   );

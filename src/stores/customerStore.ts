@@ -19,7 +19,9 @@ interface CustomerState {
   singleCustomer: ICustomers | null;
   isLoading: boolean;
   totalCount: number;
+  membershipCounts: Record<string, number>;
   fetchCustomers: (options?: { customerId?: string; page?: number; pageSize?: number }) => Promise<void>;
+  fetchMembershipCounts: () => Promise<void>;
   deleteCustomer: (customerId: string) => Promise<void>;
   subscribeToCustomerChanges: () => () => void;
   updateCustomer: (
@@ -34,6 +36,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   singleCustomer: null,
   isLoading: false,
   totalCount: 0,
+  membershipCounts: {},
 
   prepareCustomer: async (customerData) => {
     const { whatsapp } = customerData;
@@ -100,7 +103,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         const [{ data, error }, { count: totalCount, error: countError }] = await Promise.all([
           supabase
             .from("customers")
-            .select("*, orders(*)")
+            .select("*, orders(*), customer_memberships(membership_level_id, customer_membership_levels(name, level_index))")
             .order("username", { ascending: true })
             .range(from, to),
           supabase
@@ -135,6 +138,29 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     }
   },
 
+  fetchMembershipCounts: async () => {
+    const supabase = createClient();
+    try {
+      const { data, error } = await supabase
+        .from("customer_memberships")
+        .select("customer_membership_levels(name)");
+
+      if (error) throw error;
+
+      const counts = (data || []).reduce<Record<string, number>>((acc, row) => {
+        // PostgREST returns the nested relation; cast via unknown to avoid TS overlap error
+        const level = row.customer_membership_levels as unknown as { name: string } | null;
+        const name = level?.name;
+        if (name) acc[name] = (acc[name] || 0) + 1;
+        return acc;
+      }, {});
+
+      set({ membershipCounts: counts });
+    } catch (error) {
+      logger.warn("Could not fetch membership counts", { error }, "CustomerStore");
+    }
+  },
+
   deleteCustomer: async (customerId: string) => {
     const supabase = createClient();
     try {
@@ -153,8 +179,6 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
   subscribeToCustomerChanges: () => {
     const supabase = createClient();
-    const schema =
-      process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
 
     const channel = supabase
       .channel("customer-db-changes")
@@ -162,7 +186,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         "postgres_changes",
         {
           event: "*",
-          schema: schema,
+          schema: "public",
           table: "customers",
         },
         () => {

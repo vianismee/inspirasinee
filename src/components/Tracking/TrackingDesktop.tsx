@@ -30,6 +30,9 @@ interface OrderWithReferral extends Orders {
   referral_discount_amount?: number;
   points_used?: number;
   points_discount_amount?: number;
+  membership_discount_amount?: number;
+  membership_level_id?: number;
+  shine_points_discount_amount?: number;
 }
 
 const WHATSAPP_NUMBER = "+6289525444734";

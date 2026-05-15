@@ -6,16 +6,12 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  // Tentukan skema berdasarkan environment variable
-  const schema =
-    process.env.NEXT_PUBLIC_APP_ENV === "development" ? "dev" : "public";
-
+  // Always use public schema
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, // Tetap gunakan ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
-        // ... (kode cookies tidak berubah)
         getAll() {
           return request.cookies.getAll();
         },
@@ -32,12 +28,11 @@ export async function updateSession(request: NextRequest) {
         },
       },
       db: {
-        schema: schema, // <-- TAMBAHKAN OPSI INI
+        schema: "public",
       },
     }
   );
 
-  // ... sisa kode tidak berubah
   const {
     data: { user },
   } = await supabase.auth.getUser();
