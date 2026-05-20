@@ -10,6 +10,7 @@ import {
   IconChartBar,
   IconPhoto,
   IconTrophy,
+  IconMessageStar,
 } from "@tabler/icons-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -61,6 +62,11 @@ const data = {
       title: "Banner",
       url: "/admin/banner",
       icon: IconPhoto,
+    },
+    {
+      title: "Reviews",
+      url: "/admin/reviews",
+      icon: IconMessageStar,
     },
     {
       title: "Report",
