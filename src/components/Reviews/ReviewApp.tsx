@@ -21,6 +21,7 @@ import {
   IconEyeOff,
   IconChartBar,
   IconLayoutGrid,
+  IconRefresh,
 } from "@tabler/icons-react";
 
 // ─── Stat Cards ──────────────────────────────────────────────────────────────
@@ -273,7 +274,7 @@ export function ReviewApp() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {FILTERS.map((f) => (
             <Button
               key={f.value}
@@ -292,6 +293,16 @@ export function ReviewApp() {
               )}
             </Button>
           ))}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={loadData}
+            disabled={loading}
+            className="ml-auto gap-1.5"
+          >
+            <IconRefresh size={14} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </Button>
         </div>
 
         {/* Cards grid */}
