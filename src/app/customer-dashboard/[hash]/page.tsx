@@ -5,8 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { ReferralDashboard } from "@/components/Referral/ReferralDashboard";
 import { toast } from "sonner";
 import { extractPhoneFromHash } from "@/lib/customer-dashboard-hash";
-import { PointsService } from "@/lib/client-services";
-import { createClient } from "@/utils/supabase/client";
 import { logger } from "@/utils/client/logger";
 
 interface DashboardData {
@@ -87,84 +85,29 @@ export default function CustomerDashboardHashPage() {
 
         logger.debug("Phone extracted from hash", { hash, phone }, "CustomerDashboard");
 
-        // Find customer by phone using client-side query
-        const supabase = createClient();
-        const { data: customerData, error: customerError } = await supabase
-          .from('customers')
-          .select('customer_id, username, email, whatsapp, alamat')
-          .eq('whatsapp', phone)
-          .single();
+        // Single server-side fetch via service-role route handler
+        const res = await fetch(`/api/customer-dashboard?phone=${encodeURIComponent(phone)}`);
 
-        if (customerError || !customerData) {
-          logger.error("Customer not found", { error: customerError, phone }, "CustomerDashboard");
+        if (res.status === 404) {
+          logger.error("Customer not found", { phone }, "CustomerDashboard");
           setError("Pelanggan tidak ditemukan untuk nomor telepon ini");
           setIsLoading(false);
           return;
         }
 
+        if (!res.ok) {
+          throw new Error(`API error ${res.status}`);
+        }
+
+        const { customer: customerData, points: pointsData, transactions: transactionsData, orders: ordersData } = await res.json();
+
         logger.debug("Customer found", { customerData }, "CustomerDashboard");
-        logger.debug("Customer data fields", {
-          customer_id: customerData.customer_id,
-          username: customerData.username,
-          email: customerData.email,
-          whatsapp: customerData.whatsapp,
-          alamat: customerData.alamat
-        }, "CustomerDashboard");
-
-        // Fetch customer points (handle case where customer might not have points record yet)
-        let pointsData = {
-          current_balance: 0,
-          total_earned: 0,
-          total_redeemed: 0
-        };
-
-        try {
-          const fetchedPoints = await PointsService.getCustomerBalance(customerData.customer_id);
-          if (fetchedPoints) {
-            pointsData = fetchedPoints;
-          } else {
-            logger.info("Customer has no points record yet, using defaults", { customerId: customerData.customer_id }, "CustomerDashboard");
-          }
-        } catch (pointsError) {
-          logger.error("Error fetching customer points", { error: pointsError, customerId: customerData.customer_id }, "CustomerDashboard");
-          // Continue with default points values
-        }
-
-        // Fetch points transaction history
-        const { data: transactionsData, error: transactionsError } = await supabase
-          .from('points_transactions')
-          .select('*')
-          .eq('customer_id', customerData.customer_id)
-          .order('created_at', { ascending: false })
-          .limit(10); // Get last 10 transactions
-
-        if (transactionsError) {
-          logger.error("Error fetching transactions", { error: transactionsError, customerId: customerData.customer_id }, "CustomerDashboard");
-        }
-
-        // Fetch customer orders with order items (simplified query to avoid syntax issues)
-        const { data: ordersData, error: ordersError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('customer_id', customerData.customer_id)
-          .order('created_at', { ascending: false });
-
-        if (ordersError) {
-          logger.error("Error fetching orders", { error: ordersError, customerId: customerData.customer_id }, "CustomerDashboard");
-        }
 
         // Build customer name with proper fallback
         const customerName = customerData.username ||
                            customerData.email ||
                            customerData.whatsapp ||
                            `Customer ${customerData.customer_id}`;
-
-        logger.debug("Customer name calculation", {
-          username: customerData.username,
-          email: customerData.email,
-          whatsapp: customerData.whatsapp,
-          finalName: customerName
-        }, "CustomerDashboard");
 
         // Build dashboard data
         const dashboardData: DashboardData = {
