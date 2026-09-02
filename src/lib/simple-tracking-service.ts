@@ -1,6 +1,4 @@
-import { createClient } from "@/utils/supabase/client";
-
-// Simple types for tracking
+// Simple types for tracking — dipertahankan agar consumer tidak rusak.
 export interface SimpleOrderData {
   invoice_id: string;
   customer_id: string;
@@ -29,153 +27,62 @@ export interface CustomerInfo {
   email?: string;
 }
 
-// Simple tracking service - NO server-side processing
+// ponytail: CustomerInfo & getCustomerInfo tetap diekspor (consumer compat) tapi
+// tidak lagi mengambil data — PII dimasking server-side. Hapus saat UI tracking bersih.
+export interface TrackApiResponse {
+  order: SimpleOrderData;
+  items: SimpleOrderItem[];
+}
+
+// Simple tracking service — semua query lewat /api/track (server-side, service role).
 class SimpleTrackingService {
-  private supabase = createClient();
-
-  // Simple format validation only - NO server checks
   validateInvoiceId(invoiceId: string): boolean {
-    if (!invoiceId) return false;
-    // Basic validation: 6-20 characters, alphanumeric only
-    return /^[A-Z0-9]{6,20}$/.test(invoiceId.toUpperCase());
+    return /^[A-Za-z0-9_-]{3,30}$/.test(invoiceId);
   }
 
-  // Simple single-table query - NO complex joins
   async getOrderById(invoiceId: string): Promise<SimpleOrderData | null> {
-    try {
-      // Validate format first
-      if (!this.validateInvoiceId(invoiceId)) {
-        return null;
-      }
-
-      // Ultra-simple query - NO JOINS to prevent errors
-      const { data, error } = await this.supabase
-        .from('orders')
-        .select(`
-          invoice_id,
-          customer_id,
-          status,
-          total_price,
-          subtotal,
-          payment_method,
-          payment_status,
-          created_at,
-          updated_at
-        `)
-        .eq('invoice_id', invoiceId)
-        .eq('status', 'completed') // Only show completed orders
-        .single();
-
-      if (error) {
-        console.error('Simple tracking error:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Simple tracking service error:', error);
-      return null;
-    }
+    const { order } = await this.fetchTrack(invoiceId);
+    return order ?? null;
   }
 
-  // Separate simple query for customer info - optional
-  async getCustomerInfo(customerId: string): Promise<CustomerInfo | null> {
-    try {
-      const { data, error } = await this.supabase
-        .from('customers')
-        .select('name, phone, email')
-        .eq('customer_id', customerId)
-        .single();
-
-      if (error) {
-        console.error('Customer info error:', error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Customer info service error:', error);
-      return null;
-    }
+  async getCustomerInfo(_customerId: string): Promise<CustomerInfo | null> {
+    return null; // PII dimasking — tracking sepatu tidak butuh nama/nomor HP
   }
 
-  // Simple query for order items - NO complex processing
   async getOrderItems(invoiceId: string): Promise<SimpleOrderItem[]> {
-    try {
-      // Simple query with reasonable limit
-      const { data, error } = await this.supabase
-        .from('order_item')
-        .select(`
-          id,
-          service_name,
-          shoe_name,
-          quantity,
-          unit_price,
-          total_price,
-          notes
-        `)
-        .eq('invoice_id', invoiceId)
-        .order('id', { ascending: true })
-        .limit(20); // Reasonable limit to prevent memory issues
-
-      if (error) {
-        console.error('Order items error:', error);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('Order items service error:', error);
-      return [];
-    }
+    const { items } = await this.fetchTrack(invoiceId);
+    return items;
   }
 
-  // Combined order fetch with simple retry
   async getFullOrderData(invoiceId: string): Promise<{
     order: SimpleOrderData | null;
     customer: CustomerInfo | null;
     items: SimpleOrderItem[];
   }> {
-    try {
-      // Validate first
-      if (!this.validateInvoiceId(invoiceId)) {
-        return {
-          order: null,
-          customer: null,
-          items: []
-        };
-      }
-
-      // Simple sequential queries - NO complex joins
-      const order = await this.getOrderById(invoiceId);
-
-      if (!order) {
-        return {
-          order: null,
-          customer: null,
-          items: []
-        };
-      }
-
-      // Optional customer info
-      const customer = await this.getCustomerInfo(order.customer_id);
-
-      // Order items
-      const items = await this.getOrderItems(invoiceId);
-
-      return {
-        order,
-        customer,
-        items
-      };
-    } catch (error) {
-      console.error('Full order data error:', error);
-      return {
-        order: null,
-        customer: null,
-        items: []
-      };
+    if (!this.validateInvoiceId(invoiceId)) {
+      return { order: null, customer: null, items: [] };
     }
+    try {
+      const { order, items } = await this.fetchTrack(invoiceId);
+      return { order, customer: null, items };
+    } catch {
+      return { order: null, customer: null, items: [] };
+    }
+  }
+
+  private async fetchTrack(
+    invoiceId: string
+  ): Promise<{ order: SimpleOrderData | null; items: SimpleOrderItem[] }> {
+    if (!this.validateInvoiceId(invoiceId)) {
+      throw new Error("invalid invoice");
+    }
+    const res = await fetch(
+      `/api/track?invoice=${encodeURIComponent(invoiceId)}`
+    );
+    if (!res.ok) {
+      throw new Error(res.status === 404 ? "not found" : `error ${res.status}`);
+    }
+    return res.json();
   }
 }
 
